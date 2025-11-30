@@ -14,7 +14,132 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      edits: {
+        Row: {
+          created_at: string
+          edit_type: string | null
+          id: string
+          output_id: string
+          user_feedback_score: number | null
+        }
+        Insert: {
+          created_at?: string
+          edit_type?: string | null
+          id?: string
+          output_id: string
+          user_feedback_score?: number | null
+        }
+        Update: {
+          created_at?: string
+          edit_type?: string | null
+          id?: string
+          output_id?: string
+          user_feedback_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "edits_output_id_fkey"
+            columns: ["output_id"]
+            isOneToOne: false
+            referencedRelation: "outputs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      outputs: {
+        Row: {
+          created_at: string
+          generated_content: string | null
+          id: string
+          is_saved: boolean | null
+          platform_type: string | null
+          session_id: string
+          structure_json: Json | null
+        }
+        Insert: {
+          created_at?: string
+          generated_content?: string | null
+          id?: string
+          is_saved?: boolean | null
+          platform_type?: string | null
+          session_id: string
+          structure_json?: Json | null
+        }
+        Update: {
+          created_at?: string
+          generated_content?: string | null
+          id?: string
+          is_saved?: boolean | null
+          platform_type?: string | null
+          session_id?: string
+          structure_json?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outputs_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sessions: {
+        Row: {
+          audio_url: string | null
+          created_at: string
+          id: string
+          raw_text: string | null
+          user_id: string
+        }
+        Insert: {
+          audio_url?: string | null
+          created_at?: string
+          id?: string
+          raw_text?: string | null
+          user_id: string
+        }
+        Update: {
+          audio_url?: string | null
+          created_at?: string
+          id?: string
+          raw_text?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          job_role: string | null
+          persona_style: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id: string
+          job_role?: string | null
+          persona_style?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          job_role?: string | null
+          persona_style?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

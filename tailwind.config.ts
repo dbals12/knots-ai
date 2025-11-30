@@ -57,6 +57,13 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        blog: "hsl(var(--blog-accent))",
+        linkedin: "hsl(var(--linkedin-accent))",
+        reels: "hsl(var(--reels-accent))",
+        threads: "hsl(var(--threads-accent))",
+      },
+      backgroundImage: {
+        "prism-gradient": "var(--prism-gradient)",
       },
       borderRadius: {
         lg: "var(--radius)",
