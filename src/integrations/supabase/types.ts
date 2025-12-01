@@ -18,29 +18,26 @@ export type Database = {
         Row: {
           created_at: string
           edit_type: string | null
-          final_content: string | null
+          feedback_score: number | null
           id: string
           output_id: string
           refinement_prompt: string | null
-          user_feedback_score: number | null
         }
         Insert: {
           created_at?: string
           edit_type?: string | null
-          final_content?: string | null
+          feedback_score?: number | null
           id?: string
           output_id: string
           refinement_prompt?: string | null
-          user_feedback_score?: number | null
         }
         Update: {
           created_at?: string
           edit_type?: string | null
-          final_content?: string | null
+          feedback_score?: number | null
           id?: string
           output_id?: string
           refinement_prompt?: string | null
-          user_feedback_score?: number | null
         }
         Relationships: [
           {
@@ -52,33 +49,75 @@ export type Database = {
           },
         ]
       }
+      events: {
+        Row: {
+          created_at: string
+          event_type: string
+          experiment_id: string | null
+          id: string
+          metadata: Json | null
+          platform_type: string | null
+          session_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          experiment_id?: string | null
+          id?: string
+          metadata?: Json | null
+          platform_type?: string | null
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          experiment_id?: string | null
+          id?: string
+          metadata?: Json | null
+          platform_type?: string | null
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       outputs: {
         Row: {
           created_at: string
           generated_content: string | null
           id: string
-          is_saved: boolean | null
-          platform_type: string | null
+          platform_type: string
           session_id: string
-          structure_json: Json | null
         }
         Insert: {
           created_at?: string
           generated_content?: string | null
           id?: string
-          is_saved?: boolean | null
-          platform_type?: string | null
+          platform_type: string
           session_id: string
-          structure_json?: Json | null
         }
         Update: {
           created_at?: string
           generated_content?: string | null
           id?: string
-          is_saved?: boolean | null
-          platform_type?: string | null
+          platform_type?: string
           session_id?: string
-          structure_json?: Json | null
         }
         Relationships: [
           {
@@ -94,24 +133,36 @@ export type Database = {
         Row: {
           audio_url: string | null
           created_at: string
+          device_type: string | null
           id: string
+          input_duration: number | null
+          keyword: string | null
           raw_text: string | null
+          selected_mood: string | null
           selected_persona: string | null
           user_id: string
         }
         Insert: {
           audio_url?: string | null
           created_at?: string
+          device_type?: string | null
           id?: string
+          input_duration?: number | null
+          keyword?: string | null
           raw_text?: string | null
+          selected_mood?: string | null
           selected_persona?: string | null
           user_id: string
         }
         Update: {
           audio_url?: string | null
           created_at?: string
+          device_type?: string | null
           id?: string
+          input_duration?: number | null
+          keyword?: string | null
           raw_text?: string | null
+          selected_mood?: string | null
           selected_persona?: string | null
           user_id?: string
         }
@@ -131,7 +182,7 @@ export type Database = {
           email: string | null
           id: string
           job_role: string | null
-          persona_style: string | null
+          preferred_tone: string | null
           usage_purpose: string | null
         }
         Insert: {
@@ -139,7 +190,7 @@ export type Database = {
           email?: string | null
           id: string
           job_role?: string | null
-          persona_style?: string | null
+          preferred_tone?: string | null
           usage_purpose?: string | null
         }
         Update: {
@@ -147,7 +198,7 @@ export type Database = {
           email?: string | null
           id?: string
           job_role?: string | null
-          persona_style?: string | null
+          preferred_tone?: string | null
           usage_purpose?: string | null
         }
         Relationships: []
