@@ -17,7 +17,7 @@ const Home = () => {
       // Simulate recording for 3 seconds
       setTimeout(() => {
         setIsRecording(false);
-        navigate('/results');
+        navigate('/result');
       }, 3000);
     }
   };
@@ -35,7 +35,7 @@ const Home = () => {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    navigate('/auth');
+    navigate('/login');
   };
 
   return (

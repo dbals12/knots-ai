@@ -29,7 +29,7 @@ const Auth = () => {
       if (error) throw error;
     } catch (error: any) {
       toast({
-        title: 'Error',
+        title: '로그인 실패',
         description: error.message,
         variant: 'destructive',
       });
@@ -47,15 +47,15 @@ const Auth = () => {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/`,
+            emailRedirectTo: `${window.location.origin}/onboarding`,
           },
         });
         
         if (error) throw error;
         
         toast({
-          title: 'Check your email',
-          description: 'We sent you a confirmation link.',
+          title: '이메일을 확인하세요',
+          description: '인증 링크를 보내드렸습니다.',
         });
       } else {
         const { error } = await supabase.auth.signInWithPassword({
@@ -69,7 +69,7 @@ const Auth = () => {
       }
     } catch (error: any) {
       toast({
-        title: 'Error',
+        title: '오류',
         description: error.message,
         variant: 'destructive',
       });
@@ -79,20 +79,17 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-secondary to-background p-4">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-prism-gradient mb-4">
-            <Sparkles className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-3xl font-bold text-foreground">Switch Manager</h1>
-          <p className="text-muted-foreground mt-2">
-            Transform your voice into powerful content
+          <h1 className="text-3xl font-bold text-foreground mb-2">Switch Manager</h1>
+          <p className="text-muted-foreground">
+            로그인하고 기록 시작하기
           </p>
         </div>
 
-        <div className="bg-card rounded-2xl p-8 shadow-lg space-y-6 border border-border">
-          <div className="space-y-4">
+        <div className="bg-card rounded-2xl p-8 shadow-sm border space-y-6">
+          <div className="space-y-3">
             {/* Google Login */}
             <Button
               type="button"
@@ -107,43 +104,48 @@ const Auth = () => {
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
-              Continue with Google
+              Google로 계속하기
             </Button>
 
             {/* Kakao Login */}
             <Button
               type="button"
-              className="w-full h-12 bg-[#FEE500] hover:bg-[#FDD835] text-gray-900"
+              className="w-full h-12 text-[#191919] hover:opacity-90 font-medium"
+              style={{ backgroundColor: '#FEE500' }}
               onClick={() => handleSocialLogin('kakao')}
               disabled={loading}
             >
               <MessageCircle className="w-5 h-5 mr-2" />
-              Continue with Kakao
+              Kakao로 계속하기
             </Button>
           </div>
 
           <div className="relative">
-            <Separator />
-            <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
-              Or continue with email
-            </span>
+            <div className="absolute inset-0 flex items-center">
+              <Separator />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">
+                또는 이메일로 계속하기
+              </span>
+            </div>
           </div>
 
           <form onSubmit={handleAuth} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">이메일</Label>
               <Input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                placeholder="you@example.com"
+                placeholder="your@email.com"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">비밀번호</Label>
               <Input
                 id="password"
                 type="password"
@@ -160,17 +162,17 @@ const Auth = () => {
               className="w-full"
               disabled={loading}
             >
-              {loading ? 'Loading...' : isSignUp ? 'Sign Up' : 'Sign In'}
+              {loading ? '로딩 중...' : isSignUp ? '회원가입' : '로그인'}
             </Button>
 
             <p className="text-center text-sm text-muted-foreground">
-              {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
+              {isSignUp ? '이미 계정이 있으신가요?' : "계정이 없으신가요?"}{' '}
               <button
                 type="button"
                 onClick={() => setIsSignUp(!isSignUp)}
                 className="text-primary hover:underline font-medium"
               >
-                {isSignUp ? 'Sign In' : 'Sign Up'}
+                {isSignUp ? '로그인' : '회원가입'}
               </button>
             </p>
           </form>

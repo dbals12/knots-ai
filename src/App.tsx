@@ -32,10 +32,10 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
+            <Route path="/login" element={<Auth />} />
             <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
-            <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-            <Route path="/results" element={<ProtectedRoute><Results /></ProtectedRoute>} />
+            <Route path="/input" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+            <Route path="/result" element={<ProtectedRoute><Results /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

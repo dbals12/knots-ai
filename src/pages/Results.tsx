@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -31,6 +32,7 @@ const platformConfig = {
 const Results = () => {
   const [loading, setLoading] = useState<string | null>(null);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleCopy = async (content: string, platform: string) => {
     await navigator.clipboard.writeText(content);
@@ -173,7 +175,7 @@ const Results = () => {
         </div>
 
         <div className="text-center">
-          <Button variant="outline" onClick={() => window.location.href = '/home'}>
+          <Button variant="outline" onClick={() => navigate('/input')}>
             Create Another
           </Button>
         </div>
