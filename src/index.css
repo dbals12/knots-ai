@@ -8,47 +8,48 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
+    /* Strict Minimalist Theme - Pure White & Black */
     --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
+    --foreground: 0 0% 0%;
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 0 0% 0%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 222 47% 25%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 222 47% 25%;
-    --accent-foreground: 0 0% 98%;
+    --popover-foreground: 0 0% 0%;
+    --primary: 0 0% 0%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 0%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 0 0% 0%;
+    --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 222 47% 25%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 0 0% 0%;
     
-    /* Platform accent colors */
-    --blog-accent: 142 71% 45%;
-    --linkedin-accent: 201 96% 32%;
-    --reels-accent: 316 73% 52%;
-    --threads-accent: 0 0% 9%;
+    /* Platform Brand Colors */
+    --blog: 142 91% 38%; /* Naver Green #03C75A */
+    --linkedin: 201 100% 35%; /* LinkedIn Blue #0077B5 */
+    --reels: 316 73% 52%; /* Instagram Pink/Purple */
+    --threads: 0 0% 0%; /* Black */
     
-    /* Prism gradient */
-    --prism-gradient: linear-gradient(135deg, 
-      hsl(222 47% 25%) 0%, 
-      hsl(316 73% 52%) 50%, 
-      hsl(201 96% 32%) 100%);
+    /* Instagram Gradient for Reels */
+    --reels-gradient: linear-gradient(135deg, 
+      hsl(316 73% 52%) 0%,
+      hsl(340 82% 52%) 50%,
+      hsl(25 95% 53%) 100%);
     
-    --radius: 0.75rem;
+    --radius: 1rem;
     --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-foreground: 0 0% 20%;
+    --sidebar-primary: 0 0% 0%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 96%;
+    --sidebar-accent-foreground: 0 0% 0%;
+    --sidebar-border: 0 0% 90%;
+    --sidebar-ring: 0 0% 0%;
   }
   
   .dark {

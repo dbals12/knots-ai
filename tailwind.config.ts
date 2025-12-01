@@ -57,13 +57,13 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        blog: "hsl(var(--blog-accent))",
-        linkedin: "hsl(var(--linkedin-accent))",
-        reels: "hsl(var(--reels-accent))",
-        threads: "hsl(var(--threads-accent))",
+        blog: "hsl(var(--blog))",
+        linkedin: "hsl(var(--linkedin))",
+        reels: "hsl(var(--reels))",
+        threads: "hsl(var(--threads))",
       },
       backgroundImage: {
-        "prism-gradient": "var(--prism-gradient)",
+        "reels-gradient": "var(--reels-gradient)",
       },
       borderRadius: {
         lg: "var(--radius)",
