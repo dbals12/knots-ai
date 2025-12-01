@@ -18,22 +18,28 @@ export type Database = {
         Row: {
           created_at: string
           edit_type: string | null
+          final_content: string | null
           id: string
           output_id: string
+          refinement_prompt: string | null
           user_feedback_score: number | null
         }
         Insert: {
           created_at?: string
           edit_type?: string | null
+          final_content?: string | null
           id?: string
           output_id: string
+          refinement_prompt?: string | null
           user_feedback_score?: number | null
         }
         Update: {
           created_at?: string
           edit_type?: string | null
+          final_content?: string | null
           id?: string
           output_id?: string
+          refinement_prompt?: string | null
           user_feedback_score?: number | null
         }
         Relationships: [
@@ -90,6 +96,7 @@ export type Database = {
           created_at: string
           id: string
           raw_text: string | null
+          selected_persona: string | null
           user_id: string
         }
         Insert: {
@@ -97,6 +104,7 @@ export type Database = {
           created_at?: string
           id?: string
           raw_text?: string | null
+          selected_persona?: string | null
           user_id: string
         }
         Update: {
@@ -104,6 +112,7 @@ export type Database = {
           created_at?: string
           id?: string
           raw_text?: string | null
+          selected_persona?: string | null
           user_id?: string
         }
         Relationships: [
@@ -123,6 +132,7 @@ export type Database = {
           id: string
           job_role: string | null
           persona_style: string | null
+          usage_purpose: string | null
         }
         Insert: {
           created_at?: string
@@ -130,6 +140,7 @@ export type Database = {
           id: string
           job_role?: string | null
           persona_style?: string | null
+          usage_purpose?: string | null
         }
         Update: {
           created_at?: string
@@ -137,6 +148,7 @@ export type Database = {
           id?: string
           job_role?: string | null
           persona_style?: string | null
+          usage_purpose?: string | null
         }
         Relationships: []
       }

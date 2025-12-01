@@ -54,7 +54,7 @@ const Onboarding = () => {
         description: 'Let\'s start creating content.',
       });
 
-      navigate('/home');
+      navigate('/input');
     } catch (error: any) {
       toast({
         title: 'Error',
