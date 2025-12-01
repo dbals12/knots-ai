@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Mic, X } from 'lucide-react';
+import { Mic, X, LogOut } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const Home = () => {
   const [isRecording, setIsRecording] = useState(false);
@@ -32,9 +33,28 @@ const Home = () => {
     setKeywords(keywords.filter((_, i) => i !== index));
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/auth');
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-secondary to-background p-4">
-      <div className="max-w-2xl mx-auto pt-20 space-y-12">
+      {/* Header */}
+      <header className="max-w-2xl mx-auto pt-4 pb-8 flex items-center justify-between">
+        <h1 className="text-xl font-bold text-foreground">Switch Manager</h1>
+        <Button 
+          variant="ghost" 
+          size="sm"
+          onClick={handleLogout}
+          className="gap-2"
+        >
+          <LogOut className="w-4 h-4" />
+          Log Out
+        </Button>
+      </header>
+
+      <div className="max-w-2xl mx-auto pt-8 space-y-12">
         <div className="text-center space-y-4">
           <h1 className="text-4xl font-bold text-foreground">Your Story, Refracted</h1>
           <p className="text-muted-foreground">Record your thoughts and watch them transform</p>
