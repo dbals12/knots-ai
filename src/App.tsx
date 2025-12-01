@@ -36,7 +36,7 @@ const App = () => (
             <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
             <Route path="/input" element={<ProtectedRoute><Home /></ProtectedRoute>} />
             <Route path="/result" element={<ProtectedRoute><Results /></ProtectedRoute>} />
-            <Route path="*" element={<NotFound />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
