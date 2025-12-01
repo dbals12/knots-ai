@@ -16,7 +16,7 @@ const Auth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleSocialLogin = async (provider: 'google' | 'kakao' | 'notion') => {
+  const handleSocialLogin = async (provider: 'google' | 'kakao') => {
     setLoading(true);
     try {
       const { error } = await supabase.auth.signInWithOAuth({
@@ -119,19 +119,6 @@ const Auth = () => {
             >
               <MessageCircle className="w-5 h-5 mr-2" />
               Continue with Kakao
-            </Button>
-
-            {/* Naver Login */}
-            <Button
-              type="button"
-              className="w-full h-12 bg-[#03C75A] hover:bg-[#02B350] text-white"
-              onClick={() => handleSocialLogin('notion')}
-              disabled={loading}
-            >
-              <div className="w-5 h-5 mr-2 bg-white rounded-sm flex items-center justify-center font-bold text-[#03C75A]">
-                N
-              </div>
-              Continue with Naver
             </Button>
           </div>
 
