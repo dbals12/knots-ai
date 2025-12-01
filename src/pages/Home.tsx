@@ -1,19 +1,53 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Mic, X, LogOut } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Mic, LogOut } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+
+const moods = [
+  { value: 'energetic', label: '🔥 불타는 하루' },
+  { value: 'tired', label: '😞 좀 힘들고 지쳤다' },
+  { value: 'proud', label: '😊 뿌듯했다' },
+  { value: 'neutral', label: '😐 그냥 그런 날' },
+  { value: 'chaotic', label: '🤯 정신 없었다' },
+];
+
+const personas = [
+  { value: 'growth', label: '🌱 성장한 나', desc: '배운 점, 성장 포인트 중심' },
+  { value: 'achiever', label: '💼 일잘러 나', desc: '성과, 문제 해결, 인사이트 중심' },
+  { value: 'collaborator', label: '🤝 협업한 나', desc: '사람, 팀워크, 관계 중심' },
+  { value: 'challenger', label: '⚡ 갈등한 나', desc: '어려움, 스트레스, 고민을 솔직히' },
+  { value: 'authentic', label: '💬 날것의 나', desc: '포장 없이 있는 그대로' },
+];
 
 const Home = () => {
   const [isRecording, setIsRecording] = useState(false);
-  const [keywords, setKeywords] = useState<string[]>([]);
-  const [currentKeyword, setCurrentKeyword] = useState('');
+  const [selectedMood, setSelectedMood] = useState('');
+  const [selectedPersona, setSelectedPersona] = useState('');
+  const [keyword, setKeyword] = useState('');
   const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/login');
+  };
 
   const toggleRecording = () => {
+    if (!selectedMood || !selectedPersona) {
+      toast({
+        title: '선택이 필요해요',
+        description: '오늘의 기분과 모드를 먼저 선택해주세요.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsRecording(!isRecording);
+    
     if (!isRecording) {
-      setIsRecording(true);
       // Simulate recording for 3 seconds
       setTimeout(() => {
         setIsRecording(false);
@@ -22,109 +56,112 @@ const Home = () => {
     }
   };
 
-  const addKeyword = () => {
-    if (currentKeyword && keywords.length < 3) {
-      setKeywords([...keywords, currentKeyword]);
-      setCurrentKeyword('');
-    }
-  };
-
-  const removeKeyword = (index: number) => {
-    setKeywords(keywords.filter((_, i) => i !== index));
-  };
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/login');
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-secondary to-background p-4">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <header className="max-w-2xl mx-auto pt-4 pb-8 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-foreground">Switch Manager</h1>
+      <header className="px-6 py-5 flex items-center justify-between border-b border-border">
+        <h1 className="text-lg font-bold text-foreground">Switch Manager</h1>
         <Button 
           variant="ghost" 
           size="sm"
           onClick={handleLogout}
-          className="gap-2"
+          className="text-muted-foreground hover:text-foreground"
         >
-          <LogOut className="w-4 h-4" />
-          Log Out
+          <LogOut className="w-4 h-4 mr-1" />
+          로그아웃
         </Button>
       </header>
 
-      <div className="max-w-2xl mx-auto pt-8 space-y-12">
-        <div className="text-center space-y-4">
-          <h1 className="text-4xl font-bold text-foreground">Your Story, Refracted</h1>
-          <p className="text-muted-foreground">Record your thoughts and watch them transform</p>
-        </div>
-
-        <div className="flex flex-col items-center space-y-8">
-          <button
-            onClick={toggleRecording}
-            disabled={isRecording}
-            className={`relative w-48 h-48 rounded-full transition-all duration-300 ${
-              isRecording
-                ? 'bg-destructive scale-95 animate-pulse'
-                : 'bg-prism-gradient hover:scale-105 shadow-2xl'
-            }`}
-          >
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Mic className="w-20 h-20 text-white" />
-            </div>
-            {isRecording && (
-              <div className="absolute inset-0 rounded-full border-4 border-white/30 animate-ping" />
-            )}
-          </button>
-
-          <p className="text-sm font-medium text-muted-foreground">
-            {isRecording ? 'Recording... Speak now' : 'Tap to record (up to 3 minutes)'}
-          </p>
-        </div>
-
-        <div className="space-y-4">
-          <label className="text-sm font-medium text-foreground">
-            Add up to 3 keywords (optional)
-          </label>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={currentKeyword}
-              onChange={(e) => setCurrentKeyword(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && addKeyword()}
-              placeholder="e.g., leadership, innovation..."
-              disabled={keywords.length >= 3}
-              className="flex-1 px-4 py-2 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-            <Button
-              onClick={addKeyword}
-              disabled={!currentKeyword || keywords.length >= 3}
-            >
-              Add
-            </Button>
-          </div>
-          {keywords.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {keywords.map((keyword, index) => (
-                <Badge
-                  key={index}
-                  variant="secondary"
-                  className="pl-3 pr-2 py-1 text-sm"
+      {/* Main Content */}
+      <main className="flex-1 px-6 py-8 space-y-8">
+        <div className="w-full max-w-[430px] mx-auto space-y-8">
+          
+          {/* Mood Selector */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-foreground">
+              오늘 하루는 어땠나요?
+            </h2>
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+              {moods.map((mood) => (
+                <button
+                  key={mood.value}
+                  onClick={() => setSelectedMood(mood.value)}
+                  className={`flex-shrink-0 px-5 py-3 rounded-xl border-2 transition-all whitespace-nowrap ${
+                    selectedMood === mood.value
+                      ? 'border-foreground bg-white shadow-sm'
+                      : 'border-border bg-white hover:border-foreground/30'
+                  }`}
                 >
-                  {keyword}
-                  <button
-                    onClick={() => removeKeyword(index)}
-                    className="ml-2 hover:text-destructive"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </Badge>
+                  <span className="text-sm font-medium text-foreground">{mood.label}</span>
+                </button>
               ))}
             </div>
-          )}
+          </div>
+
+          {/* Persona Selector */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-foreground">
+              오늘은 어떤 나로 정리할까요?
+            </h2>
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+              {personas.map((persona) => (
+                <button
+                  key={persona.value}
+                  onClick={() => setSelectedPersona(persona.value)}
+                  className={`flex-shrink-0 px-5 py-3 rounded-xl border-2 transition-all ${
+                    selectedPersona === persona.value
+                      ? 'border-foreground bg-white shadow-sm'
+                      : 'border-border bg-white hover:border-foreground/30'
+                  }`}
+                >
+                  <div className="text-sm font-medium text-foreground whitespace-nowrap">
+                    {persona.label}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5 whitespace-nowrap">
+                    {persona.desc}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Keyword Input */}
+          <div className="space-y-3">
+            <label className="text-sm text-muted-foreground">
+              오늘의 키워드 (한두 단어로 정리해볼까요?)
+            </label>
+            <Input
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              placeholder="예: 클라이언트 미팅, 런칭, 실수"
+              className="h-11 rounded-xl border-border bg-white"
+            />
+          </div>
+
+          {/* Recording Area */}
+          <div className="flex flex-col items-center space-y-6 py-8">
+            <button
+              onClick={toggleRecording}
+              className={`w-32 h-32 rounded-full bg-foreground flex items-center justify-center transition-all shadow-2xl ${
+                isRecording ? 'animate-pulse scale-95' : 'hover:scale-105'
+              }`}
+            >
+              <Mic className="w-14 h-14 text-background" strokeWidth={2.5} />
+            </button>
+            <p className="text-sm text-muted-foreground text-center">
+              {isRecording ? '녹음 중...' : '버튼을 누르고 자유롭게 이야기해주세요.'}
+            </p>
+          </div>
+
+          {/* Optional Text Input Link */}
+          <div className="text-center">
+            <button className="text-sm text-muted-foreground hover:text-foreground underline">
+              텍스트로 입력할래요
+            </button>
+          </div>
+
         </div>
-      </div>
+      </main>
     </div>
   );
 };
