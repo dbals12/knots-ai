@@ -4,9 +4,17 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Mic, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Mic, LogOut, ChevronLeft, ChevronRight, Settings } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { SiNaver, SiLinkedin, SiInstagram, SiThreads } from 'react-icons/si';
+
+const sessionPurposes = [
+  { value: 'record', label: '기록' },
+  { value: 'career', label: '커리어 브랜딩' },
+  { value: 'review', label: '업무 회고' },
+  { value: 'emotion', label: '감정 정리' },
+  { value: 'idea', label: '아이디어 저장' },
+];
 
 const moods = [
   { value: 'energetic', label: '🔥 불타는 하루', icon: null },
@@ -34,6 +42,7 @@ const platformPreviews = [
 const Home = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [sessionPurpose, setSessionPurpose] = useState('');
   const [selectedMood, setSelectedMood] = useState('');
   const [selectedPersona, setSelectedPersona] = useState('');
   const [keyword, setKeyword] = useState('');
@@ -41,6 +50,7 @@ const Home = () => {
   const { toast } = useToast();
   const moodScrollRef = useRef<HTMLDivElement>(null);
   const personaScrollRef = useRef<HTMLDivElement>(null);
+  const purposeScrollRef = useRef<HTMLDivElement>(null);
 
   const scrollContainer = (ref: React.RefObject<HTMLDivElement>, direction: 'left' | 'right') => {
     if (ref.current) {
@@ -90,21 +100,76 @@ const Home = () => {
       {/* Header */}
       <header className="px-6 py-5 flex items-center justify-between border-b border-border">
         <h1 className="text-lg font-bold text-foreground">Switch Manager</h1>
-        <Button 
-          variant="ghost" 
-          size="sm"
-          onClick={handleLogout}
-          className="text-muted-foreground hover:text-foreground"
-        >
-          <LogOut className="w-4 h-4 mr-1" />
-          로그아웃
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={() => navigate('/settings')}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <Settings className="w-4 h-4 mr-1" />
+            프로필
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={handleLogout}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <LogOut className="w-4 h-4 mr-1" />
+            로그아웃
+          </Button>
+        </div>
       </header>
 
       {/* Main Content */}
       <main className="flex-1 px-6 py-8 space-y-8">
         <div className="w-full max-w-[430px] mx-auto space-y-8">
           
+          {/* Session Purpose Selector */}
+          <div className="space-y-3">
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">
+                오늘의 목적은 무엇인가요?
+              </h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                오늘은 이 기록을 어떤 용도로 남기고 싶은지 선택해 주세요. (선택 사항)
+              </p>
+            </div>
+            <div className="relative group">
+              <button
+                onClick={() => scrollContainer(purposeScrollRef, 'left')}
+                className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 items-center justify-center bg-white border border-border rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-50"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <div 
+                ref={purposeScrollRef}
+                className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory"
+              >
+                {sessionPurposes.map((purpose) => (
+                  <button
+                    key={purpose.value}
+                    onClick={() => setSessionPurpose(sessionPurpose === purpose.value ? '' : purpose.value)}
+                    className={`flex-shrink-0 px-4 py-2 rounded-full border-2 text-sm font-medium transition-all whitespace-nowrap snap-start ${
+                      sessionPurpose === purpose.value
+                        ? 'border-foreground bg-foreground text-background'
+                        : 'border-border bg-white text-foreground hover:border-foreground/30'
+                    }`}
+                  >
+                    {purpose.label}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => scrollContainer(purposeScrollRef, 'right')}
+                className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 items-center justify-center bg-white border border-border rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-50"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
           {/* Mood Selector */}
           <div className="space-y-4">
             <h2 className="text-lg font-semibold text-foreground">
