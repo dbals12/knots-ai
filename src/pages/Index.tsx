@@ -2,7 +2,8 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Mic, ArrowRight, FileText, Linkedin, Video } from "lucide-react";
+import { Mic, ArrowRight } from "lucide-react";
+import { SiNaver, SiLinkedin, SiInstagram, SiThreads } from 'react-icons/si';
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -55,28 +56,23 @@ const Index = () => {
             {/* Output: 2x2 Grid of Platform Icons */}
             <div className="grid grid-cols-2 gap-2.5">
               {/* Blog - Naver Green */}
-              <div className="w-[58px] h-[58px] rounded-xl bg-blog flex items-center justify-center shadow-lg">
-                <FileText className="w-7 h-7 text-white" strokeWidth={2.5} />
+              <div className="w-[58px] h-[58px] rounded-xl bg-[#03C75A] flex items-center justify-center shadow-lg">
+                <SiNaver className="w-7 h-7 text-white" />
               </div>
 
               {/* LinkedIn - Blue */}
-              <div className="w-[58px] h-[58px] rounded-xl bg-linkedin flex items-center justify-center shadow-lg">
-                <Linkedin className="w-7 h-7 text-white" strokeWidth={2.5} />
+              <div className="w-[58px] h-[58px] rounded-xl bg-[#0077B5] flex items-center justify-center shadow-lg">
+                <SiLinkedin className="w-7 h-7 text-white" />
               </div>
 
               {/* Reels - Instagram Gradient */}
-              <div className="w-[58px] h-[58px] rounded-xl bg-reels-gradient flex items-center justify-center shadow-lg">
-                <Video className="w-7 h-7 text-white" strokeWidth={2.5} />
+              <div className="w-[58px] h-[58px] rounded-xl bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af] flex items-center justify-center shadow-lg">
+                <SiInstagram className="w-7 h-7 text-white" />
               </div>
 
               {/* Threads - Black */}
-              <div className="w-[58px] h-[58px] rounded-xl bg-threads flex items-center justify-center shadow-lg">
-                <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path
-                    d="M12.186 3.004c1.456-.003 2.64.202 3.636.65.993.446 1.763 1.145 2.3 2.102.534.952.793 2.143.773 3.572h-3.091c.014-.857-.161-1.55-.524-2.078-.363-.528-.898-.875-1.605-1.04-.707-.165-1.574-.179-2.6-.042-1.027.137-1.897.47-2.61 1-1.427.906-2.278 2.45-2.554 4.63-.276 2.18.054 3.973.989 5.378.935 1.405 2.353 2.183 4.254 2.334 1.26.1 2.33-.065 3.21-.493.88-.428 1.545-1.058 1.995-1.89.45-.832.67-1.838.66-3.02H12v-2.5h7c.007.203.01.405.01.607 0 2.013-.39 3.795-1.17 5.345-.78 1.55-1.91 2.756-3.39 3.62-1.48.864-3.23 1.296-5.25 1.296-2.407 0-4.434-.56-6.08-1.68C1.473 19.767.442 18.177 0 15.81c-.442-2.367-.208-4.54.702-6.516.91-1.976 2.34-3.473 4.29-4.49C6.943 3.787 9.178 3.008 12.186 3.004z"
-                    fill="currentColor"
-                  />
-                </svg>
+              <div className="w-[58px] h-[58px] rounded-xl bg-black flex items-center justify-center shadow-lg">
+                <SiThreads className="w-7 h-7 text-white" />
               </div>
             </div>
           </div>
