@@ -25,17 +25,20 @@ const Auth = () => {
       if (user) {
         const { data: userData } = await supabase
           .from('users')
-          .select('job_role')
+          .select('job_role, usage_purpose, preferred_tone')
           .eq('id', user.id)
           .single();
 
-        if (userData && userData.job_role) {
+        // Check if all three onboarding fields are filled
+        if (userData && userData.job_role && userData.usage_purpose && userData.preferred_tone) {
           navigate('/input');
           return;
         } else if (userData) {
+          // User exists but onboarding incomplete
           navigate('/onboarding');
           return;
         } else {
+          // New user: create row and redirect to onboarding
           await supabase.from('users').insert({
             id: user.id,
             email: user.email,
@@ -100,15 +103,18 @@ const Auth = () => {
         if (data.user) {
           const { data: userData } = await supabase
             .from('users')
-            .select('job_role')
+            .select('job_role, usage_purpose, preferred_tone')
             .eq('id', data.user.id)
             .single();
 
-          if (userData && userData.job_role) {
+          // Check if all three onboarding fields are filled
+          if (userData && userData.job_role && userData.usage_purpose && userData.preferred_tone) {
             navigate('/input');
           } else if (userData) {
+            // User exists but onboarding incomplete
             navigate('/onboarding');
           } else {
+            // New user: create row and redirect to onboarding
             await supabase.from('users').insert({
               id: data.user.id,
               email: data.user.email,
