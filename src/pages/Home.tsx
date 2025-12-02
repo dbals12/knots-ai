@@ -154,6 +154,11 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {/* Debug Panel */}
+      <div className="bg-gray-100 px-3 py-1 text-xs text-gray-500 font-mono">
+        DEBUG – sessionCount: {isReturningUser ? '≥1' : '0'}, isReturningUser: {String(isReturningUser)}, loading: {String(isLoadingUserStatus)}
+      </div>
+      
       {/* Header */}
       <header className="px-6 py-5 flex items-center justify-between border-b border-border">
         <h1 className="text-lg font-bold text-foreground">Switch Manager</h1>

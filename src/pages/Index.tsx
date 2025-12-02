@@ -1,5 +1,7 @@
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Mic, ArrowRight, FileText, Settings, PenTool } from "lucide-react";
@@ -8,6 +10,39 @@ import { SiNaver, SiLinkedin, SiInstagram, SiThreads } from 'react-icons/si';
 const Index = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const [hasPreviousSession, setHasPreviousSession] = useState(false);
+  const [sessionCheckLoading, setSessionCheckLoading] = useState(true);
+
+  // Check if user has previous sessions
+  useEffect(() => {
+    const checkSessions = async () => {
+      if (!user) {
+        setSessionCheckLoading(false);
+        return;
+      }
+
+      try {
+        const { data: sessions, error } = await supabase
+          .from('sessions')
+          .select('id')
+          .eq('user_id', user.id)
+          .limit(1);
+
+        if (error) throw error;
+        setHasPreviousSession(sessions && sessions.length > 0);
+      } catch (error) {
+        console.error('Error checking sessions:', error);
+      } finally {
+        setSessionCheckLoading(false);
+      }
+    };
+
+    checkSessions();
+  }, [user]);
+
+  // Debug values
+  const isAuthenticated = !!user;
+  const isReturningHomeLayout = isAuthenticated; // Currently shows dashboard for any logged-in user
 
   if (loading) {
     return (
@@ -20,7 +55,13 @@ const Index = () => {
   // Dashboard for logged-in users
   if (user) {
     return (
-      <div className="min-h-screen bg-background p-6 py-8">
+      <div className="min-h-screen bg-background">
+        {/* Debug Panel */}
+        <div className="bg-gray-100 px-3 py-1 text-xs text-gray-500 font-mono">
+          DEBUG – auth: {String(isAuthenticated)}, hasSession: {String(hasPreviousSession)}, returningHome: {String(isReturningHomeLayout)}, loading: {String(sessionCheckLoading)}
+        </div>
+        
+        <div className="p-6 py-8">
         <div className="w-full max-w-[430px] mx-auto space-y-8">
           <div className="space-y-2">
             <h1 className="text-3xl font-bold text-foreground">다시 오셨네요 👋</h1>
@@ -80,6 +121,7 @@ const Index = () => {
             </Card>
           </div>
         </div>
+        </div>
       </div>
     );
   }
@@ -87,6 +129,11 @@ const Index = () => {
   // Marketing landing page for non-authenticated users
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {/* Debug Panel */}
+      <div className="bg-gray-100 px-3 py-1 text-xs text-gray-500 font-mono">
+        DEBUG – auth: {String(isAuthenticated)}, hasSession: {String(hasPreviousSession)}, returningHome: {String(isReturningHomeLayout)}
+      </div>
+      
       {/* Header */}
       <header className="px-6 py-5">
         <h1 className="text-lg font-bold text-foreground tracking-tight">Switch Manager</h1>
