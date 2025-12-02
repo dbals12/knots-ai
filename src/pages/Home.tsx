@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Mic, LogOut, ChevronLeft, ChevronRight, Settings } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { SiNaver, SiLinkedin, SiInstagram, SiThreads } from 'react-icons/si';
 
 const sessionPurposes = [
@@ -46,11 +47,64 @@ const Home = () => {
   const [selectedMood, setSelectedMood] = useState('');
   const [selectedPersona, setSelectedPersona] = useState('');
   const [keyword, setKeyword] = useState('');
+  const [isReturningUser, setIsReturningUser] = useState(false);
+  const [isLoadingUserStatus, setIsLoadingUserStatus] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const moodScrollRef = useRef<HTMLDivElement>(null);
   const personaScrollRef = useRef<HTMLDivElement>(null);
   const purposeScrollRef = useRef<HTMLDivElement>(null);
+
+  // Check if user is returning (has previous sessions)
+  useEffect(() => {
+    const checkUserStatus = async () => {
+      if (!user) return;
+
+      try {
+        // Check if user has any previous sessions
+        const { data: sessions, error } = await supabase
+          .from('sessions')
+          .select('id')
+          .eq('user_id', user.id)
+          .limit(1);
+
+        if (error) throw error;
+
+        const hasExistingSessions = sessions && sessions.length > 0;
+        setIsReturningUser(hasExistingSessions);
+
+        // If first-time user, auto-initialize session_purpose with usage_purpose
+        if (!hasExistingSessions) {
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('usage_purpose')
+            .eq('id', user.id)
+            .single();
+
+          if (userError) throw userError;
+
+          if (userData?.usage_purpose) {
+            // Map usage_purpose to session_purpose format
+            const purposeMap: Record<string, string> = {
+              '빠르게 하루를 정리하고 싶어요': 'record',
+              '커리어 브랜딩을 시작하고 싶어요': 'career',
+              '업무 성과를 정리하는 게 어려워요': 'review',
+              '마음·감정을 정리하고 싶어요': 'emotion',
+              '콘텐츠 아이디어가 필요해요': 'idea',
+            };
+            setSessionPurpose(purposeMap[userData.usage_purpose] || '');
+          }
+        }
+      } catch (error) {
+        console.error('Error checking user status:', error);
+      } finally {
+        setIsLoadingUserStatus(false);
+      }
+    };
+
+    checkUserStatus();
+  }, [user]);
 
   const scrollContainer = (ref: React.RefObject<HTMLDivElement>, direction: 'left' | 'right') => {
     if (ref.current) {
@@ -126,7 +180,8 @@ const Home = () => {
       <main className="flex-1 px-6 py-8 space-y-8">
         <div className="w-full max-w-[430px] mx-auto space-y-8">
           
-          {/* Session Purpose Selector */}
+          {/* Session Purpose Selector - Only for returning users */}
+          {!isLoadingUserStatus && isReturningUser && (
           <div className="space-y-3">
             <div>
               <h2 className="text-lg font-semibold text-foreground">
@@ -169,6 +224,7 @@ const Home = () => {
               </button>
             </div>
           </div>
+          )}
 
           {/* Mood Selector */}
           <div className="space-y-4">
