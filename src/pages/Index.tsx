@@ -34,6 +34,7 @@ const Index = () => {
             <p className="text-[15px] text-muted-foreground leading-relaxed">
               퇴근 후 쓰러져도, 커리어 브랜딩은 포기하지 마세요.
               <br />
+              <br />
               휘발되는 생각들을 말로만 남기면,
               <br />
               블로그·링크드인·릴스·쓰레드 콘텐츠로 정리해 드립니다.
