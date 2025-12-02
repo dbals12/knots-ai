@@ -42,9 +42,9 @@ const Index = () => {
 
   // Debug values
   const isAuthenticated = !!user;
-  const isReturningHomeLayout = isAuthenticated; // Currently shows dashboard for any logged-in user
+  const isReturningHomeLayout = isAuthenticated && hasPreviousSession;
 
-  if (loading) {
+  if (loading || (user && sessionCheckLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-muted-foreground">로딩 중...</p>
@@ -52,8 +52,8 @@ const Index = () => {
     );
   }
 
-  // Dashboard for logged-in users
-  if (user) {
+  // Dashboard for returning users (auth + sessions > 0)
+  if (user && hasPreviousSession) {
     return (
       <div className="min-h-screen bg-background">
         {/* Debug Panel */}
@@ -126,12 +126,14 @@ const Index = () => {
     );
   }
 
-  // Marketing landing page for non-authenticated users
+  // Marketing landing page for anonymous OR new users (auth + 0 sessions)
+  const isNewUser = user && !hasPreviousSession;
+  
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Debug Panel */}
       <div className="bg-gray-100 px-3 py-1 text-xs text-gray-500 font-mono">
-        DEBUG – auth: {String(isAuthenticated)}, hasSession: {String(hasPreviousSession)}, returningHome: {String(isReturningHomeLayout)}
+        DEBUG – auth: {String(isAuthenticated)}, hasSession: {String(hasPreviousSession)}, returningHome: {String(isReturningHomeLayout)}, isNewUser: {String(isNewUser)}
       </div>
       
       {/* Header */}
@@ -200,10 +202,10 @@ const Index = () => {
       <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-background via-background to-transparent pointer-events-none">
         <div className="w-full max-w-[430px] mx-auto pointer-events-auto">
           <Button
-            onClick={() => navigate("/login")}
+            onClick={() => navigate(isNewUser ? "/input" : "/login")}
             className="w-full h-14 text-[15px] font-semibold rounded-2xl bg-foreground text-background hover:bg-foreground/90 shadow-xl"
           >
-            지금 바로 시작하기
+            {isNewUser ? '첫 기록 시작하기' : '지금 바로 시작하기'}
           </Button>
         </div>
       </div>
