@@ -56,10 +56,13 @@ const Home = () => {
   const personaScrollRef = useRef<HTMLDivElement>(null);
   const purposeScrollRef = useRef<HTMLDivElement>(null);
 
-  // Check if user is returning (has previous sessions)
+  // Check if user has previous sessions
   useEffect(() => {
     const checkUserStatus = async () => {
-      if (!user) return;
+      if (!user) {
+        setIsLoadingUserStatus(false);
+        return;
+      }
 
       try {
         // Check if user has any previous sessions
@@ -71,11 +74,11 @@ const Home = () => {
 
         if (error) throw error;
 
-        const hasExistingSessions = sessions && sessions.length > 0;
-        setIsReturningUser(hasExistingSessions);
+        const hasPreviousSession = sessions && sessions.length > 0;
+        setIsReturningUser(hasPreviousSession);
 
-        // If first-time user, auto-initialize session_purpose with usage_purpose
-        if (!hasExistingSessions) {
+        // If first-time user (no previous sessions), auto-initialize session_purpose
+        if (!hasPreviousSession) {
           const { data: userData, error: userError } = await supabase
             .from('users')
             .select('usage_purpose')
