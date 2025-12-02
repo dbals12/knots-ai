@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Mic, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { SiNaver, SiLinkedin, SiInstagram, SiThreads } from 'react-icons/si';
@@ -32,6 +33,7 @@ const platformPreviews = [
 
 const Home = () => {
   const [isRecording, setIsRecording] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
   const [selectedMood, setSelectedMood] = useState('');
   const [selectedPersona, setSelectedPersona] = useState('');
   const [keyword, setKeyword] = useState('');
@@ -69,8 +71,18 @@ const Home = () => {
       setIsRecording(true);
     } else {
       setIsRecording(false);
-      navigate('/result');
+      setShowConfirmation(true);
     }
+  };
+
+  const handleRetry = () => {
+    setShowConfirmation(false);
+    setIsRecording(false);
+  };
+
+  const handleSubmit = () => {
+    setShowConfirmation(false);
+    navigate('/result');
   };
 
   return (
@@ -236,6 +248,32 @@ const Home = () => {
 
         </div>
       </main>
+
+      {/* Confirmation Sheet */}
+      <Sheet open={showConfirmation} onOpenChange={setShowConfirmation}>
+        <SheetContent side="bottom" className="h-auto rounded-t-3xl">
+          <SheetHeader className="pb-6">
+            <SheetTitle className="text-xl font-bold text-center">
+              녹음을 마쳤어요. 어떻게 할까요?
+            </SheetTitle>
+          </SheetHeader>
+          <div className="flex flex-col gap-3 pb-6">
+            <Button
+              onClick={handleRetry}
+              variant="outline"
+              className="w-full h-12 rounded-xl border-border"
+            >
+              다시 녹음하기
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              className="w-full h-12 rounded-xl bg-foreground text-background hover:bg-foreground/90"
+            >
+              제출하기
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };

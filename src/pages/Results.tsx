@@ -14,7 +14,7 @@ const platformIcons = {
 
 const mockResults = {
   blog: {
-    id: '1',
+    id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
     title: '블로그 (회고형)',
     platform: 'blog',
     content: `오늘 하루를 돌아보며
@@ -27,7 +27,7 @@ const mockResults = {
     summary: '오늘 클라이언트 미팅에서 예상치 못한 질문들이 쏟아졌지만, 팀원들과 함께 차근차근 대응하면서 오히려 제품의 강점을 더 명확하게...',
   },
   linkedin: {
-    id: '2',
+    id: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
     title: 'LinkedIn (인사이트형)',
     platform: 'linkedin',
     content: `💡 완벽한 준비보다 유연한 대응
@@ -49,7 +49,7 @@ const mockResults = {
     summary: '완벽한 준비보다 유연한 대응. 오늘 클라이언트 미팅에서 배운 3가지 인사이트를 공유합니다. 예상치 못한 질문은 위기가 아닌...',
   },
   reels: {
-    id: '3',
+    id: 'c3d4e5f6-a7b8-9012-cdef-123456789012',
     title: 'Reels (대본)',
     platform: 'reels',
     content: `[Opening - 3초]
@@ -77,7 +77,7 @@ const mockResults = {
     summary: '클라이언트 미팅에서 예상치 못한 질문을 받았을 때 대처하는 법. 완벽한 준비보다 유연한 대응이 더 중요하다는...',
   },
   threads: {
-    id: '4',
+    id: 'd4e5f6a7-b8c9-0123-def0-123456789013',
     title: 'Threads (짧은 에세이)',
     platform: 'threads',
     content: `1/ 오늘 클라이언트 미팅, 준비한 건 100가지였는데 질문은 101번째가 나왔다.

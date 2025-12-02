@@ -61,7 +61,6 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
       const { error } = await supabase.from('edits').insert({
         output_id: outputId,
         feedback_score: score,
-        created_at: new Date().toISOString(),
       });
 
       if (error) throw error;
