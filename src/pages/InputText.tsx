@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Mic, LogOut } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { SiNaver, SiLinkedin, SiInstagram, SiThreads } from 'react-icons/si';
 
 const moods = [
   { value: 'energetic', label: '🔥 불타는 하루' },
@@ -23,11 +23,11 @@ const personas = [
   { value: 'authentic', label: '💬 날것의 나', desc: '포장 없이 있는 그대로' },
 ];
 
-const Home = () => {
-  const [isRecording, setIsRecording] = useState(false);
+const InputText = () => {
   const [selectedMood, setSelectedMood] = useState('');
   const [selectedPersona, setSelectedPersona] = useState('');
   const [keyword, setKeyword] = useState('');
+  const [textInput, setTextInput] = useState('');
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -36,7 +36,7 @@ const Home = () => {
     navigate('/login');
   };
 
-  const toggleRecording = () => {
+  const handleComplete = () => {
     if (!selectedMood || !selectedPersona) {
       toast({
         title: '선택이 필요해요',
@@ -46,12 +46,16 @@ const Home = () => {
       return;
     }
 
-    if (!isRecording) {
-      setIsRecording(true);
-    } else {
-      setIsRecording(false);
-      navigate('/result');
+    if (!textInput.trim()) {
+      toast({
+        title: '입력이 필요해요',
+        description: '내용을 입력해주세요.',
+        variant: 'destructive',
+      });
+      return;
     }
+
+    navigate('/result');
   };
 
   return (
@@ -136,27 +140,26 @@ const Home = () => {
             />
           </div>
 
-          {/* Recording Area */}
-          <div className="flex flex-col items-center space-y-6 py-8">
-            <button
-              onClick={toggleRecording}
-              className={`w-32 h-32 rounded-full bg-foreground flex items-center justify-center transition-all shadow-2xl ${
-                isRecording ? 'animate-pulse scale-95' : 'hover:scale-105'
-              }`}
-            >
-              <Mic className="w-14 h-14 text-background" strokeWidth={2.5} />
-            </button>
-            <p className="text-sm text-muted-foreground text-center">
-              {isRecording ? '녹음 중...' : '버튼을 누르고 자유롭게 이야기해주세요.'}
-            </p>
+          {/* Text Input Area */}
+          <div className="space-y-3">
+            <label className="text-sm text-muted-foreground">
+              오늘 있었던 일이나 배운 점을 자유롭게 작성해주세요.
+            </label>
+            <Textarea
+              value={textInput}
+              onChange={(e) => setTextInput(e.target.value)}
+              placeholder="여기에 입력하세요..."
+              className="min-h-[300px] rounded-xl border-border bg-white"
+            />
           </div>
 
-          {/* Optional Text Input Link */}
-          <div className="text-center">
-            <Link to="/input-text" className="text-sm text-muted-foreground hover:text-foreground underline">
-              텍스트로 입력할래요
-            </Link>
-          </div>
+          {/* Complete Button */}
+          <Button
+            onClick={handleComplete}
+            className="w-full h-12 rounded-xl bg-foreground text-background hover:bg-foreground/90"
+          >
+            완료
+          </Button>
 
         </div>
       </main>
@@ -164,4 +167,4 @@ const Home = () => {
   );
 };
 
-export default Home;
+export default InputText;

@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
 import Home from "./pages/Home";
+import InputText from "./pages/InputText";
 import Results from "./pages/Results";
 import NotFound from "./pages/NotFound";
 
@@ -35,6 +36,7 @@ const App = () => (
             <Route path="/login" element={<Auth />} />
             <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
             <Route path="/input" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+            <Route path="/input-text" element={<ProtectedRoute><InputText /></ProtectedRoute>} />
             <Route path="/result" element={<ProtectedRoute><Results /></ProtectedRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

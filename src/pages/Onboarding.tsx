@@ -31,25 +31,25 @@ const jobRoles = [
   { value: 'other', label: '기타' },
 ];
 
-const tonePreferences = [
-  { value: 'logical', label: '논리적이고 차분하게', desc: 'Professional & Structured' },
-  { value: 'witty', label: '솔직하고 위트있게', desc: 'Witty & Cynical' },
-  { value: 'emotional', label: '감성적이고 따뜻하게', desc: 'Emotional & Warm' },
-  { value: 'concise', label: '간결하고 임팩트있게', desc: 'Concise & Impactful' },
+const personaOptions = [
+  { value: 'humble_expert', label: '겸손하지만 실력있는 전문가', desc: 'Humble Expert — 차분하고 신뢰감을 주는 전문가 느낌' },
+  { value: 'energetic_challenger', label: '에너지 넘치는 도전가', desc: 'Energetic Challenger — 추진력과 활기가 느껴지는 스타일' },
+  { value: 'deep_thinker', label: '깊이 있는 통찰력을 가진 사색가', desc: 'Deep Thinker — 성찰적이고 깊은 시선이 담긴 캐릭터' },
+  { value: 'friendly_peer', label: '친근하고 유쾌한 동료', desc: 'Friendly Peer — 다정하고 유머러스한 동료 느낌' },
 ];
 
 const Onboarding = () => {
   const [step, setStep] = useState(1);
   const [selectedPurpose, setSelectedPurpose] = useState('');
   const [selectedRole, setSelectedRole] = useState('');
-  const [selectedTone, setSelectedTone] = useState('');
+  const [selectedPersona, setSelectedPersona] = useState('');
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleComplete = async () => {
-    if (!user || !selectedPurpose || !selectedRole || !selectedTone) return;
+    if (!user || !selectedPurpose || !selectedRole || !selectedPersona) return;
 
     setLoading(true);
     try {
@@ -58,7 +58,7 @@ const Onboarding = () => {
         .update({
           usage_purpose: selectedPurpose,
           job_role: selectedRole,
-          preferred_tone: selectedTone,
+          preferred_tone: selectedPersona,
         })
         .eq('id', user.id);
 
@@ -163,33 +163,35 @@ const Onboarding = () => {
           </div>
         )}
 
-        {/* Step 3: Tone */}
+        {/* Step 3: Persona */}
         {step === 3 && (
           <div className="space-y-6">
             <div>
               <h2 className="text-2xl font-bold text-foreground leading-tight mb-2">
-                평소 선호하는<br />글 스타일은?
+                온라인에서 어떤 나로<br />보이고 싶으세요?
               </h2>
               <p className="text-sm text-muted-foreground">
-                AI가 어떤 톤으로 초안을 잡아주길 원하시나요?
+                채널별 톤앤매너는 AI가 자동으로 맞춰드립니다.<br />
+                여기서는 모든 콘텐츠에 공통적으로 묻어날<br />
+                '당신의 기본 캐릭터'를 선택해주세요.
               </p>
             </div>
             <div className="space-y-3">
-              {tonePreferences.map((tone) => (
+              {personaOptions.map((persona) => (
                 <button
-                  key={tone.value}
-                  onClick={() => setSelectedTone(tone.value)}
+                  key={persona.value}
+                  onClick={() => setSelectedPersona(persona.value)}
                   className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
-                    selectedTone === tone.value
+                    selectedPersona === persona.value
                       ? 'border-foreground bg-foreground text-background'
                       : 'border-border bg-white hover:border-foreground/30'
                   }`}
                 >
-                  <div className="font-medium text-[15px]">{tone.label}</div>
+                  <div className="font-medium text-[15px]">{persona.label}</div>
                   <div className={`text-sm mt-1 ${
-                    selectedTone === tone.value ? 'text-background/70' : 'text-muted-foreground'
+                    selectedPersona === persona.value ? 'text-background/70' : 'text-muted-foreground'
                   }`}>
-                    {tone.desc}
+                    {persona.desc}
                   </div>
                 </button>
               ))}
@@ -204,7 +206,7 @@ const Onboarding = () => {
               </Button>
               <Button
                 onClick={handleComplete}
-                disabled={!selectedTone || loading}
+                disabled={!selectedPersona || loading}
                 className="w-full h-12 rounded-xl bg-foreground text-background hover:bg-foreground/90"
               >
                 {loading ? '저장 중...' : '시작하기'}
