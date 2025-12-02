@@ -26,12 +26,13 @@ const Index = () => {
         <div className="w-full max-w-[430px] mx-auto space-y-12">
           {/* Headline */}
           <div className="space-y-4 text-center">
-            <h2 className="text-[42px] leading-[1.1] font-black text-foreground tracking-tight">
+            <h3 className="text-[42px] leading-[1.1] font-black text-foreground tracking-tight">
               당신의 일상을
               <br />
               커리어 자산으로
-            </h2>
+            </h3>
             <p className="text-[15px] text-muted-foreground leading-relaxed">
+              <br />
               퇴근 후 쓰러져도, 커리어 브랜딩은 포기하지 마세요.
               <br />
               <br />
