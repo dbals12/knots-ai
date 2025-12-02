@@ -86,9 +86,9 @@ const Onboarding = () => {
       <div className="w-full max-w-[430px] space-y-8">
         {/* Progress bar */}
         <div className="flex gap-2">
-          <div className={`h-1 flex-1 rounded-full transition-colors ${step >= 1 ? 'bg-foreground' : 'bg-border'}`} />
-          <div className={`h-1 flex-1 rounded-full transition-colors ${step >= 2 ? 'bg-foreground' : 'bg-border'}`} />
-          <div className={`h-1 flex-1 rounded-full transition-colors ${step >= 3 ? 'bg-foreground' : 'bg-border'}`} />
+          <div className={`h-1 flex-1 rounded-full transition-colors ${step >= 1 ? "bg-foreground" : "bg-border"}`} />
+          <div className={`h-1 flex-1 rounded-full transition-colors ${step >= 2 ? "bg-foreground" : "bg-border"}`} />
+          <div className={`h-1 flex-1 rounded-full transition-colors ${step >= 3 ? "bg-foreground" : "bg-border"}`} />
         </div>
 
         {/* Step 1: Purpose */}
@@ -158,15 +158,11 @@ const Onboarding = () => {
         {step === 3 && (
           <div className="space-y-6">
             <div className="space-y-3">
-              <h2 className="text-3xl font-bold text-foreground leading-tight">
-                온라인에서 어떤 나로 보이고 싶으세요?
-              </h2>
+              <h2 className="text-2xl font-bold text-foreground leading-tight">어떤 나로 보이고 싶으세요?</h2>
               <p className="text-sm text-muted-foreground leading-relaxed mb-6">
                 채널별 톤앤매너는 AI가 자동으로 맞춰드립니다.
                 <br />
-                여기서는 모든 콘텐츠에 공통적으로 묻어날
-                <br />
-                '당신의 기본 캐릭터'를 선택해주세요.
+                여기서는 공통적으로 묻어날 '당신의 기본 캐릭터'를 선택해주세요.
               </p>
             </div>
             <div className="space-y-3">
