@@ -10,7 +10,7 @@ const usagePurposes = [
   { value: "career_branding", label: "커리어 브랜딩을 시작하고 싶어요" },
   { value: "performance_review", label: "업무 성과를 정리하는 게 어려워요" },
   { value: "record_habit", label: "기록은 하고 싶지만 시간이 없어요" },
-  { value: "emotional_organize", label: "마음·감정을 정리하고 싶어요" },
+  { value: "emotional_organize", label: "마음, 감정을 정리하고 싶어요" },
   { value: "content_ideas", label: "콘텐츠 아이디어가 필요해요" },
 ];
 
@@ -157,9 +157,7 @@ const Onboarding = () => {
           <div className="space-y-6">
             <div>
               <h2 className="text-2xl font-bold text-foreground leading-tight mb-2">
-                온라인에서 어떤 나로
-                <br />
-                보이고 싶으세요?
+                나의 기본 페르소나를 설정해주세요.
               </h2>
               <p className="text-sm text-muted-foreground">
                 채널별 톤앤매너는 AI가 자동으로 맞춰드립니다.
