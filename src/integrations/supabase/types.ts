@@ -140,6 +140,7 @@ export type Database = {
           raw_text: string | null
           selected_mood: string | null
           selected_persona: string | null
+          session_purpose: string | null
           user_id: string
         }
         Insert: {
@@ -152,6 +153,7 @@ export type Database = {
           raw_text?: string | null
           selected_mood?: string | null
           selected_persona?: string | null
+          session_purpose?: string | null
           user_id: string
         }
         Update: {
@@ -164,6 +166,7 @@ export type Database = {
           raw_text?: string | null
           selected_mood?: string | null
           selected_persona?: string | null
+          session_purpose?: string | null
           user_id?: string
         }
         Relationships: [

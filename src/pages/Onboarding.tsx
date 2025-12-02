@@ -84,9 +84,11 @@ const Onboarding = () => {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
       <div className="w-full max-w-[430px] space-y-8">
-        {/* Progress indicator */}
-        <div className="text-center">
-          <p className="text-sm text-muted-foreground">{step} / 3</p>
+        {/* Progress bar */}
+        <div className="flex gap-2">
+          <div className={`h-1 flex-1 rounded-full transition-colors ${step >= 1 ? 'bg-foreground' : 'bg-border'}`} />
+          <div className={`h-1 flex-1 rounded-full transition-colors ${step >= 2 ? 'bg-foreground' : 'bg-border'}`} />
+          <div className={`h-1 flex-1 rounded-full transition-colors ${step >= 3 ? 'bg-foreground' : 'bg-border'}`} />
         </div>
 
         {/* Step 1: Purpose */}
@@ -155,11 +157,11 @@ const Onboarding = () => {
         {/* Step 3: Persona */}
         {step === 3 && (
           <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold text-foreground leading-tight mb-2">
-                나의 기본 페르소나를 설정해주세요.
+            <div className="space-y-3">
+              <h2 className="text-3xl font-bold text-foreground leading-tight">
+                온라인에서 어떤 나로 보이고 싶으세요?
               </h2>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground leading-relaxed mb-6">
                 채널별 톤앤매너는 AI가 자동으로 맞춰드립니다.
                 <br />
                 여기서는 모든 콘텐츠에 공통적으로 묻어날
@@ -172,15 +174,15 @@ const Onboarding = () => {
                 <button
                   key={persona.value}
                   onClick={() => setSelectedPersona(persona.value)}
-                  className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
+                  className={`w-full p-5 rounded-xl border-2 text-left transition-all ${
                     selectedPersona === persona.value
                       ? "border-foreground bg-foreground text-background"
                       : "border-border bg-white hover:border-foreground/30"
                   }`}
                 >
-                  <div className="font-medium text-[15px]">{persona.label}</div>
+                  <div className="font-bold text-base mb-2">{persona.label}</div>
                   <div
-                    className={`text-sm mt-1 ${
+                    className={`text-sm ${
                       selectedPersona === persona.value ? "text-background/70" : "text-muted-foreground"
                     }`}
                   >

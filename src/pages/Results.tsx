@@ -138,9 +138,15 @@ const Results = () => {
                 onClick={() => handleCardClick(key)}
                 className="bg-white rounded-2xl p-4 border border-border hover:shadow-lg transition-all text-left space-y-3"
               >
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: color }}>
-                  <Icon className="w-5 h-5 text-white" />
-                </div>
+                {key === 'reels' ? (
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af] flex items-center justify-center">
+                    <Icon className="w-5 h-5 text-white" />
+                  </div>
+                ) : (
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: color }}>
+                    <Icon className="w-5 h-5 text-white" />
+                  </div>
+                )}
                 <div>
                   <h3 className="font-bold text-foreground text-sm mb-1">
                     {result.title}
@@ -158,7 +164,7 @@ const Results = () => {
         <div className="pt-4">
           <Button 
             variant="outline" 
-            onClick={() => navigate('/input')}
+            onClick={() => navigate('/')}
             className="w-full h-12 rounded-xl"
           >
             새로운 기록 만들기
