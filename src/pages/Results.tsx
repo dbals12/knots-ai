@@ -1,12 +1,20 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { FileText, Linkedin, Video, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ResultDetailModal from '@/components/ResultDetailModal';
+import { SiNaver, SiLinkedin, SiInstagram, SiThreads } from 'react-icons/si';
+
+const platformIcons = {
+  blog: { icon: SiNaver, color: '#03C75A' },
+  linkedin: { icon: SiLinkedin, color: '#0077B5' },
+  reels: { icon: SiInstagram, color: '#E4405F' },
+  threads: { icon: SiThreads, color: '#000000' },
+};
 
 const mockResults = {
   blog: {
+    id: '1',
     title: '블로그 (회고형)',
     platform: 'blog',
     content: `오늘 하루를 돌아보며
@@ -19,6 +27,7 @@ const mockResults = {
     summary: '오늘 클라이언트 미팅에서 예상치 못한 질문들이 쏟아졌지만, 팀원들과 함께 차근차근 대응하면서 오히려 제품의 강점을 더 명확하게...',
   },
   linkedin: {
+    id: '2',
     title: 'LinkedIn (인사이트형)',
     platform: 'linkedin',
     content: `💡 완벽한 준비보다 유연한 대응
@@ -40,6 +49,7 @@ const mockResults = {
     summary: '완벽한 준비보다 유연한 대응. 오늘 클라이언트 미팅에서 배운 3가지 인사이트를 공유합니다. 예상치 못한 질문은 위기가 아닌...',
   },
   reels: {
+    id: '3',
     title: 'Reels (대본)',
     platform: 'reels',
     content: `[Opening - 3초]
@@ -67,6 +77,7 @@ const mockResults = {
     summary: '클라이언트 미팅에서 예상치 못한 질문을 받았을 때 대처하는 법. 완벽한 준비보다 유연한 대응이 더 중요하다는...',
   },
   threads: {
+    id: '4',
     title: 'Threads (짧은 에세이)',
     platform: 'threads',
     content: `1/ 오늘 클라이언트 미팅, 준비한 건 100가지였는데 질문은 101번째가 나왔다.
@@ -101,24 +112,10 @@ const Results = () => {
 
   const handleSave = () => {
     toast({
-      title: '저장 완료!',
-      description: '내 라이브러리에 저장되었습니다.',
+      title: '준비 중인 기능입니다.',
+      description: '곧 이용하실 수 있습니다.',
     });
     setSelectedPlatform(null);
-  };
-
-  const platformIcons = {
-    blog: FileText,
-    linkedin: Linkedin,
-    reels: Video,
-    threads: MessageSquare,
-  };
-
-  const platformColors = {
-    blog: 'bg-blog',
-    linkedin: 'bg-linkedin',
-    reels: 'bg-reels-gradient',
-    threads: 'bg-threads',
   };
 
   return (
@@ -133,8 +130,7 @@ const Results = () => {
         {/* 2x2 Grid */}
         <div className="grid grid-cols-2 gap-4">
           {Object.entries(mockResults).map(([key, result]) => {
-            const Icon = platformIcons[key as keyof typeof platformIcons];
-            const colorClass = platformColors[key as keyof typeof platformColors];
+            const { icon: Icon, color } = platformIcons[key as keyof typeof platformIcons];
             
             return (
               <button
@@ -142,8 +138,8 @@ const Results = () => {
                 onClick={() => handleCardClick(key)}
                 className="bg-white rounded-2xl p-4 border border-border hover:shadow-lg transition-all text-left space-y-3"
               >
-                <div className={`w-10 h-10 rounded-xl ${colorClass} flex items-center justify-center`}>
-                  <Icon className="w-5 h-5 text-white" strokeWidth={2.5} />
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: color }}>
+                  <Icon className="w-5 h-5 text-white" />
                 </div>
                 <div>
                   <h3 className="font-bold text-foreground text-sm mb-1">
@@ -177,6 +173,7 @@ const Results = () => {
           onClose={() => setSelectedPlatform(null)}
           platform={selectedPlatform}
           content={mockResults[selectedPlatform as keyof typeof mockResults].content}
+          outputId={mockResults[selectedPlatform as keyof typeof mockResults].id}
           onCopy={handleCopy}
           onSave={handleSave}
         />
