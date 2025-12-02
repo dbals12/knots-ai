@@ -1,20 +1,90 @@
-import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Mic, ArrowRight } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Mic, ArrowRight, FileText, Settings, PenTool } from "lucide-react";
 import { SiNaver, SiLinkedin, SiInstagram, SiThreads } from 'react-icons/si';
 
 const Index = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (!loading && user) {
-      navigate("/input");
-    }
-  }, [user, loading, navigate]);
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">로딩 중...</p>
+      </div>
+    );
+  }
 
+  // Dashboard for logged-in users
+  if (user) {
+    return (
+      <div className="min-h-screen bg-background p-6 py-8">
+        <div className="w-full max-w-[430px] mx-auto space-y-8">
+          <div className="space-y-2">
+            <h1 className="text-3xl font-bold text-foreground">다시 오셨네요 👋</h1>
+            <p className="text-muted-foreground">오늘은 무엇을 해볼까요?</p>
+          </div>
+
+          <div className="space-y-4">
+            <Card 
+              className="cursor-pointer hover:shadow-lg transition-all border-2"
+              onClick={() => navigate('/input')}
+            >
+              <CardHeader>
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-foreground flex items-center justify-center flex-shrink-0">
+                    <PenTool className="w-6 h-6 text-background" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg mb-1">새로운 기록 만들기</CardTitle>
+                    <CardDescription>오늘의 하루를 새로 기록합니다.</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+            </Card>
+
+            <Card 
+              className="cursor-pointer hover:shadow-lg transition-all border-2"
+              onClick={() => navigate('/history')}
+            >
+              <CardHeader>
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-foreground flex items-center justify-center flex-shrink-0">
+                    <FileText className="w-6 h-6 text-background" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg mb-1">그동안의 내 기록 확인하기</CardTitle>
+                    <CardDescription>지난 기록과 채널별 결과를 확인합니다.</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+            </Card>
+
+            <Card 
+              className="cursor-pointer hover:shadow-lg transition-all border-2"
+              onClick={() => navigate('/settings')}
+            >
+              <CardHeader>
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-foreground flex items-center justify-center flex-shrink-0">
+                    <Settings className="w-6 h-6 text-background" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg mb-1">프로필 설정</CardTitle>
+                    <CardDescription>온보딩에서 정한 목적과 캐릭터를 수정합니다.</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Marketing landing page for non-authenticated users
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
