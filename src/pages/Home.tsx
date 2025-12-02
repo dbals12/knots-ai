@@ -147,9 +147,52 @@ const Home = () => {
     setIsRecording(false);
   };
 
-  const handleSubmit = () => {
-    setShowConfirmation(false);
-    navigate('/result');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!user) {
+      toast({
+        title: '로그인이 필요합니다',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const { error } = await supabase
+        .from('sessions')
+        .insert({
+          user_id: user.id,
+          raw_text: '', // Will be filled during recording - placeholder for now
+          selected_mood: selectedMood,
+          selected_persona: selectedPersona,
+          session_purpose: isReturningUser ? (sessionPurpose || null) : null,
+          keyword: keyword || null,
+        });
+
+      if (error) {
+        console.error('Session insert error:', error);
+        toast({
+          title: '저장에 실패했습니다',
+          description: error.message,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      setShowConfirmation(false);
+      navigate('/result');
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      toast({
+        title: '저장에 실패했습니다',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -396,9 +439,10 @@ const Home = () => {
             </Button>
             <Button
               onClick={handleSubmit}
+              disabled={isSubmitting}
               className="w-full h-12 rounded-xl bg-foreground text-background hover:bg-foreground/90"
             >
-              제출하기
+              {isSubmitting ? '저장 중...' : '제출하기'}
             </Button>
           </div>
         </SheetContent>
