@@ -159,7 +159,7 @@ const Onboarding = () => {
           <div className="space-y-6">
             <div className="space-y-3">
               <h2 className="text-2xl font-bold text-foreground leading-tight">어떤 나로 보이고 싶으세요?</h2>
-              <p className="text-sm text-muted-foreground leading-relaxed mb-6">
+              <p className="text-xs text-muted-foreground leading-relaxed mb-6">
                 채널별 톤앤매너는 AI가 자동으로 맞춰드립니다.
                 <br />
                 여기서는 공통적으로 묻어날 '당신의 기본 캐릭터'를 선택해주세요.
