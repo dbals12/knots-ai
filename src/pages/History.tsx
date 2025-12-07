@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SiNaver, SiLinkedin, SiInstagram, SiThreads } from 'react-icons/si';
-import { ArrowLeft } from 'lucide-react';
+import Header from '@/components/Header';
 
 const platformIcons = {
   blog: { icon: SiNaver, color: '#03C75A' },
@@ -91,20 +91,15 @@ const History = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6 py-8">
-      <div className="w-full max-w-[430px] mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate('/')}
-            className="h-10 w-10"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <h1 className="text-2xl font-bold text-foreground">내 기록 보기</h1>
-        </div>
+    <div className="min-h-screen bg-background flex flex-col">
+      <Header />
+      
+      <div className="flex-1 p-6 py-8">
+        <div className="w-full max-w-[430px] mx-auto space-y-6">
+          {/* Page Title */}
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">내 기록 보기</h1>
+          </div>
 
         {/* Sessions List */}
         {sessions.length === 0 ? (
@@ -232,7 +227,8 @@ const History = () => {
             </div>
           )}
         </DialogContent>
-      </Dialog>
+        </Dialog>
+      </div>
     </div>
   );
 };

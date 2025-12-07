@@ -88,7 +88,7 @@ const Settings = () => {
         description: '프로필이 저장되었습니다.',
       });
 
-      navigate('/input');
+      navigate('/');
     } catch (error: any) {
       toast({
         title: '오류',
@@ -115,7 +115,7 @@ const Settings = () => {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => navigate('/input')}
+          onClick={() => navigate('/')}
           className="text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="w-4 h-4 mr-1" />

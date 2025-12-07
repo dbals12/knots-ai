@@ -8,6 +8,7 @@ import ResultDetailModal from '@/components/ResultDetailModal';
 import { SiNaver, SiLinkedin, SiInstagram, SiThreads } from 'react-icons/si';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import Header from '@/components/Header';
 
 const platformIcons = {
   blog: { icon: SiNaver, color: '#03C75A', title: '블로그 (회고형)' },
@@ -161,13 +162,16 @@ const Results = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background p-6 py-8">
-      <div className="w-full max-w-[430px] mx-auto space-y-6">
-        
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">오늘의 결과</h1>
-        </div>
+    <div className="min-h-screen bg-background flex flex-col">
+      <Header />
+      
+      <div className="flex-1 p-6 py-8">
+        <div className="w-full max-w-[430px] mx-auto space-y-6">
+          
+          {/* Page Title */}
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">오늘의 결과</h1>
+          </div>
 
         {/* Original Input Text Section */}
         <div className="bg-white rounded-2xl p-5 border border-border">
@@ -289,7 +293,8 @@ const Results = () => {
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
+        </Dialog>
+      </div>
     </div>
   );
 };
