@@ -13,7 +13,7 @@ import { Loader2 } from 'lucide-react';
 const platformIcons = {
   blog: { icon: SiNaver, color: '#03C75A', title: '블로그 (회고형)' },
   linkedin: { icon: SiLinkedin, color: '#0077B5', title: 'LinkedIn (인사이트형)' },
-  reels: { icon: SiInstagram, color: '#E4405F', title: 'Reels (대본)' },
+  reels: { icon: SiInstagram, color: '#E4405F', title: '인스타 (카드뉴스 & 캡션)' },
   threads: { icon: SiThreads, color: '#000000', title: 'Threads (짧은 에세이)' },
 };
 
