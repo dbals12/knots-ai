@@ -61,41 +61,41 @@ const Index = () => {
       {/* Hero Section - Always Visible */}
       <main className="flex-1 flex flex-col px-6">
         <div className="w-full max-w-[430px] mx-auto">
-          {/* Headline */}
-          <div className="space-y-6 text-center mb-16">
-            <h2 className="text-5xl md:text-6xl leading-[1.05] font-black text-foreground tracking-[-0.02em]">
-              당신의 일상을
-              <br />
-              커리어 자산으로
-            </h2>
-            <p className="text-[15px] text-muted-foreground/70 leading-relaxed max-w-[320px] mx-auto">
-              퇴근 후 쓰러져도, 커리어 브랜딩은 포기하지 마세요.
-              <br />
-              <br />
-              휘발되는 생각들을 말로만 남기면,
-              <br />
-              블로그·링크드인·릴스·쓰레드 콘텐츠로 정리해 드립니다.
-            </p>
-          </div>
-
-          {/* Transformation Visual */}
-          <div className="flex items-center justify-center gap-6 mb-16">
-            <div className="flex items-center justify-center w-[72px] h-[72px] rounded-full bg-background border border-border/60 shadow-sm">
-              <Mic className="w-8 h-8 text-foreground" strokeWidth={1.5} />
+          {/* Hero Content with Side-by-Side Layout */}
+          <div className="flex items-start justify-between gap-6 mb-20">
+            {/* Left: Text Content */}
+            <div className="text-left max-w-[480px]">
+              <h2 className="text-4xl md:text-5xl leading-tight font-black text-foreground tracking-[-0.02em] mb-4">
+                당신의 일상,
+                <br />
+                커리어 자산이 되다
+              </h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                퇴근 후 스쳐간 생각도
+                <br />
+                말로 남기면 콘텐츠가 됩니다.
+              </p>
             </div>
-            <ArrowRight className="w-6 h-6 text-muted-foreground/50 flex-shrink-0" strokeWidth={1.5} />
-            <div className="grid grid-cols-2 gap-2.5">
-              <div className="w-[54px] h-[54px] rounded-xl bg-[#03C75A] flex items-center justify-center shadow-sm">
-                <SiNaver className="w-6 h-6 text-white" />
+
+            {/* Right: Icon Visual */}
+            <div className="flex items-center gap-4 opacity-75 flex-shrink-0">
+              <div className="flex items-center justify-center w-14 h-14 rounded-full bg-background border border-border shadow-sm">
+                <Mic className="w-6 h-6 text-foreground" strokeWidth={1.5} />
               </div>
-              <div className="w-[54px] h-[54px] rounded-xl bg-[#0077B5] flex items-center justify-center shadow-sm">
-                <SiLinkedin className="w-6 h-6 text-white" />
-              </div>
-              <div className="w-[54px] h-[54px] rounded-xl bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af] flex items-center justify-center shadow-sm">
-                <SiInstagram className="w-6 h-6 text-white" />
-              </div>
-              <div className="w-[54px] h-[54px] rounded-xl bg-foreground flex items-center justify-center shadow-sm">
-                <SiThreads className="w-6 h-6 text-background" />
+              <ArrowRight className="w-5 h-5 text-muted-foreground/40" strokeWidth={1.5} />
+              <div className="grid grid-cols-2 gap-2">
+                <div className="w-11 h-11 rounded-lg bg-[#03C75A] flex items-center justify-center shadow-sm">
+                  <SiNaver className="w-5 h-5 text-white" />
+                </div>
+                <div className="w-11 h-11 rounded-lg bg-[#0077B5] flex items-center justify-center shadow-sm">
+                  <SiLinkedin className="w-5 h-5 text-white" />
+                </div>
+                <div className="w-11 h-11 rounded-lg bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af] flex items-center justify-center shadow-sm">
+                  <SiInstagram className="w-5 h-5 text-white" />
+                </div>
+                <div className="w-11 h-11 rounded-lg bg-black flex items-center justify-center shadow-sm">
+                  <SiThreads className="w-5 h-5 text-white" />
+                </div>
               </div>
             </div>
           </div>
@@ -103,10 +103,14 @@ const Index = () => {
           {/* Conditional Bottom Area */}
           {isReturningUser ? (
             <div className="space-y-3 pb-12">
-              <p className="text-center text-muted-foreground/60 text-sm mb-6">다시 오셨네요. 오늘은 무엇을 해볼까요?</p>
+              <p className="text-muted-foreground text-base font-medium mb-8">
+                다시 오셨네요 👋
+                <br />
+                오늘은 무엇을 해볼까요?
+              </p>
               
               <Card 
-                className="cursor-pointer bg-background border border-border/40 shadow-none hover:border-foreground hover:-translate-y-0.5 transition-all duration-200" 
+                className="cursor-pointer bg-background border border-border/30 shadow-sm hover:border-foreground hover:-translate-y-0.5 transition-all duration-200" 
                 onClick={() => navigate('/input')}
               >
                 <CardHeader className="py-4 px-5">
@@ -116,14 +120,14 @@ const Index = () => {
                     </div>
                     <div>
                       <CardTitle className="text-[15px] font-semibold text-foreground">새로운 기록 만들기</CardTitle>
-                      <CardDescription className="text-xs text-muted-foreground/60">오늘의 하루를 새로 기록합니다.</CardDescription>
+                      <CardDescription className="text-xs text-muted-foreground">오늘의 생각을 바로 남겨보세요.</CardDescription>
                     </div>
                   </div>
                 </CardHeader>
               </Card>
 
               <Card 
-                className="cursor-pointer bg-background border border-border/40 shadow-none hover:border-foreground hover:-translate-y-0.5 transition-all duration-200" 
+                className="cursor-pointer bg-background border border-border/30 shadow-sm hover:border-foreground hover:-translate-y-0.5 transition-all duration-200" 
                 onClick={() => navigate('/history')}
               >
                 <CardHeader className="py-4 px-5">
@@ -132,15 +136,15 @@ const Index = () => {
                       <FileText className="w-5 h-5 text-background" strokeWidth={1.5} />
                     </div>
                     <div>
-                      <CardTitle className="text-[15px] font-semibold text-foreground">그동안의 내 기록 확인하기</CardTitle>
-                      <CardDescription className="text-xs text-muted-foreground/60">지난 기록과 채널별 결과를 확인합니다.</CardDescription>
+                      <CardTitle className="text-[15px] font-semibold text-foreground">그동안의 내 기록</CardTitle>
+                      <CardDescription className="text-xs text-muted-foreground">이전 기록과 채널별 결과를 확인하세요.</CardDescription>
                     </div>
                   </div>
                 </CardHeader>
               </Card>
 
               <Card 
-                className="cursor-pointer bg-background border border-border/40 shadow-none hover:border-foreground hover:-translate-y-0.5 transition-all duration-200" 
+                className="cursor-pointer bg-background border border-border/30 shadow-sm hover:border-foreground hover:-translate-y-0.5 transition-all duration-200" 
                 onClick={() => navigate('/settings')}
               >
                 <CardHeader className="py-4 px-5">
@@ -150,7 +154,7 @@ const Index = () => {
                     </div>
                     <div>
                       <CardTitle className="text-[15px] font-semibold text-foreground">프로필 설정</CardTitle>
-                      <CardDescription className="text-xs text-muted-foreground/60">온보딩에서 정한 목적과 캐릭터를 수정합니다.</CardDescription>
+                      <CardDescription className="text-xs text-muted-foreground">나의 기본 목적과 캐릭터를 수정합니다.</CardDescription>
                     </div>
                   </div>
                 </CardHeader>
