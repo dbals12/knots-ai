@@ -161,7 +161,8 @@ const Home = () => {
     setIsSubmitting(true);
 
     try {
-      const { error } = await supabase
+      // Step 1: Insert session
+      const { data: sessionData, error: sessionError } = await supabase
         .from('sessions')
         .insert({
           user_id: user.id,
@@ -170,13 +171,39 @@ const Home = () => {
           selected_persona: selectedPersona,
           session_purpose: isReturningUser ? (sessionPurpose || null) : null,
           keyword: keyword || null,
-        });
+        })
+        .select('id')
+        .single();
 
-      if (error) {
-        console.error('Session insert error:', error);
+      if (sessionError) {
+        console.error('Session insert error:', sessionError);
         toast({
           title: '저장에 실패했습니다',
-          description: error.message,
+          description: sessionError.message,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const sessionId = sessionData.id;
+
+      // Step 2: Insert 4 outputs (one for each platform)
+      const platforms = ['blog', 'linkedin', 'reels', 'threads'];
+      const outputsToInsert = platforms.map(platform => ({
+        session_id: sessionId,
+        platform_type: platform,
+        generated_content: `[${platform.toUpperCase()}] 콘텐츠가 생성될 예정입니다.`, // Placeholder content
+      }));
+
+      const { error: outputsError } = await supabase
+        .from('outputs')
+        .insert(outputsToInsert);
+
+      if (outputsError) {
+        console.error('Outputs insert error:', outputsError);
+        toast({
+          title: '결과 저장에 실패했습니다',
+          description: outputsError.message,
           variant: 'destructive',
         });
         return;
@@ -197,11 +224,6 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Debug Panel */}
-      <div className="bg-gray-100 px-3 py-1 text-xs text-gray-500 font-mono">
-        DEBUG – sessionCount: {isReturningUser ? '≥1' : '0'}, isReturningUser: {String(isReturningUser)}, loading: {String(isLoadingUserStatus)}
-      </div>
-      
       {/* Header */}
       <header className="px-6 py-5 flex items-center justify-between border-b border-border">
         <h1 className="text-lg font-bold text-foreground">Switch Manager</h1>

@@ -53,11 +53,6 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Debug Panel */}
-      <div className="bg-gray-100 px-3 py-1 text-xs text-gray-500 font-mono">
-        DEBUG – auth: {String(isAuthenticated)}, hasSession: {String(hasPreviousSession)}, isNewUser: {String(isNewUser)}, isReturning: {String(isReturningUser)}
-      </div>
-      
       {/* Header */}
       <header className="px-6 py-5">
         <h1 className="text-lg font-bold text-foreground tracking-tight">Switch Manager</h1>
