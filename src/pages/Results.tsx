@@ -130,7 +130,15 @@ const Results = () => {
   };
 
   const handleRegenerateContent = async () => {
-    if (!sessionId || !editedText.trim()) return;
+    if (!editedText.trim()) {
+      toast({
+        title: '내용을 입력해주세요',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    if (!sessionId) return;
     
     setIsRegenerating(true);
     
