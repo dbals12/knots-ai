@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Mic, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Mic, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { SiNaver, SiLinkedin, SiInstagram, SiThreads } from 'react-icons/si';
@@ -50,6 +50,15 @@ const Home = () => {
   const [keyword, setKeyword] = useState('');
   const [isReturningUser, setIsReturningUser] = useState(false);
   const [isLoadingUserStatus, setIsLoadingUserStatus] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Audio recording refs
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const audioStreamRef = useRef<MediaStream | null>(null);
+  const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
+  
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -110,6 +119,15 @@ const Home = () => {
     checkUserStatus();
   }, [user]);
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
   const scrollContainer = (ref: React.RefObject<HTMLDivElement>, direction: 'left' | 'right') => {
     if (ref.current) {
       const scrollAmount = ref.current.offsetWidth * 0.8;
@@ -125,6 +143,52 @@ const Home = () => {
     navigate('/');
   };
 
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioStreamRef.current = stream;
+      audioChunksRef.current = [];
+      
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      mediaRecorderRef.current = mediaRecorder;
+      
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+      
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        setRecordedBlob(audioBlob);
+        console.log('Recording stopped. Blob size:', audioBlob.size);
+      };
+      
+      mediaRecorder.start(1000); // Collect data every second
+      setIsRecording(true);
+      console.log('Recording started');
+    } catch (error) {
+      console.error('Error starting recording:', error);
+      toast({
+        title: '마이크 접근 오류',
+        description: '마이크 권한을 확인해주세요.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach(track => track.stop());
+      }
+      setIsRecording(false);
+      setShowConfirmation(true);
+      console.log('Recording stopped');
+    }
+  };
+
   const toggleRecording = () => {
     if (!selectedMood || !selectedPersona) {
       toast({
@@ -136,19 +200,17 @@ const Home = () => {
     }
 
     if (!isRecording) {
-      setIsRecording(true);
+      startRecording();
     } else {
-      setIsRecording(false);
-      setShowConfirmation(true);
+      stopRecording();
     }
   };
 
   const handleRetry = () => {
     setShowConfirmation(false);
+    setRecordedBlob(null);
     setIsRecording(false);
   };
-
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async () => {
     if (!user) {
@@ -159,15 +221,57 @@ const Home = () => {
       return;
     }
 
-    setIsSubmitting(true);
+    if (!recordedBlob) {
+      toast({
+        title: '녹음된 오디오가 없습니다',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setShowConfirmation(false);
+    setIsProcessing(true);
 
     try {
-      // Step 1: Insert session
+      // Get persona and mood labels for the AI
+      const personaLabel = personas.find(p => p.value === selectedPersona)?.label || selectedPersona;
+      const moodLabel = moods.find(m => m.value === selectedMood)?.label || selectedMood;
+      const purposeLabel = sessionPurposes.find(p => p.value === sessionPurpose)?.label || sessionPurpose;
+
+      // Step 1: Call the process-audio Edge Function
+      console.log('Calling process-audio edge function...');
+      
+      const formData = new FormData();
+      formData.append('audio', recordedBlob, 'recording.webm');
+      formData.append('user_persona', personaLabel);
+      formData.append('user_mood', moodLabel);
+      formData.append('session_purpose', purposeLabel || '');
+
+      const response = await fetch(
+        `https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/process-audio`,
+        {
+          method: 'POST',
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'AI processing failed');
+      }
+
+      const aiResult = await response.json();
+      console.log('AI processing completed:', aiResult);
+
+      const { transcript, content } = aiResult;
+
+      // Step 2: Insert session into database
+      console.log('Inserting session into database...');
       const { data: sessionData, error: sessionError } = await supabase
         .from('sessions')
         .insert({
           user_id: user.id,
-          raw_text: '', // Will be filled during recording - placeholder for now
+          raw_text: transcript,
           selected_mood: selectedMood,
           selected_persona: selectedPersona,
           session_purpose: isReturningUser ? (sessionPurpose || null) : null,
@@ -178,23 +282,20 @@ const Home = () => {
 
       if (sessionError) {
         console.error('Session insert error:', sessionError);
-        toast({
-          title: '저장에 실패했습니다',
-          description: sessionError.message,
-          variant: 'destructive',
-        });
-        return;
+        throw new Error(sessionError.message);
       }
 
       const sessionId = sessionData.id;
+      console.log('Session created with ID:', sessionId);
 
-      // Step 2: Insert 4 outputs (one for each platform)
-      const platforms = ['blog', 'linkedin', 'reels', 'threads'];
-      const outputsToInsert = platforms.map(platform => ({
-        session_id: sessionId,
-        platform_type: platform,
-        generated_content: `[${platform.toUpperCase()}] 콘텐츠가 생성될 예정입니다.`, // Placeholder content
-      }));
+      // Step 3: Insert 4 outputs (one for each platform)
+      console.log('Inserting outputs into database...');
+      const outputsToInsert = [
+        { session_id: sessionId, platform_type: 'blog', generated_content: content.blog_content },
+        { session_id: sessionId, platform_type: 'linkedin', generated_content: content.linkedin_content },
+        { session_id: sessionId, platform_type: 'reels', generated_content: content.reels_content },
+        { session_id: sessionId, platform_type: 'threads', generated_content: content.threads_content },
+      ];
 
       const { error: outputsError } = await supabase
         .from('outputs')
@@ -202,24 +303,21 @@ const Home = () => {
 
       if (outputsError) {
         console.error('Outputs insert error:', outputsError);
-        toast({
-          title: '결과 저장에 실패했습니다',
-          description: outputsError.message,
-          variant: 'destructive',
-        });
-        return;
+        throw new Error(outputsError.message);
       }
 
-      setShowConfirmation(false);
+      console.log('All data saved successfully. Navigating to result...');
       navigate('/result');
+
     } catch (err) {
-      console.error('Unexpected error:', err);
+      console.error('Error in handleSubmit:', err);
       toast({
-        title: '저장에 실패했습니다',
+        title: 'AI 처리 또는 저장에 실패했습니다',
+        description: err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.',
         variant: 'destructive',
       });
     } finally {
-      setIsSubmitting(false);
+      setIsProcessing(false);
     }
   };
 
@@ -447,6 +545,21 @@ const Home = () => {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Full-screen Processing Overlay */}
+      {isProcessing && (
+        <div className="fixed inset-0 z-50 bg-background flex flex-col items-center justify-center">
+          <div className="flex flex-col items-center gap-6">
+            <Loader2 className="w-12 h-12 text-foreground animate-spin" />
+            <p className="text-lg font-medium text-foreground text-center">
+              AI가 당신의 기록을 분석 중입니다...
+            </p>
+            <p className="text-sm text-muted-foreground text-center max-w-xs">
+              음성을 텍스트로 변환하고, 4개 채널용 콘텐츠를 생성하는 중이에요.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
