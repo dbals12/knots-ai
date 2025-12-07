@@ -4,10 +4,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Mic, LogOut, ChevronLeft, ChevronRight, Settings } from 'lucide-react';
+import { Mic, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { SiNaver, SiLinkedin, SiInstagram, SiThreads } from 'react-icons/si';
+import Header from '@/components/Header';
 
 const sessionPurposes = [
   { value: 'record', label: '기록' },
@@ -224,30 +225,7 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
-      <header className="px-6 py-5 flex items-center justify-between border-b border-border">
-        <h1 className="text-lg font-bold text-foreground">Switch Manager</h1>
-        <div className="flex items-center gap-2">
-          <Button 
-            variant="ghost" 
-            size="sm"
-            onClick={() => navigate('/settings')}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <Settings className="w-4 h-4 mr-1" />
-            프로필
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="sm"
-            onClick={handleLogout}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <LogOut className="w-4 h-4 mr-1" />
-            로그아웃
-          </Button>
-        </div>
-      </header>
+      <Header />
 
       {/* Main Content */}
       <main className="flex-1 px-6 py-8 space-y-8">
