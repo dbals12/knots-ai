@@ -13,6 +13,14 @@ Your role is to convert a user's raw voice transcript into multiple social conte
 The transcript and user context will be provided as a separate user message.
 
 # ========================
+LANGUAGE RULES (CRITICAL)
+
+1. Detect the main language of the User Input.
+2. If it is mostly Korean, **ALL 4 outputs MUST be in Korean**.
+3. Do NOT switch to English for LinkedIn/Threads/Reels unless the user explicitly wrote in English.
+4. Never mix languages.
+
+# ========================
 INPUT CONTEXT
 
 - Raw Transcript
@@ -73,54 +81,59 @@ serve(async (req) => {
     // Parse the incoming FormData
     const formData = await req.formData();
     const audioFile = formData.get('audio') as File | null;
+    const rawTextInput = formData.get('raw_text') as string | null;
     const userPersona = formData.get('user_persona') as string || '';
     const userMood = formData.get('user_mood') as string || '';
     const sessionPurpose = formData.get('session_purpose') as string || '';
 
-    if (!audioFile) {
-      console.error('No audio file provided');
+    let transcript = '';
+
+    // Check if raw_text is provided (text-only mode, skip STT)
+    if (rawTextInput && rawTextInput.trim().length > 0) {
+      console.log('Using raw_text input directly, skipping Whisper STT');
+      transcript = rawTextInput.trim();
+    } else if (audioFile) {
+      // Audio mode: Use Whisper STT
+      console.log('Received audio file:', audioFile.name, 'Size:', audioFile.size);
+      console.log('Step 1: Starting Whisper transcription...');
+      
+      const whisperFormData = new FormData();
+      whisperFormData.append('file', audioFile, 'audio.webm');
+      whisperFormData.append('model', 'whisper-1');
+
+      const whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        },
+        body: whisperFormData,
+      });
+
+      if (!whisperResponse.ok) {
+        const errorText = await whisperResponse.text();
+        console.error('Whisper API error:', whisperResponse.status, errorText);
+        return new Response(
+          JSON.stringify({ error: `Whisper transcription failed: ${errorText}` }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const whisperResult = await whisperResponse.json();
+      transcript = whisperResult.text;
+      
+      console.log('Whisper transcription completed. Transcript length:', transcript.length);
+    } else {
+      console.error('No audio file or raw_text provided');
       return new Response(
-        JSON.stringify({ error: 'No audio file provided' }),
+        JSON.stringify({ error: 'No audio file or raw_text provided' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Received audio file:', audioFile.name, 'Size:', audioFile.size);
     console.log('User context:', { userPersona, userMood, sessionPurpose });
 
     // ========================
-    // STEP 1: Whisper STT
-    // ========================
-    console.log('Step 1: Starting Whisper transcription...');
-    
-    const whisperFormData = new FormData();
-    whisperFormData.append('file', audioFile, 'audio.webm');
-    whisperFormData.append('model', 'whisper-1');
-
-    const whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-      },
-      body: whisperFormData,
-    });
-
-    if (!whisperResponse.ok) {
-      const errorText = await whisperResponse.text();
-      console.error('Whisper API error:', whisperResponse.status, errorText);
-      return new Response(
-        JSON.stringify({ error: `Whisper transcription failed: ${errorText}` }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const whisperResult = await whisperResponse.json();
-    const transcript = whisperResult.text;
-    
-    console.log('Whisper transcription completed. Transcript length:', transcript.length);
-
-    // ========================
-    // STEP 2: GPT-4o JSON Generation
+    // GPT-4o JSON Generation
     // ========================
     console.log('Step 2: Starting GPT-4o content generation...');
 
