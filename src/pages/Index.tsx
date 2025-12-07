@@ -58,107 +58,103 @@ const Index = () => {
         <h1 className="text-lg font-semibold text-foreground tracking-tight">Switch Manager</h1>
       </header>
 
-      {/* Hero Section - Always Visible */}
+      {/* Main Content */}
       <main className="flex-1 flex flex-col px-6">
-        <div className="w-full max-w-[430px] mx-auto">
-          {/* Hero Content with Side-by-Side Layout */}
-          <div className="flex items-start justify-between gap-6 mb-20">
-            {/* Left: Text Content */}
-            <div className="text-left max-w-[480px]">
-              <h2 className="text-4xl md:text-5xl leading-tight font-black text-foreground tracking-[-0.02em] mb-4">
-                당신의 일상,
-                <br />
-                커리어 자산이 되다
-              </h2>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                퇴근 후 스쳐간 생각도
-                <br />
-                말로 남기면 콘텐츠가 됩니다.
-              </p>
-            </div>
+        <div className="w-full max-w-[520px] mx-auto">
+          
+          {/* Hero Block - Left Aligned */}
+          <div className="text-left mb-12">
+            <h2 className="text-4xl md:text-5xl font-black text-foreground tracking-[-0.02em] leading-[1.1] mb-5">
+              당신의 일상,<br />커리어 자산이 되다
+            </h2>
+            <p className="text-sm text-muted-foreground/80 leading-relaxed">
+              퇴근 후 스친 생각도<br />말로 남기면 콘텐츠가 됩니다.
+            </p>
+          </div>
 
-            {/* Right: Icon Visual */}
-            <div className="flex items-center gap-4 opacity-75 flex-shrink-0">
-              <div className="flex items-center justify-center w-14 h-14 rounded-full bg-background border border-border shadow-sm">
-                <Mic className="w-6 h-6 text-foreground" strokeWidth={1.5} />
+          {/* Icon Visual - Centered, Decorative */}
+          <div className="flex items-center justify-center gap-4 opacity-70 mb-14">
+            <div className="flex items-center justify-center w-14 h-14 rounded-full bg-background border border-border shadow-sm">
+              <Mic className="w-6 h-6 text-foreground" strokeWidth={1.5} />
+            </div>
+            <ArrowRight className="w-5 h-5 text-muted-foreground/40" strokeWidth={1.5} />
+            <div className="grid grid-cols-2 gap-2">
+              <div className="w-11 h-11 rounded-lg bg-[#03C75A] flex items-center justify-center shadow-sm">
+                <SiNaver className="w-5 h-5 text-white" />
               </div>
-              <ArrowRight className="w-5 h-5 text-muted-foreground/40" strokeWidth={1.5} />
-              <div className="grid grid-cols-2 gap-2">
-                <div className="w-11 h-11 rounded-lg bg-[#03C75A] flex items-center justify-center shadow-sm">
-                  <SiNaver className="w-5 h-5 text-white" />
-                </div>
-                <div className="w-11 h-11 rounded-lg bg-[#0077B5] flex items-center justify-center shadow-sm">
-                  <SiLinkedin className="w-5 h-5 text-white" />
-                </div>
-                <div className="w-11 h-11 rounded-lg bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af] flex items-center justify-center shadow-sm">
-                  <SiInstagram className="w-5 h-5 text-white" />
-                </div>
-                <div className="w-11 h-11 rounded-lg bg-black flex items-center justify-center shadow-sm">
-                  <SiThreads className="w-5 h-5 text-white" />
-                </div>
+              <div className="w-11 h-11 rounded-lg bg-[#0077B5] flex items-center justify-center shadow-sm">
+                <SiLinkedin className="w-5 h-5 text-white" />
+              </div>
+              <div className="w-11 h-11 rounded-lg bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af] flex items-center justify-center shadow-sm">
+                <SiInstagram className="w-5 h-5 text-white" />
+              </div>
+              <div className="w-11 h-11 rounded-lg bg-foreground flex items-center justify-center shadow-sm">
+                <SiThreads className="w-5 h-5 text-background" />
               </div>
             </div>
           </div>
 
           {/* Conditional Bottom Area */}
           {isReturningUser ? (
-            <div className="space-y-3 pb-12">
-              <p className="text-muted-foreground text-base font-medium mb-8">
-                다시 오셨네요 👋
-                <br />
-                오늘은 무엇을 해볼까요?
+            <div className="pb-12">
+              {/* Greeting - Center Aligned */}
+              <p className="text-center text-muted-foreground text-base font-medium mb-10">
+                다시 오셨네요 👋<br />오늘은 무엇을 해볼까요?
               </p>
               
-              <Card 
-                className="cursor-pointer bg-background border border-border/30 shadow-sm hover:border-foreground hover:-translate-y-0.5 transition-all duration-200" 
-                onClick={() => navigate('/input')}
-              >
-                <CardHeader className="py-4 px-5">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-lg bg-foreground flex items-center justify-center flex-shrink-0">
-                      <PenTool className="w-5 h-5 text-background" strokeWidth={1.5} />
+              {/* Dashboard Cards */}
+              <div className="space-y-4">
+                <Card 
+                  className="cursor-pointer bg-background border-0 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200" 
+                  onClick={() => navigate('/input')}
+                >
+                  <CardHeader className="py-5 px-5">
+                    <div className="flex items-center gap-4">
+                      <div className="w-11 h-11 rounded-xl bg-foreground flex items-center justify-center flex-shrink-0">
+                        <PenTool className="w-5 h-5 text-background" strokeWidth={1.5} />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base font-semibold text-foreground mb-0.5">새로운 기록 만들기</CardTitle>
+                        <CardDescription className="text-sm text-muted-foreground/70">오늘의 생각을 바로 남겨보세요.</CardDescription>
+                      </div>
                     </div>
-                    <div>
-                      <CardTitle className="text-[15px] font-semibold text-foreground">새로운 기록 만들기</CardTitle>
-                      <CardDescription className="text-xs text-muted-foreground">오늘의 생각을 바로 남겨보세요.</CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-              </Card>
+                  </CardHeader>
+                </Card>
 
-              <Card 
-                className="cursor-pointer bg-background border border-border/30 shadow-sm hover:border-foreground hover:-translate-y-0.5 transition-all duration-200" 
-                onClick={() => navigate('/history')}
-              >
-                <CardHeader className="py-4 px-5">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-lg bg-foreground flex items-center justify-center flex-shrink-0">
-                      <FileText className="w-5 h-5 text-background" strokeWidth={1.5} />
+                <Card 
+                  className="cursor-pointer bg-background border-0 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200" 
+                  onClick={() => navigate('/history')}
+                >
+                  <CardHeader className="py-5 px-5">
+                    <div className="flex items-center gap-4">
+                      <div className="w-11 h-11 rounded-xl bg-foreground flex items-center justify-center flex-shrink-0">
+                        <FileText className="w-5 h-5 text-background" strokeWidth={1.5} />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base font-semibold text-foreground mb-0.5">그동안의 내 기록</CardTitle>
+                        <CardDescription className="text-sm text-muted-foreground/70">이전 기록과 채널별 결과를 확인하세요.</CardDescription>
+                      </div>
                     </div>
-                    <div>
-                      <CardTitle className="text-[15px] font-semibold text-foreground">그동안의 내 기록</CardTitle>
-                      <CardDescription className="text-xs text-muted-foreground">이전 기록과 채널별 결과를 확인하세요.</CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-              </Card>
+                  </CardHeader>
+                </Card>
 
-              <Card 
-                className="cursor-pointer bg-background border border-border/30 shadow-sm hover:border-foreground hover:-translate-y-0.5 transition-all duration-200" 
-                onClick={() => navigate('/settings')}
-              >
-                <CardHeader className="py-4 px-5">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-lg bg-foreground flex items-center justify-center flex-shrink-0">
-                      <Settings className="w-5 h-5 text-background" strokeWidth={1.5} />
+                <Card 
+                  className="cursor-pointer bg-background border-0 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200" 
+                  onClick={() => navigate('/settings')}
+                >
+                  <CardHeader className="py-5 px-5">
+                    <div className="flex items-center gap-4">
+                      <div className="w-11 h-11 rounded-xl bg-foreground flex items-center justify-center flex-shrink-0">
+                        <Settings className="w-5 h-5 text-background" strokeWidth={1.5} />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base font-semibold text-foreground mb-0.5">프로필 설정</CardTitle>
+                        <CardDescription className="text-sm text-muted-foreground/70">나의 기본 목적과 캐릭터를 수정합니다.</CardDescription>
+                      </div>
                     </div>
-                    <div>
-                      <CardTitle className="text-[15px] font-semibold text-foreground">프로필 설정</CardTitle>
-                      <CardDescription className="text-xs text-muted-foreground">나의 기본 목적과 캐릭터를 수정합니다.</CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-              </Card>
+                  </CardHeader>
+                </Card>
+              </div>
             </div>
           ) : (
             <div className="pb-16">
