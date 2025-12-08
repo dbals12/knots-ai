@@ -57,6 +57,7 @@ const InputText = () => {
   }, [searchParams]);
 
   // Get labels for display
+  const getPurposeLabel = () => sessionPurposes.find(p => p.value === sessionPurpose)?.label;
   const getMoodLabel = () => moods.find(m => m.value === selectedMood)?.label;
   const getPersonaLabel = () => personas.find(p => p.value === selectedPersona)?.label;
 
@@ -203,19 +204,26 @@ const InputText = () => {
         <div className="w-full max-w-[430px] mx-auto space-y-8">
           
           {/* Context Summary - Show if params passed */}
-          {(selectedMood || selectedPersona) && (
-            <div className="bg-muted/50 rounded-xl p-4 flex items-center gap-3 flex-wrap">
+          {(selectedMood || selectedPersona || sessionPurpose) && (
+            <div className="bg-muted/50 rounded-xl p-4 space-y-2">
               <span className="text-sm text-muted-foreground">선택한 설정:</span>
-              {getMoodLabel() && (
-                <span className="text-sm font-medium text-foreground bg-background px-3 py-1 rounded-full border border-border">
-                  {getMoodLabel()}
-                </span>
-              )}
-              {getPersonaLabel() && (
-                <span className="text-sm font-medium text-foreground bg-background px-3 py-1 rounded-full border border-border">
-                  {getPersonaLabel()}
-                </span>
-              )}
+              <div className="flex items-center gap-2 flex-wrap">
+                {getPurposeLabel() && (
+                  <span className="text-sm font-medium text-foreground bg-background px-3 py-1.5 rounded-full border border-border">
+                    오늘의 목적: {getPurposeLabel()}
+                  </span>
+                )}
+                {getMoodLabel() && (
+                  <span className="text-sm font-medium text-foreground bg-background px-3 py-1.5 rounded-full border border-border">
+                    오늘의 하루: {getMoodLabel()}
+                  </span>
+                )}
+                {getPersonaLabel() && (
+                  <span className="text-sm font-medium text-foreground bg-background px-3 py-1.5 rounded-full border border-border">
+                    오늘의 나: {getPersonaLabel()}
+                  </span>
+                )}
+              </div>
             </div>
           )}
 
