@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Copy, Save, Sparkles, ThumbsUp, ThumbsDown, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import InstagramCardView from './InstagramCardView';
 
 interface ResultDetailModalProps {
   isOpen: boolean;
@@ -31,9 +32,11 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
   const platformTitles: Record<string, string> = {
     blog: '블로그 (회고형)',
     linkedin: 'LinkedIn (인사이트형)',
-    reels: 'Reels (대본)',
+    reels: '인스타 (카드뉴스 & 캡션)',
     threads: 'Threads (짧은 에세이)',
   };
+
+  const isInstagram = platform === 'reels';
 
   const toneToPersona: Record<string, string> = {
     professional: '전문가',
@@ -214,12 +217,16 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
         <div className="flex flex-col h-[calc(100%-8rem)] space-y-4">
           {/* Scrollable Content Area */}
           <div className="flex-1 overflow-y-auto space-y-4">
-            {/* Generated Content */}
-            <Textarea
-              value={editedContent}
-              onChange={(e) => setEditedContent(e.target.value)}
-              className="min-h-[300px] resize-none border-border rounded-xl font-normal"
-            />
+            {/* Generated Content - Special view for Instagram */}
+            {isInstagram ? (
+              <InstagramCardView content={editedContent} />
+            ) : (
+              <Textarea
+                value={editedContent}
+                onChange={(e) => setEditedContent(e.target.value)}
+                className="min-h-[300px] resize-none border-border rounded-xl font-normal"
+              />
+            )}
 
             {/* AI Refinement Tools */}
             <div className="space-y-3 pb-4">

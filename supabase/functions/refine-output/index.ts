@@ -42,7 +42,7 @@ Your job is to refine the given text based on the specified mode.
 - "add_thoughts": Naturally integrate the extra_thoughts into the content. Merge them seamlessly as if they were part of the original thought.
 
 [PLATFORM STYLE REFERENCE]
-- **Instagram (Card News):** Keep the slide format (Slide 1/2/3...) + Caption section intact.
+- **Instagram (Card News):** Keep the slide format [Slide 1] through [Slide 5] + [Caption] intact. Do NOT add labels like "Title:" or "Body:". Just clean text per slide.
 - **LinkedIn:** "Bro-etry" style with short paragraphs, white space, bullet points for insights.
 - **Threads:** Low-key, brutally honest, short broken lines. NO hashtags.
 - **Blog:** Organized, diary-style with ## subheadings.
