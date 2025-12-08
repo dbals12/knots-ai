@@ -18,24 +18,43 @@ Transform raw thoughts into **platform-native content**.
 
 [PLATFORM GUIDELINES]
 
-### 1. INSTAGRAM (Card News & Caption)
-* **Goal:** A ready-to-use plan for a Carousel Post (Card News) + The text Caption.
-* **Format:**
-    * **[Usage Tip]:** Brief line: "이 내용은 캔바/미리캔버스에 복사해서 사용하세요."
-    * **Slide 1 (Cover):** Max 15 chars. ONE punchline. (e.g., "3년차 마케터가 퇴사 결심한 순간")
-    * **Slide 2-4 (Body):** Break the insight into 3 steps. Short, impactful sentences.
-    * **Slide 5 (Outro):** "Save this post" type CTA.
-    * **Caption:** A full caption to write under the post. (3-4 paragraphs, emotional connection + Hashtags).
-* **Output Example:**
-    [Tip] 카드뉴스용 텍스트입니다.
+### 1. INSTAGRAM (Card News / Slide Deck)
+* **Goal:** Create text that looks cool immediately when pasted into Canva.
+* **Vibe:** "Text Hip", minimal, cynical yet insightful.
+* **FORMAT RULES (CRITICAL):**
+    1.  **NO LABELS:** Do NOT write "Title:", "Body:", "Point 1:". Just output the raw text to be displayed.
+    2.  **LENGTH:** Max **2 short lines** per slide. Use newline for line breaks.
+    3.  **HEADERS:** Keep [Slide 1], [Slide 2] headers so the system can parse them, but the content inside must be clean.
+
+* **Structure:**
+    * [Slide 1]: The Hook. Max 12 chars. (e.g., "퇴사하고 알게 된 것")
+    * [Slide 2]: Problem/Context. (Short 1-2 lines)
+    * [Slide 3]: Insight/Twist. (Short 1-2 lines)
+    * [Slide 4]: Resolution. (Short 1-2 lines)
+    * [Slide 5]: Outro. (e.g., "저장해두고 꺼내보세요")
+    * [Caption]: 3-4 lines of emotional commentary for the post body. No hashtags needed (or max 1).
+
+* **Output Example (Strict):**
+    [Slide 1]
+    3년 차에 깨달은 진실
     
-    Slide 1: [Title]
-    Slide 2: [Text]
-    ...
+    [Slide 2]
+    열심히 하면 알아준다?
+    절대 아니다.
+    
+    [Slide 3]
+    알아서 잘하면
+    그냥 일만 더 준다.
+    
+    [Slide 4]
+    결국 말해야 한다.
+    내가 뭘 했는지.
+    
+    [Slide 5]
+    저장해두고 꺼내보세요
     
     [Caption]
-    (Emotional story...)
-    #Hashtag
+    회사에서 나를 지키는 건 실력이 아니라 태도였다.
 
 ### 2. LINKEDIN (Viral Insight Post)
 * **Vibe:** "Bro-etry" style (Short paragraphs, white space), Vulnerable Leadership.
@@ -70,7 +89,7 @@ Purpose: {session_purpose}
 {
   "blog_content": "String",
   "linkedin_content": "String (Use \\n\\n for paragraph breaks)",
-  "reels_content": "String (MUST include Slides + Caption)",
+  "reels_content": "String (MUST include [Slide 1] through [Slide 5] + [Caption])",
   "threads_content": "String",
   "analysis_keywords": ["..."],
   "analysis_sentiment": "..."

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -488,9 +488,18 @@ const Home = () => {
 
           {/* Optional Text Input Link */}
           <div className="text-center">
-            <Link to="/input-text" className="text-sm text-muted-foreground hover:text-foreground underline">
+            <button 
+              onClick={() => {
+                const params = new URLSearchParams();
+                if (selectedMood) params.set('mood', selectedMood);
+                if (selectedPersona) params.set('persona', selectedPersona);
+                if (sessionPurpose) params.set('purpose', sessionPurpose);
+                navigate(`/input-text?${params.toString()}`);
+              }}
+              className="text-sm text-muted-foreground hover:text-foreground underline"
+            >
               텍스트로 입력할래요
-            </Link>
+            </button>
           </div>
 
           {/* Platform Preview */}
