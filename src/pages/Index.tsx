@@ -3,7 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Mic, FileText, Settings, PenTool, BookOpen, Briefcase, Camera, MessageCircle, ArrowRight } from "lucide-react";
+import AppShell from "@/components/AppShell";
+import { Mic, FileText, Settings, PenTool, ArrowRight } from "lucide-react";
+import { SiNaver, SiLinkedin, SiInstagram, SiThreads } from "react-icons/si";
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -50,56 +52,54 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] flex items-center justify-center p-4">
-      {/* Main Card Container */}
-      <div className="w-full max-w-[420px] bg-white rounded-[32px] shadow-[0_8px_40px_rgba(0,0,0,0.08)] overflow-hidden">
-        <div className="px-6 py-8 flex flex-col min-h-[600px]">
+    <AppShell>
+      <div className="px-6 py-8 flex flex-col flex-1">
+        
+        {/* Top Brand Row - Centered */}
+        <div className="text-center mb-8">
+          <h1 className="text-base font-bold text-foreground tracking-tight">Switch Manager</h1>
+        </div>
+
+        {/* Main Headline + Subcopy - Left Aligned */}
+        <div className="text-left mb-6">
+          <h2 className="text-[28px] font-bold text-foreground tracking-tight leading-[1.2] mb-3">
+            당신의 일상을<br />커리어 자산으로.
+          </h2>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            사라지는 생각을 인사이트로 남기세요.<br />
+            편하게 말하면 블로그, 링크드인, 인스타 콘텐츠로 바꿔드립니다.
+          </p>
+        </div>
+
+        {/* Mic + Channel Icons Area - Centered */}
+        <div className="flex items-center justify-center gap-4 mb-6">
+          {/* Mic Icon with shadow */}
+          <div className="flex items-center justify-center w-14 h-14 rounded-full bg-white shadow-[0_4px_16px_rgba(0,0,0,0.1)]">
+            <Mic className="w-6 h-6 text-foreground" strokeWidth={1.5} />
+          </div>
           
-          {/* Top Brand Row - Centered */}
-          <div className="text-center mb-8">
-            <h1 className="text-base font-bold text-foreground tracking-tight">Switch Manager</h1>
-          </div>
-
-          {/* Main Headline + Subcopy - Left Aligned */}
-          <div className="text-left mb-6">
-            <h2 className="text-[28px] font-bold text-foreground tracking-tight leading-[1.2] mb-3">
-              당신의 일상을<br />커리어 자산으로.
-            </h2>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              사라지는 생각을 인사이트로 남기세요.<br />
-              편하게 말하면 블로그, 링크드인, 인스타 콘텐츠로 바꿔드립니다.
-            </p>
-          </div>
-
-          {/* Mic + Channel Icons Area - Centered */}
-          <div className="flex items-center justify-center gap-4 mb-6">
-            {/* Mic Icon with shadow */}
-            <div className="flex items-center justify-center w-14 h-14 rounded-full bg-white shadow-[0_4px_16px_rgba(0,0,0,0.1)]">
-              <Mic className="w-6 h-6 text-foreground" strokeWidth={1.5} />
+          {/* Arrow */}
+          <ArrowRight className="w-5 h-5 text-muted-foreground" strokeWidth={1.5} />
+          
+          {/* Platform Grid - 2x2 with real platform icons in B&W */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="w-11 h-11 rounded-xl bg-[#F8F8F8] flex items-center justify-center">
+              <SiNaver className="w-5 h-5 text-foreground" />
             </div>
-            
-            {/* Arrow */}
-            <ArrowRight className="w-5 h-5 text-muted-foreground" strokeWidth={1.5} />
-            
-            {/* Platform Grid - 2x2 */}
-            <div className="grid grid-cols-2 gap-2">
-              <div className="w-11 h-11 rounded-xl bg-[#F8F8F8] flex items-center justify-center">
-                <BookOpen className="w-5 h-5 text-foreground" strokeWidth={1.5} />
-              </div>
-              <div className="w-11 h-11 rounded-xl bg-[#F8F8F8] flex items-center justify-center">
-                <Briefcase className="w-5 h-5 text-foreground" strokeWidth={1.5} />
-              </div>
-              <div className="w-11 h-11 rounded-xl bg-[#F8F8F8] flex items-center justify-center">
-                <Camera className="w-5 h-5 text-foreground" strokeWidth={1.5} />
-              </div>
-              <div className="w-11 h-11 rounded-xl bg-[#F8F8F8] flex items-center justify-center">
-                <MessageCircle className="w-5 h-5 text-foreground" strokeWidth={1.5} />
-              </div>
+            <div className="w-11 h-11 rounded-xl bg-[#F8F8F8] flex items-center justify-center">
+              <SiLinkedin className="w-5 h-5 text-foreground" />
+            </div>
+            <div className="w-11 h-11 rounded-xl bg-[#F8F8F8] flex items-center justify-center">
+              <SiInstagram className="w-5 h-5 text-foreground" />
+            </div>
+            <div className="w-11 h-11 rounded-xl bg-[#F8F8F8] flex items-center justify-center">
+              <SiThreads className="w-5 h-5 text-foreground" />
             </div>
           </div>
+        </div>
 
-          {/* Spacer to push CTA to bottom */}
-          <div className="flex-1" />
+        {/* Spacer to push CTA to bottom */}
+        <div className="flex-1" />
 
           {/* Conditional Content Area */}
           {isReturningUser ? (
@@ -163,9 +163,8 @@ const Index = () => {
               </Button>
             </div>
           )}
-        </div>
       </div>
-    </div>
+    </AppShell>
   );
 };
 

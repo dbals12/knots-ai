@@ -5,10 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Mic, ChevronLeft, ChevronRight, Loader2, Type } from 'lucide-react';
+import { Mic, ChevronLeft, ChevronRight, Loader2, Type, Home as HomeIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import Header from '@/components/Header';
+import AppShell from '@/components/AppShell';
 
 const sessionPurposes = [
   { value: 'record', label: '기록' },
@@ -424,12 +424,21 @@ const Home = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <Header />
+    <AppShell className="min-h-[700px]">
+      {/* Header inside AppShell */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+        <button
+          onClick={() => navigate('/')}
+          className="text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <HomeIcon className="w-5 h-5" />
+        </button>
+        <h1 className="text-base font-bold text-foreground">Switch Manager</h1>
+        <div className="w-5" />
+      </div>
 
       {/* Main Content */}
-      <main className="flex-1 px-6 py-6 space-y-6">
-        <div className="w-full max-w-[430px] mx-auto space-y-6">
+      <div className="flex-1 px-6 py-6 space-y-6 overflow-y-auto">
           
           {/* Session Purpose Selector - Only for returning users */}
           {!isLoadingUserStatus && isReturningUser && (
@@ -630,7 +639,6 @@ const Home = () => {
           )}
 
         </div>
-      </main>
 
       {/* Voice Confirmation Sheet */}
       <Sheet open={showConfirmation} onOpenChange={setShowConfirmation}>
@@ -676,7 +684,7 @@ const Home = () => {
           </div>
         </div>
       )}
-    </div>
+    </AppShell>
   );
 };
 
