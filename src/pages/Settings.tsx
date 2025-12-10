@@ -4,7 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft } from 'lucide-react';
+import AppShell from '@/components/AppShell';
+import { Home } from 'lucide-react';
 
 const usagePurposes = [
   { value: "quick_summary", label: "빠르게 하루를 정리하고 싶어요" },
@@ -102,99 +103,98 @@ const Settings = () => {
 
   if (initialLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">로딩 중...</p>
-      </div>
+      <AppShell>
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-muted-foreground">로딩 중...</p>
+        </div>
+      </AppShell>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <AppShell className="min-h-[700px]">
       {/* Header */}
-      <header className="px-6 py-5 flex items-center border-b border-border">
-        <Button
-          variant="ghost"
-          size="sm"
+      <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+        <button
           onClick={() => navigate('/')}
-          className="text-muted-foreground hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground transition-colors"
         >
-          <ArrowLeft className="w-4 h-4 mr-1" />
-          돌아가기
-        </Button>
-      </header>
+          <Home className="w-5 h-5" />
+        </button>
+        <h1 className="text-base font-bold text-foreground">Switch Manager</h1>
+        <div className="w-5" />
+      </div>
 
       {/* Main Content */}
-      <main className="px-6 py-8">
-        <div className="w-full max-w-[430px] mx-auto space-y-8">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">프로필 설정</h1>
-            <p className="text-sm text-muted-foreground mt-2">
-              이 서비스가 기억해야 할 기본 설정을 수정할 수 있습니다.
-            </p>
-          </div>
-
-          {/* Section 1: Usage Purpose */}
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">
-              서비스 이용 목적
-            </h2>
-            <div className="grid grid-cols-1 gap-3">
-              {usagePurposes.map((purpose) => (
-                <button
-                  key={purpose.value}
-                  onClick={() => setSelectedPurpose(purpose.value)}
-                  className={`p-4 rounded-xl border-2 text-left transition-all ${
-                    selectedPurpose === purpose.value
-                      ? "border-foreground bg-foreground text-background"
-                      : "border-border bg-white hover:border-foreground/30"
-                  }`}
-                >
-                  <span className="text-[15px] font-medium">{purpose.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Section 2: Preferred Tone */}
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">
-              선호하는 페르소나
-            </h2>
-            <div className="space-y-3">
-              {personaOptions.map((persona) => (
-                <button
-                  key={persona.value}
-                  onClick={() => setSelectedPersona(persona.value)}
-                  className={`w-full p-5 rounded-xl border-2 text-left transition-all ${
-                    selectedPersona === persona.value
-                      ? "border-foreground bg-foreground text-background"
-                      : "border-border bg-white hover:border-foreground/30"
-                  }`}
-                >
-                  <div className="font-bold text-base mb-2">{persona.label}</div>
-                  <div
-                    className={`text-sm ${
-                      selectedPersona === persona.value ? "text-background/70" : "text-muted-foreground"
-                    }`}
-                  >
-                    {persona.desc}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Save Button */}
-          <Button
-            onClick={handleSave}
-            disabled={!selectedPurpose || !selectedPersona || loading}
-            className="w-full h-12 rounded-xl bg-foreground text-background hover:bg-foreground/90"
-          >
-            {loading ? '저장 중...' : '저장하기'}
-          </Button>
+      <div className="flex-1 px-6 py-6 space-y-6 overflow-y-auto">
+        <div>
+          <h2 className="text-xl font-bold text-foreground">프로필 설정</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            이 서비스가 기억해야 할 기본 설정을 수정할 수 있습니다.
+          </p>
         </div>
-      </main>
-    </div>
+
+        {/* Section 1: Usage Purpose */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-foreground">
+            서비스 이용 목적
+          </h3>
+          <div className="space-y-2">
+            {usagePurposes.map((purpose) => (
+              <button
+                key={purpose.value}
+                onClick={() => setSelectedPurpose(purpose.value)}
+                className={`w-full p-3 rounded-xl border-2 text-left transition-all text-sm ${
+                  selectedPurpose === purpose.value
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-border bg-[#F8F8F8] hover:border-foreground/30"
+                }`}
+              >
+                {purpose.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Section 2: Preferred Tone */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-foreground">
+            선호하는 페르소나
+          </h3>
+          <div className="space-y-2">
+            {personaOptions.map((persona) => (
+              <button
+                key={persona.value}
+                onClick={() => setSelectedPersona(persona.value)}
+                className={`w-full p-3 rounded-xl border-2 text-left transition-all ${
+                  selectedPersona === persona.value
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-border bg-[#F8F8F8] hover:border-foreground/30"
+                }`}
+              >
+                <div className="font-semibold text-sm">{persona.label}</div>
+                <div
+                  className={`text-xs mt-1 ${
+                    selectedPersona === persona.value ? "text-background/70" : "text-muted-foreground"
+                  }`}
+                >
+                  {persona.desc}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Save Button */}
+        <Button
+          onClick={handleSave}
+          disabled={!selectedPurpose || !selectedPersona || loading}
+          className="w-full h-11 rounded-xl bg-foreground text-background hover:bg-foreground/90"
+        >
+          {loading ? '저장 중...' : '저장하기'}
+        </Button>
+      </div>
+    </AppShell>
   );
 };
 
