@@ -21,16 +21,12 @@ const Index = () => {
       }
 
       try {
-        const { data: sessions, error } = await supabase
-          .from('sessions')
-          .select('id')
-          .eq('user_id', user.id)
-          .limit(1);
+        const { data: sessions, error } = await supabase.from("sessions").select("id").eq("user_id", user.id).limit(1);
 
         if (error) throw error;
         setHasPreviousSession(sessions && sessions.length > 0);
       } catch (error) {
-        console.error('Error checking sessions:', error);
+        console.error("Error checking sessions:", error);
       } finally {
         setSessionCheckLoading(false);
       }
@@ -54,7 +50,6 @@ const Index = () => {
   return (
     <AppShell showHeader={false}>
       <div className="px-6 py-10 flex flex-col flex-1 justify-between min-h-full">
-        
         {/* Top Content Section */}
         <div>
           {/* Top Brand Row - Centered */}
@@ -65,10 +60,13 @@ const Index = () => {
           {/* Main Headline + Subcopy - Left Aligned */}
           <div className="text-left mb-8">
             <h2 className="text-[28px] font-extrabold text-foreground tracking-tight leading-[1.2] mb-4">
-              생각만 하세요.<br />기록은 제가 할게요.
-            </h3>
+              생각만 하세요.
+              <br />
+              기록은 제가 할게요.
+            </h2>
             <p className="text-base text-muted-foreground leading-relaxed">
-              말하는 대로 완성되는 나만의 커리어 콘텐츠.<br />
+              말하는 대로 완성되는 나만의 커리어 콘텐츠.
+              <br />
               블로그, 링크드인, 인스타, 쓰레드까지 AI가 알아서 정리해드립니다.
             </p>
           </div>
@@ -79,10 +77,10 @@ const Index = () => {
             <div className="flex items-center justify-center w-14 h-14 rounded-full bg-white shadow-[0_4px_16px_rgba(0,0,0,0.1)]">
               <Mic className="w-6 h-6 text-foreground" strokeWidth={1.5} />
             </div>
-            
+
             {/* Arrow */}
             <ArrowRight className="w-5 h-5 text-muted-foreground" strokeWidth={1.5} />
-            
+
             {/* Platform Grid - 2x2 with real platform icons in B&W */}
             <div className="grid grid-cols-2 gap-2">
               <div className="w-11 h-11 rounded-xl bg-[#F8F8F8] flex items-center justify-center">
@@ -108,12 +106,12 @@ const Index = () => {
             <p className="text-center text-muted-foreground text-sm mb-5">
               다시 오셨네요 👋 오늘은 어떤 기록을 남겨볼까요?
             </p>
-            
+
             {/* Dashboard Action Blocks */}
             <div className="space-y-3">
               {/* Primary Action */}
-              <button 
-                onClick={() => navigate('/input')}
+              <button
+                onClick={() => navigate("/input")}
                 className="w-full flex items-center gap-3 p-4 rounded-2xl bg-[#F8F8F8] hover:bg-[#F0F0F0] transition-colors text-left"
               >
                 <div className="w-10 h-10 rounded-xl bg-foreground flex items-center justify-center flex-shrink-0">
@@ -126,8 +124,8 @@ const Index = () => {
               </button>
 
               {/* Secondary Actions */}
-              <button 
-                onClick={() => navigate('/history')}
+              <button
+                onClick={() => navigate("/history")}
                 className="w-full flex items-center gap-3 p-4 rounded-2xl bg-[#F8F8F8] hover:bg-[#F0F0F0] transition-colors text-left"
               >
                 <div className="w-10 h-10 rounded-xl bg-[#F0F0F0] flex items-center justify-center flex-shrink-0">
@@ -139,8 +137,8 @@ const Index = () => {
                 </div>
               </button>
 
-              <button 
-                onClick={() => navigate('/settings')}
+              <button
+                onClick={() => navigate("/settings")}
                 className="w-full flex items-center gap-3 p-4 rounded-2xl bg-[#F8F8F8] hover:bg-[#F0F0F0] transition-colors text-left"
               >
                 <div className="w-10 h-10 rounded-xl bg-[#F0F0F0] flex items-center justify-center flex-shrink-0">
@@ -159,7 +157,7 @@ const Index = () => {
               onClick={() => navigate(isNewUser ? "/input" : "/login")}
               className="w-full h-14 text-base font-semibold rounded-full bg-foreground text-white hover:bg-foreground/90"
             >
-              {isNewUser ? '첫 기록 시작하기' : '지금 바로 시작하기'}
+              {isNewUser ? "첫 기록 시작하기" : "지금 바로 시작하기"}
             </Button>
           </div>
         )}
