@@ -52,7 +52,7 @@ const Index = () => {
   }
 
   return (
-    <AppShell>
+    <AppShell showHeader={false}>
       <div className="px-6 py-8 flex flex-col flex-1">
         
         {/* Top Brand Row - Centered */}
