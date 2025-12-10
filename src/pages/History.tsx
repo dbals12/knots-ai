@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SiNaver, SiLinkedin, SiInstagram, SiThreads } from 'react-icons/si';
 import AppShell from '@/components/AppShell';
-import { Home } from 'lucide-react';
+
 
 const platformIcons = {
   blog: { icon: SiNaver, color: '#03C75A' },
@@ -93,18 +93,6 @@ const History = () => {
 
   return (
     <AppShell className="min-h-[700px]">
-      {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-        <button
-          onClick={() => navigate('/')}
-          className="text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <Home className="w-5 h-5" />
-        </button>
-        <h1 className="text-base font-bold text-foreground">Switch Manager</h1>
-        <div className="w-5" />
-      </div>
-      
       <div className="flex-1 px-6 py-6 space-y-5 overflow-y-auto">
         {/* Page Title */}
         <h2 className="text-xl font-bold text-foreground">내 기록 보기</h2>
