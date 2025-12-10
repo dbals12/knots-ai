@@ -53,116 +53,116 @@ const Index = () => {
 
   return (
     <AppShell showHeader={false}>
-      <div className="px-6 py-8 flex flex-col flex-1">
+      <div className="px-6 py-10 flex flex-col flex-1 justify-between min-h-full">
         
-        {/* Top Brand Row - Centered */}
-        <div className="text-center mb-8">
-          <h1 className="text-base font-bold text-foreground tracking-tight">Switch Manager</h1>
-        </div>
-
-        {/* Main Headline + Subcopy - Left Aligned */}
-        <div className="text-left mb-6">
-          <h2 className="text-[28px] font-bold text-foreground tracking-tight leading-[1.2] mb-3">
-            당신의 일상을<br />커리어 자산으로.
-          </h2>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            사라지는 생각을 인사이트로 남기세요.<br />
-            편하게 말하면 블로그, 링크드인, 인스타 콘텐츠로 바꿔드립니다.
-          </p>
-        </div>
-
-        {/* Mic + Channel Icons Area - Centered */}
-        <div className="flex items-center justify-center gap-4 mb-6">
-          {/* Mic Icon with shadow */}
-          <div className="flex items-center justify-center w-14 h-14 rounded-full bg-white shadow-[0_4px_16px_rgba(0,0,0,0.1)]">
-            <Mic className="w-6 h-6 text-foreground" strokeWidth={1.5} />
+        {/* Top Content Section */}
+        <div>
+          {/* Top Brand Row - Centered */}
+          <div className="text-center mb-8">
+            <h1 className="text-base font-bold text-foreground tracking-tight">Switch Manager</h1>
           </div>
-          
-          {/* Arrow */}
-          <ArrowRight className="w-5 h-5 text-muted-foreground" strokeWidth={1.5} />
-          
-          {/* Platform Grid - 2x2 with real platform icons in B&W */}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="w-11 h-11 rounded-xl bg-[#F8F8F8] flex items-center justify-center">
-              <SiNaver className="w-5 h-5 text-foreground" />
-            </div>
-            <div className="w-11 h-11 rounded-xl bg-[#F8F8F8] flex items-center justify-center">
-              <SiLinkedin className="w-5 h-5 text-foreground" />
-            </div>
-            <div className="w-11 h-11 rounded-xl bg-[#F8F8F8] flex items-center justify-center">
-              <SiInstagram className="w-5 h-5 text-foreground" />
-            </div>
-            <div className="w-11 h-11 rounded-xl bg-[#F8F8F8] flex items-center justify-center">
-              <SiThreads className="w-5 h-5 text-foreground" />
-            </div>
+
+          {/* Main Headline + Subcopy - Left Aligned */}
+          <div className="text-left mb-8">
+            <h2 className="text-[28px] font-extrabold text-foreground tracking-tight leading-[1.2] mb-4">
+              생각만 하세요.<br />기록은 제가 할게요.
+            </h2>
+            <p className="text-base text-muted-foreground leading-relaxed">
+              말하는 대로 완성되는 나만의 커리어 콘텐츠.<br />
+              블로그, 링크드인, 인스타, 쓰레드까지 AI가 알아서 정리해드립니다.
+            </p>
           </div>
-        </div>
 
-        {/* Spacer to push CTA to bottom */}
-        <div className="flex-1" />
-
-          {/* Conditional Content Area */}
-          {isReturningUser ? (
-            <div className="flex flex-col">
-              {/* Welcome Text - Centered */}
-              <p className="text-center text-muted-foreground text-sm mb-5">
-                다시 오셨네요 👋 오늘은 어떤 기록을 남겨볼까요?
-              </p>
-              
-              {/* Dashboard Action Blocks */}
-              <div className="space-y-3">
-                {/* Primary Action */}
-                <button 
-                  onClick={() => navigate('/input')}
-                  className="w-full flex items-center gap-3 p-4 rounded-2xl bg-[#F8F8F8] hover:bg-[#F0F0F0] transition-colors text-left"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-foreground flex items-center justify-center flex-shrink-0">
-                    <PenTool className="w-4 h-4 text-white" strokeWidth={1.5} />
-                  </div>
-                  <div>
-                    <div className="text-sm font-semibold text-foreground">새로운 기록 만들기</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">오늘의 생각을 바로 남겨보세요</div>
-                  </div>
-                </button>
-
-                {/* Secondary Actions */}
-                <button 
-                  onClick={() => navigate('/history')}
-                  className="w-full flex items-center gap-3 p-4 rounded-2xl bg-[#F8F8F8] hover:bg-[#F0F0F0] transition-colors text-left"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-[#F0F0F0] flex items-center justify-center flex-shrink-0">
-                    <FileText className="w-4 h-4 text-foreground" strokeWidth={1.5} />
-                  </div>
-                  <div>
-                    <div className="text-sm font-semibold text-foreground">내 기록 모아보기</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">이전 기록과 결과를 확인하세요</div>
-                  </div>
-                </button>
-
-                <button 
-                  onClick={() => navigate('/settings')}
-                  className="w-full flex items-center gap-3 p-4 rounded-2xl bg-[#F8F8F8] hover:bg-[#F0F0F0] transition-colors text-left"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-[#F0F0F0] flex items-center justify-center flex-shrink-0">
-                    <Settings className="w-4 h-4 text-foreground" strokeWidth={1.5} />
-                  </div>
-                  <div>
-                    <div className="text-sm font-semibold text-foreground">내 정보 설정</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">기본 목적과 캐릭터를 수정합니다</div>
-                  </div>
-                </button>
+          {/* Mic + Channel Icons Area - Centered */}
+          <div className="flex items-center justify-center gap-4 mb-12">
+            {/* Mic Icon with shadow */}
+            <div className="flex items-center justify-center w-14 h-14 rounded-full bg-white shadow-[0_4px_16px_rgba(0,0,0,0.1)]">
+              <Mic className="w-6 h-6 text-foreground" strokeWidth={1.5} />
+            </div>
+            
+            {/* Arrow */}
+            <ArrowRight className="w-5 h-5 text-muted-foreground" strokeWidth={1.5} />
+            
+            {/* Platform Grid - 2x2 with real platform icons in B&W */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="w-11 h-11 rounded-xl bg-[#F8F8F8] flex items-center justify-center">
+                <SiNaver className="w-5 h-5 text-foreground" />
+              </div>
+              <div className="w-11 h-11 rounded-xl bg-[#F8F8F8] flex items-center justify-center">
+                <SiLinkedin className="w-5 h-5 text-foreground" />
+              </div>
+              <div className="w-11 h-11 rounded-xl bg-[#F8F8F8] flex items-center justify-center">
+                <SiInstagram className="w-5 h-5 text-foreground" />
+              </div>
+              <div className="w-11 h-11 rounded-xl bg-[#F8F8F8] flex items-center justify-center">
+                <SiThreads className="w-5 h-5 text-foreground" />
               </div>
             </div>
-          ) : (
-            <div className="flex flex-col">
-              <Button
-                onClick={() => navigate(isNewUser ? "/input" : "/login")}
-                className="w-full h-14 text-base font-semibold rounded-full bg-foreground text-white hover:bg-foreground/90"
+          </div>
+        </div>
+
+        {/* Bottom CTA Section */}
+        {isReturningUser ? (
+          <div className="flex flex-col">
+            {/* Welcome Text - Centered */}
+            <p className="text-center text-muted-foreground text-sm mb-5">
+              다시 오셨네요 👋 오늘은 어떤 기록을 남겨볼까요?
+            </p>
+            
+            {/* Dashboard Action Blocks */}
+            <div className="space-y-3">
+              {/* Primary Action */}
+              <button 
+                onClick={() => navigate('/input')}
+                className="w-full flex items-center gap-3 p-4 rounded-2xl bg-[#F8F8F8] hover:bg-[#F0F0F0] transition-colors text-left"
               >
-                {isNewUser ? '첫 기록 시작하기' : '지금 바로 시작하기'}
-              </Button>
+                <div className="w-10 h-10 rounded-xl bg-foreground flex items-center justify-center flex-shrink-0">
+                  <PenTool className="w-4 h-4 text-white" strokeWidth={1.5} />
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-foreground">새로운 기록 만들기</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">오늘의 생각을 바로 남겨보세요</div>
+                </div>
+              </button>
+
+              {/* Secondary Actions */}
+              <button 
+                onClick={() => navigate('/history')}
+                className="w-full flex items-center gap-3 p-4 rounded-2xl bg-[#F8F8F8] hover:bg-[#F0F0F0] transition-colors text-left"
+              >
+                <div className="w-10 h-10 rounded-xl bg-[#F0F0F0] flex items-center justify-center flex-shrink-0">
+                  <FileText className="w-4 h-4 text-foreground" strokeWidth={1.5} />
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-foreground">내 기록 모아보기</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">이전 기록과 결과를 확인하세요</div>
+                </div>
+              </button>
+
+              <button 
+                onClick={() => navigate('/settings')}
+                className="w-full flex items-center gap-3 p-4 rounded-2xl bg-[#F8F8F8] hover:bg-[#F0F0F0] transition-colors text-left"
+              >
+                <div className="w-10 h-10 rounded-xl bg-[#F0F0F0] flex items-center justify-center flex-shrink-0">
+                  <Settings className="w-4 h-4 text-foreground" strokeWidth={1.5} />
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-foreground">내 정보 설정</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">기본 목적과 캐릭터를 수정합니다</div>
+                </div>
+              </button>
             </div>
-          )}
+          </div>
+        ) : (
+          <div className="flex flex-col">
+            <Button
+              onClick={() => navigate(isNewUser ? "/input" : "/login")}
+              className="w-full h-14 text-base font-semibold rounded-full bg-foreground text-white hover:bg-foreground/90"
+            >
+              {isNewUser ? '첫 기록 시작하기' : '지금 바로 시작하기'}
+            </Button>
+          </div>
+        )}
       </div>
     </AppShell>
   );
