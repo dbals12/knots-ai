@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Mic, ChevronLeft, ChevronRight, Loader2, Type, Home as HomeIcon } from 'lucide-react';
+import { Mic, ChevronLeft, ChevronRight, Loader2, Type } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import AppShell from '@/components/AppShell';
@@ -425,18 +425,6 @@ const Home = () => {
 
   return (
     <AppShell className="min-h-[700px]">
-      {/* Header inside AppShell */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-        <button
-          onClick={() => navigate('/')}
-          className="text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <HomeIcon className="w-5 h-5" />
-        </button>
-        <h1 className="text-base font-bold text-foreground">Switch Manager</h1>
-        <div className="w-5" />
-      </div>
-
       {/* Main Content */}
       <div className="flex-1 px-6 py-6 space-y-6 overflow-y-auto">
           
