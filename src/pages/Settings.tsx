@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import AppShell from '@/components/AppShell';
-import { Home } from 'lucide-react';
+
 
 const usagePurposes = [
   { value: "quick_summary", label: "빠르게 하루를 정리하고 싶어요" },
@@ -113,18 +113,6 @@ const Settings = () => {
 
   return (
     <AppShell className="min-h-[700px]">
-      {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-        <button
-          onClick={() => navigate('/')}
-          className="text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <Home className="w-5 h-5" />
-        </button>
-        <h1 className="text-base font-bold text-foreground">Switch Manager</h1>
-        <div className="w-5" />
-      </div>
-
       {/* Main Content */}
       <div className="flex-1 px-6 py-6 space-y-6 overflow-y-auto">
         <div>
