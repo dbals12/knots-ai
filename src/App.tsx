@@ -9,7 +9,6 @@ import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
 import Settings from "./pages/Settings";
 import Home from "./pages/Home";
-import InputText from "./pages/InputText";
 import Results from "./pages/Results";
 import History from "./pages/History";
 import NotFound from "./pages/NotFound";
@@ -39,7 +38,6 @@ const App = () => (
             <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/input" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-            <Route path="/input-text" element={<ProtectedRoute><InputText /></ProtectedRoute>} />
             <Route path="/result" element={<ProtectedRoute><Results /></ProtectedRoute>} />
             <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
             <Route path="*" element={<Navigate to="/" replace />} />
