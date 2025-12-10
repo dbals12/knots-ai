@@ -1,59 +1,60 @@
 import { useNavigate } from 'react-router-dom';
+import { Home, Settings, LogOut } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Home, LogOut, Settings } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 
-interface HeaderProps {
-  showProfile?: boolean;
-  showLogout?: boolean;
-}
-
-const Header = ({ showProfile = true, showLogout = true }: HeaderProps) => {
+const Header = () => {
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await signOut();
     navigate('/');
   };
 
   return (
-    <header className="px-6 py-5 flex items-center justify-between border-b border-border">
-      <button 
+    <header className="flex items-center justify-between px-5 py-4 border-b border-border/50">
+      {/* Left: Home Button */}
+      <Button
+        variant="ghost"
+        size="icon"
         onClick={() => navigate('/')}
-        className="text-lg font-bold text-foreground hover:opacity-80 transition-opacity"
+        className="w-9 h-9 rounded-full hover:bg-muted"
+      >
+        <Home className="w-5 h-5 text-foreground" />
+      </Button>
+
+      {/* Center: Logo */}
+      <button
+        onClick={() => navigate('/')}
+        className="text-lg font-bold tracking-tight text-foreground"
       >
         Switch Manager
       </button>
-      <div className="flex items-center gap-2">
-        <Button 
-          variant="ghost" 
-          size="icon"
-          onClick={() => navigate('/')}
-          className="text-muted-foreground hover:text-foreground"
-        >
-          <Home className="w-4 h-4" />
-        </Button>
-        {showProfile && (
-          <Button 
-            variant="ghost" 
-            size="sm"
-            onClick={() => navigate('/settings')}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <Settings className="w-4 h-4 mr-1" />
-            프로필
-          </Button>
-        )}
-        {showLogout && (
-          <Button 
-            variant="ghost" 
-            size="sm"
-            onClick={handleLogout}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <LogOut className="w-4 h-4 mr-1" />
-            로그아웃
-          </Button>
+
+      {/* Right: Settings & Logout */}
+      <div className="flex items-center gap-1">
+        {user ? (
+          <>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate('/settings')}
+              className="w-9 h-9 rounded-full hover:bg-muted"
+            >
+              <Settings className="w-5 h-5 text-foreground" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleLogout}
+              className="w-9 h-9 rounded-full hover:bg-muted"
+            >
+              <LogOut className="w-5 h-5 text-foreground" />
+            </Button>
+          </>
+        ) : (
+          <div className="w-9 h-9" /> 
         )}
       </div>
     </header>
