@@ -33,7 +33,7 @@ const Header = () => {
       </button>
 
       {/* Right: Settings & Logout */}
-      <div className="flex items-center gap-1">
+      <div className="flex flex-row items-center gap-1 flex-shrink-0">
         {user ? (
           <>
             <Button
