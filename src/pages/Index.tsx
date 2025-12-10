@@ -64,7 +64,7 @@ const Index = () => {
               <br />
               기록은 제가 할게요.
             </h2>
-            <p className="text-base text-muted-foreground leading-relaxed">
+            <p className="text-sm text-muted-foreground leading-relaxed">
               말하는 대로 완성되는 나만의 커리어 콘텐츠.
               <br />
               블로그, 링크드인, 인스타, 쓰레드까지 AI가 알아서 정리해드립니다.
