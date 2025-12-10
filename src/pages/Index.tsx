@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Mic, FileText, Settings, PenTool, BookOpen, Briefcase, Camera, MessageCircle } from "lucide-react";
+import { Mic, FileText, Settings, PenTool, BookOpen, Briefcase, Camera, MessageCircle, ArrowRight } from "lucide-react";
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -43,76 +43,81 @@ const Index = () => {
 
   if (loading || (user && sessionCheckLoading)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5]">
         <p className="text-muted-foreground">로딩 중...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Header - Bolder Logo */}
-      <header className="px-5 pt-6 pb-4">
-        <h1 className="text-lg font-bold text-foreground tracking-tight">Switch Manager</h1>
-      </header>
-
-      {/* Main Content - Dense Mobile App Layout */}
-      <main className="flex-1 flex flex-col px-5">
-        <div className="w-full max-w-[430px] mx-auto flex flex-col flex-1">
+    <div className="min-h-screen bg-[#F5F5F5] flex items-center justify-center p-4">
+      {/* Main Card Container */}
+      <div className="w-full max-w-[420px] bg-white rounded-[32px] shadow-[0_8px_40px_rgba(0,0,0,0.08)] overflow-hidden">
+        <div className="px-6 py-8 flex flex-col min-h-[600px]">
           
-          {/* Hero Block - Left Aligned, Compact */}
-          <div className="text-left mb-8">
-            <h2 className="text-2xl font-bold text-foreground tracking-tight leading-tight mb-2">
+          {/* Top Brand Row - Centered */}
+          <div className="text-center mb-8">
+            <h1 className="text-base font-bold text-foreground tracking-tight">Switch Manager</h1>
+          </div>
+
+          {/* Main Headline + Subcopy - Left Aligned */}
+          <div className="text-left mb-6">
+            <h2 className="text-[28px] font-bold text-foreground tracking-tight leading-[1.2] mb-3">
               당신의 일상을<br />커리어 자산으로.
             </h2>
-            <p className="text-sm text-muted-foreground leading-snug">
-              말로 남긴 생각을<br />블로그, 링크드인, 인스타 콘텐츠로 바꿔드립니다.
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              사라지는 생각을 인사이트로 남기세요.<br />
+              편하게 말하면 블로그, 링크드인, 인스타 콘텐츠로 바꿔드립니다.
             </p>
           </div>
 
-          {/* Icon Visual - Monochrome Black & White */}
-          <div className="flex items-center gap-4 mb-8">
-            {/* Mic Icon */}
-            <div className="flex items-center justify-center w-14 h-14 rounded-2xl border border-border bg-background">
+          {/* Mic + Channel Icons Area - Centered */}
+          <div className="flex items-center justify-center gap-4 mb-6">
+            {/* Mic Icon with shadow */}
+            <div className="flex items-center justify-center w-14 h-14 rounded-full bg-white shadow-[0_4px_16px_rgba(0,0,0,0.1)]">
               <Mic className="w-6 h-6 text-foreground" strokeWidth={1.5} />
             </div>
             
-            <div className="text-muted-foreground text-lg">→</div>
+            {/* Arrow */}
+            <ArrowRight className="w-5 h-5 text-muted-foreground" strokeWidth={1.5} />
             
-            {/* Platform Grid - All Black Icons */}
-            <div className="grid grid-cols-2 gap-1.5">
-              <div className="w-11 h-11 rounded-xl border border-border bg-background flex items-center justify-center">
+            {/* Platform Grid - 2x2 */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="w-11 h-11 rounded-xl bg-[#F8F8F8] flex items-center justify-center">
                 <BookOpen className="w-5 h-5 text-foreground" strokeWidth={1.5} />
               </div>
-              <div className="w-11 h-11 rounded-xl border border-border bg-background flex items-center justify-center">
+              <div className="w-11 h-11 rounded-xl bg-[#F8F8F8] flex items-center justify-center">
                 <Briefcase className="w-5 h-5 text-foreground" strokeWidth={1.5} />
               </div>
-              <div className="w-11 h-11 rounded-xl border border-border bg-background flex items-center justify-center">
+              <div className="w-11 h-11 rounded-xl bg-[#F8F8F8] flex items-center justify-center">
                 <Camera className="w-5 h-5 text-foreground" strokeWidth={1.5} />
               </div>
-              <div className="w-11 h-11 rounded-xl border border-border bg-background flex items-center justify-center">
+              <div className="w-11 h-11 rounded-xl bg-[#F8F8F8] flex items-center justify-center">
                 <MessageCircle className="w-5 h-5 text-foreground" strokeWidth={1.5} />
               </div>
             </div>
           </div>
 
+          {/* Spacer to push CTA to bottom */}
+          <div className="flex-1" />
+
           {/* Conditional Content Area */}
           {isReturningUser ? (
-            <div className="flex-1 flex flex-col">
-              {/* Greeting - Compact */}
-              <p className="text-muted-foreground text-sm mb-5">
+            <div className="flex flex-col">
+              {/* Welcome Text - Centered */}
+              <p className="text-center text-muted-foreground text-sm mb-5">
                 다시 오셨네요 👋 오늘은 어떤 기록을 남겨볼까요?
               </p>
               
-              {/* Dashboard List - Dense */}
-              <div className="space-y-2.5 flex-1">
+              {/* Dashboard Action Blocks */}
+              <div className="space-y-3">
                 {/* Primary Action */}
                 <button 
                   onClick={() => navigate('/input')}
-                  className="w-full flex items-center gap-3.5 p-4 rounded-xl border border-border bg-background hover:border-foreground/40 transition-colors text-left"
+                  className="w-full flex items-center gap-3 p-4 rounded-2xl bg-[#F8F8F8] hover:bg-[#F0F0F0] transition-colors text-left"
                 >
                   <div className="w-10 h-10 rounded-xl bg-foreground flex items-center justify-center flex-shrink-0">
-                    <PenTool className="w-4 h-4 text-background" strokeWidth={1.5} />
+                    <PenTool className="w-4 h-4 text-white" strokeWidth={1.5} />
                   </div>
                   <div>
                     <div className="text-sm font-semibold text-foreground">새로운 기록 만들기</div>
@@ -123,9 +128,9 @@ const Index = () => {
                 {/* Secondary Actions */}
                 <button 
                   onClick={() => navigate('/history')}
-                  className="w-full flex items-center gap-3.5 p-4 rounded-xl border border-border bg-background hover:border-foreground/40 transition-colors text-left"
+                  className="w-full flex items-center gap-3 p-4 rounded-2xl bg-[#F8F8F8] hover:bg-[#F0F0F0] transition-colors text-left"
                 >
-                  <div className="w-10 h-10 rounded-xl border border-border flex items-center justify-center flex-shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-[#F0F0F0] flex items-center justify-center flex-shrink-0">
                     <FileText className="w-4 h-4 text-foreground" strokeWidth={1.5} />
                   </div>
                   <div>
@@ -136,9 +141,9 @@ const Index = () => {
 
                 <button 
                   onClick={() => navigate('/settings')}
-                  className="w-full flex items-center gap-3.5 p-4 rounded-xl border border-border bg-background hover:border-foreground/40 transition-colors text-left"
+                  className="w-full flex items-center gap-3 p-4 rounded-2xl bg-[#F8F8F8] hover:bg-[#F0F0F0] transition-colors text-left"
                 >
-                  <div className="w-10 h-10 rounded-xl border border-border flex items-center justify-center flex-shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-[#F0F0F0] flex items-center justify-center flex-shrink-0">
                     <Settings className="w-4 h-4 text-foreground" strokeWidth={1.5} />
                   </div>
                   <div>
@@ -149,17 +154,17 @@ const Index = () => {
               </div>
             </div>
           ) : (
-            <div className="flex-1 flex flex-col justify-end pb-10">
+            <div className="flex flex-col">
               <Button
                 onClick={() => navigate(isNewUser ? "/input" : "/login")}
-                className="w-full h-14 text-base font-semibold rounded-xl bg-foreground text-background hover:bg-foreground/90"
+                className="w-full h-14 text-base font-semibold rounded-full bg-foreground text-white hover:bg-foreground/90"
               >
                 {isNewUser ? '첫 기록 시작하기' : '지금 바로 시작하기'}
               </Button>
             </div>
           )}
         </div>
-      </main>
+      </div>
     </div>
   );
 };
