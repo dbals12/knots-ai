@@ -28,9 +28,15 @@ const InstagramCardView = ({ content }: InstagramCardViewProps) => {
     const slides: ParsedSlide[] = [];
     let caption = '';
 
+    // Clean markdown code blocks before parsing
+    const cleanContent = rawContent
+      .replace(/```json\s*/gi, '')
+      .replace(/```\s*/gi, '')
+      .trim();
+
     // Try to parse as JSON first
     try {
-      const parsed = JSON.parse(rawContent);
+      const parsed = JSON.parse(cleanContent);
       if (typeof parsed === 'object' && parsed !== null) {
         // Handle JSON format: {"Slide 1": "...", "Caption": "..."}
         Object.keys(parsed).forEach((key) => {
@@ -50,7 +56,9 @@ const InstagramCardView = ({ content }: InstagramCardViewProps) => {
           const numB = parseInt(b.header.match(/\d+/)?.[0] || '0');
           return numA - numB;
         });
-        return { slides, caption };
+        if (slides.length > 0) {
+          return { slides, caption };
+        }
       }
     } catch {
       // Not valid JSON, try text format parsing
