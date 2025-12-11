@@ -106,12 +106,21 @@ const Results = () => {
   };
 
   const handleSave = () => {
-    toast({
-      title: '준비 중인 기능입니다.',
-      description: '곧 이용하실 수 있습니다.',
-    });
-    setSelectedPlatform(null);
-    setSelectedOutput(null);
+    // Save is handled in the modal - this callback is for any post-save actions
+    // The modal already shows its own toast
+  };
+
+  const handleContentUpdate = (newContent: string) => {
+    if (selectedOutput) {
+      // Update local outputs state with the new content
+      setOutputs(prev => prev.map(output => 
+        output.id === selectedOutput.id 
+          ? { ...output, generated_content: newContent }
+          : output
+      ));
+      // Update selected output
+      setSelectedOutput(prev => prev ? { ...prev, generated_content: newContent } : null);
+    }
   };
 
   const handleEditToggle = () => {
@@ -354,6 +363,7 @@ const Results = () => {
           outputId={selectedOutput.id}
           onCopy={handleCopy}
           onSave={handleSave}
+          onContentUpdate={handleContentUpdate}
         />
       )}
     </AppShell>
