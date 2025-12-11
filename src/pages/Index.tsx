@@ -59,7 +59,7 @@ const Index = () => {
 
           {/* Main Headline + Subcopy - Left Aligned */}
           <div className="text-left mb-8">
-            <h2 className="text-3xl md:text-4xl font-black leading-relaxed tracking-tight text-black text-left">
+            <h2 className="text-3xl md:text-3xl font-black leading-relaxed tracking-tight text-black text-left">
               생각만 하세요
               <br />
               기록은 제가 할게요
@@ -67,13 +67,13 @@ const Index = () => {
 
             {/* 서브타이틀 수정 */}
             {/* 1. text-xs: 글씨 크기를 아주 작게 설정 (약 12px) */}
-            <p className="mt-6 font-medium leading-7 text-xs md:text-sm">
-              {/* 첫째줄: 연하게(Gray-400) -> 진하게(Gray-900) */}
+            <p className="mt-6 font-medium leading-7 text-2xs md:text-sm">
+              {/* 첫째줄: 연하게(Gray-300) -> 진하게(Gray-500) */}
               <span className="block text-transparent bg-clip-text bg-gradient-to-r from-gray-400 via-gray-600 to-gray-900">
                 말하는 대로 완성되는 나만의 커리어 콘텐츠.
               </span>
 
-              {/* 둘째줄: 진하게(Gray-900) -> 연하게(Gray-400) */}
+              {/* 둘째줄: 진하게(Gray-500) -> 연하게(Gray-300) */}
               <span className="block text-transparent bg-clip-text bg-gradient-to-r from-gray-900 via-gray-600 to-gray-400">
                 블로그, 링크드인, 인스타, 쓰레드까지 AI가 알아서 정리해드립니다.
               </span>
