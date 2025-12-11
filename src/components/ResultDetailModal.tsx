@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Copy, Save, Sparkles, ThumbsUp, ThumbsDown, Loader2 } from 'lucide-react';
+import { Copy, Save, Sparkles, ThumbsUp, ThumbsDown, Loader2, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import InstagramCardView from './InstagramCardView';
@@ -27,7 +27,21 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
   const [hasRated, setHasRated] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
   const [showLengthOptions, setShowLengthOptions] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
+
+  // Reset saved state when content changes (e.g., after AI refinement)
+  useEffect(() => {
+    setIsSaved(false);
+  }, [editedContent]);
+
+  // Reset state when modal opens with new content
+  useEffect(() => {
+    setEditedContent(content);
+    setIsSaved(false);
+    setHasRated(false);
+  }, [content, outputId]);
 
   const platformTitles: Record<string, string> = {
     blog: '블로그 (회고형)',
@@ -141,6 +155,10 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
   };
 
   const handleSave = async () => {
+    if (isSaved || isSaving) return;
+    
+    setIsSaving(true);
+    
     try {
       const { error } = await supabase
         .from('outputs')
@@ -149,19 +167,26 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
 
       if (error) throw error;
 
+      // Mark as saved
+      setIsSaved(true);
+      
+      // Notify parent of content update
       onContentUpdate?.(editedContent);
       
       toast({
-        title: '저장되었습니다.',
-        description: '변경사항이 저장되었습니다.',
+        title: '소중한 기록이 저장되었습니다! ✨',
+        description: '내 기록 보기에서 언제든 확인할 수 있어요.',
       });
+      
       onSave();
     } catch (error: any) {
       toast({
         title: '저장 실패',
-        description: error.message,
+        description: error.message || '다시 시도해주세요.',
         variant: 'destructive',
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -360,10 +385,29 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
             <Button
               onClick={handleSave}
               variant="outline"
-              className="h-12 px-6 rounded-xl border-border"
+              disabled={isSaved || isSaving}
+              className={`h-12 px-6 rounded-xl border-border transition-all ${
+                isSaved 
+                  ? 'bg-green-50 border-green-300 text-green-700 hover:bg-green-50' 
+                  : ''
+              }`}
             >
-              <Save className="w-4 h-4 mr-2" />
-              저장
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  저장 중...
+                </>
+              ) : isSaved ? (
+                <>
+                  <Check className="w-4 h-4 mr-2" />
+                  저장됨
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  저장
+                </>
+              )}
             </Button>
           </div>
         </div>
