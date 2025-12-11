@@ -43,13 +43,15 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
     setIsSaved(false);
   }, [editedContent]);
 
-  // Reset state when modal opens with new content
+  // Reset state when modal opens with NEW output (different outputId)
+  // Don't reset on content changes since our own refinements trigger content updates
   useEffect(() => {
     setEditedContent(content);
     setHistoryState({ history: [content], index: 0 });
     setIsSaved(false);
     setHasRated(false);
-  }, [content, outputId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [outputId]); // Only reset when outputId changes, not content
 
   // Push new content to history (for AI refinements)
   const pushToHistory = useCallback((newContent: string) => {
