@@ -28,9 +28,15 @@ const InstagramCardView = ({ content }: InstagramCardViewProps) => {
     const slides: ParsedSlide[] = [];
     let caption = '';
 
+    // Clean potential markdown wrappers before parsing
+    const cleanJson = rawContent
+      .replace(/```json\s*/gi, '')
+      .replace(/```\s*/gi, '')
+      .trim();
+
     // Try to parse as JSON first
     try {
-      const parsed = JSON.parse(rawContent);
+      const parsed = JSON.parse(cleanJson);
       if (typeof parsed === 'object' && parsed !== null) {
         // Handle JSON format: {"Slide 1": "...", "Caption": "..."}
         Object.keys(parsed).forEach((key) => {
