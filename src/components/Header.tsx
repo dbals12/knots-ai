@@ -29,7 +29,7 @@ const Header = () => {
         onClick={() => navigate('/')}
         className="text-lg font-bold tracking-tight text-foreground font-sans"
       >
-        KNOTS
+        knots
       </button>
 
       {/* Right: Settings & Logout */}
