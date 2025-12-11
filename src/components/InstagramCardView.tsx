@@ -18,6 +18,13 @@ interface ParsedSlide {
   content: string;
 }
 
+// Sanitize text to remove leftover JSON artifacts
+const cleanText = (text: string): string => {
+  if (!text) return "";
+  // Remove leading colons, quotes, spaces AND trailing quotes, commas, braces
+  return text.replace(/^[:\s"]+|[",\s}]+$/g, '').trim();
+};
+
 const InstagramCardView = ({ content }: InstagramCardViewProps) => {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [selectedSlide, setSelectedSlide] = useState<ParsedSlide | null>(null);
@@ -42,11 +49,11 @@ const InstagramCardView = ({ content }: InstagramCardViewProps) => {
         Object.keys(parsed).forEach((key) => {
           const value = parsed[key];
           if (key.toLowerCase() === 'caption') {
-            caption = value?.trim() || '';
+            caption = cleanText(value || '');
           } else if (key.toLowerCase().startsWith('slide')) {
             slides.push({
               header: key.toUpperCase(),
-              content: value?.trim() || '',
+              content: cleanText(value || ''),
             });
           }
         });

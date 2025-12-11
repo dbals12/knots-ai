@@ -46,9 +46,12 @@ Even if the user asks to change the tone or length, you must return the **ENTIRE
    - Keep paragraph spacing with \\n\\n.
 
 2. **INSTAGRAM:**
-   - MUST return a valid JSON string with {"Slide 1": "...", "Slide 2": "...", "Caption": "..."} structure.
+   - MUST return a valid JSON object with {"Slide 1": "...", "Slide 2": "...", "Caption": "..."} structure.
    - Do NOT change it to plain text or [Slide X] format.
    - Return ONLY the JSON object, no markdown code blocks.
+   - **🚨 CRITICAL:** Values must be PURE TEXT only. Do NOT include JSON syntax characters (colons, quotes, commas) inside the value strings.
+   - **BAD:** \`": "Title", "\` or \`": "Content"\`
+   - **GOOD:** \`"Title"\` or \`"Content"\`
 
 3. **THREADS:**
    - Keep the line breaks and short sentence style.
