@@ -94,7 +94,7 @@ const Index = () => {
             {/* Platform Grid - 2x2 with real platform icons in B&W */}
             <div className="grid grid-cols-2 gap-2">
               <div className="w-11 h-11 rounded-xl bg-[#F8F8F8] flex items-center justify-center">
-                <SiNaver className="w-5 h-5 text-foreground" />
+                <SiNaver className="w-4 h-4 text-foreground" />
               </div>
               <div className="w-11 h-11 rounded-xl bg-[#F8F8F8] flex items-center justify-center">
                 <SiLinkedin className="w-5 h-5 text-foreground" />
