@@ -75,7 +75,7 @@ const Index = () => {
 
               {/* 둘째줄: 진하게 -> 연하게 */}
               {/* whitespace-nowrap: 강제 줄바꿈 금지 / tracking-tighter: 자간 좁힘 */}
-              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-gray-350 via-gray-400 to-gray-300 whitespace-nowrap tracking-tighter">
+              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-gray-300 via-gray-400 to-gray-300 whitespace-nowrap tracking-tighter">
                 블로그, 링크드인, 인스타, 쓰레드까지 AI가 알아서 정리해드립니다.
               </span>
             </p>
