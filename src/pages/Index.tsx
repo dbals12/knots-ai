@@ -67,7 +67,7 @@ const Index = () => {
 
             {/* 서브타이틀 수정 */}
             {/* text-xs(12px)보다 살짝 더 작은 text-[11px]로 조정하여 안전하게 한 줄 처리 */}
-            <p className="mt-6 mb-16 font-medium leading-7 text-[11px] md:text-sm w-full space-y-1.5">
+            <p className="mt-6 mb-16 font-medium leading-7 text-[11px] md:text-xs w-full space-y-1.5">
               {/* 첫째줄: 연하게 -> 진하게 */}
               <span className="block text-left text-transparent bg-clip-text bg-gradient-to-r from-gray-500 via-gray-400 to-gray-400 whitespace-nowrap">
                 말하는 대로 완성되는 나만의 커리어 콘텐츠.
@@ -113,7 +113,7 @@ const Index = () => {
         {isReturningUser ? (
           <div className="flex flex-col">
             {/* Welcome Text - Centered */}
-            <p className="text-center text-muted-foreground text-sm mb-5">
+            <p className="text-center text-muted-foreground text-xs mb-5">
               다시 오셨네요 👋 오늘은 어떤 기록을 남겨볼까요?
             </p>
 
