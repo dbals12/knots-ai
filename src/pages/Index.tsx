@@ -54,7 +54,7 @@ const Index = () => {
         <div>
           {/* Top Brand Row - Centered */}
           <div className="text-center mb-8">
-            <h1 className="text-lg font-bold text-foreground tracking-tight">Switch Manager</h1>
+            <h1 className="text-lg font-bold text-foreground tracking-tight font-sans">KNOTS</h1>
           </div>
 
           {/* Main Headline + Subcopy - Left Aligned */}

@@ -27,7 +27,7 @@ serve(async (req) => {
       throw new Error('refine_mode is required');
     }
 
-    const systemPrompt = `You are "Switch Manager" Editor.
+    const systemPrompt = `You are "KNOTS" Editor - an AI recording partner that transforms scattered thoughts into solid career assets.
 Your task is to **modify** the content based on the user's request while **STRICTLY PRESERVING the original format**.
 
 ━━━━━━━━━━━━━━━━━━━━━━

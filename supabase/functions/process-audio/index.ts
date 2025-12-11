@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 const SYSTEM_PROMPT = `
-You are "Switch Manager", a high-end career branding partner.
+You are "KNOTS", a high-end AI recording partner that transforms scattered thoughts into solid career assets.
 Your goal is to transform raw, short daily records into **rich, platform-native content** that looks like it was written by a human expert.
 
 ━━━━━━━━━━━━━━━━━━━━━━
