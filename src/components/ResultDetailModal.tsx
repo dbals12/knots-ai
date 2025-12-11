@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Copy, Save, Sparkles, ThumbsUp, ThumbsDown, Loader2, Check } from 'lucide-react';
+import { Copy, Save, Sparkles, ThumbsUp, ThumbsDown, Loader2, Check, Undo2, Redo2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import InstagramCardView from './InstagramCardView';
@@ -29,6 +29,11 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
   const [showLengthOptions, setShowLengthOptions] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Undo/Redo history state
+  const [history, setHistory] = useState<string[]>([content]);
+  const [historyIndex, setHistoryIndex] = useState(0);
+  
   const { toast } = useToast();
 
   // Reset saved state when content changes (e.g., after AI refinement)
@@ -39,9 +44,38 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
   // Reset state when modal opens with new content
   useEffect(() => {
     setEditedContent(content);
+    setHistory([content]);
+    setHistoryIndex(0);
     setIsSaved(false);
     setHasRated(false);
   }, [content, outputId]);
+
+  // Push new content to history (for AI refinements, not manual typing)
+  const pushToHistory = useCallback((newContent: string) => {
+    setHistory(prev => {
+      const newHistory = prev.slice(0, historyIndex + 1);
+      newHistory.push(newContent);
+      return newHistory;
+    });
+    setHistoryIndex(prev => prev + 1);
+  }, [historyIndex]);
+
+  const canUndo = historyIndex > 0;
+  const canRedo = historyIndex < history.length - 1;
+
+  const handleUndo = () => {
+    if (!canUndo) return;
+    const newIndex = historyIndex - 1;
+    setHistoryIndex(newIndex);
+    setEditedContent(history[newIndex]);
+  };
+
+  const handleRedo = () => {
+    if (!canRedo) return;
+    const newIndex = historyIndex + 1;
+    setHistoryIndex(newIndex);
+    setEditedContent(history[newIndex]);
+  };
 
   const platformTitles: Record<string, string> = {
     blog: '블로그 (회고형)',
@@ -92,6 +126,7 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
       
       if (refined_content) {
         setEditedContent(refined_content);
+        pushToHistory(refined_content); // Add to undo/redo history
         
         // Update outputs table
         const { error: updateError } = await supabase
@@ -255,8 +290,33 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
 
             {/* AI Refinement Tools */}
             <div className="space-y-3 pb-4">
-              <p className="text-sm font-semibold text-foreground">AI 수정 도구</p>
-              
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-foreground">AI 수정 도구</p>
+                
+                {/* Undo/Redo Buttons */}
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleUndo}
+                    disabled={!canUndo || isRefining}
+                    className="h-8 w-8 p-0 rounded-full"
+                    title="실행 취소"
+                  >
+                    <Undo2 className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleRedo}
+                    disabled={!canRedo || isRefining}
+                    className="h-8 w-8 p-0 rounded-full"
+                    title="다시 실행"
+                  >
+                    <Redo2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
               <div className="flex flex-wrap gap-2">
                 {/* Tone Dropdown */}
                 <Select value={selectedTone} onValueChange={handleToneChange} disabled={isRefining}>
