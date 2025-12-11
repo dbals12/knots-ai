@@ -59,20 +59,24 @@ const Index = () => {
 
           {/* Main Headline + Subcopy - Left Aligned */}
           <div className="text-left mb-8">
-            {/* 1. font-extrabold -> font-black (가장 두껍게) */}
-            {/* 2. text-3xl -> text-3xl md:text-4xl (모바일은 유지, PC에선 약간 키움 추천) */}
             <h2 className="text-3xl md:text-4xl font-black leading-relaxed tracking-tight text-black text-left">
               생각만 하세요
               <br />
               기록은 제가 할게요
             </h2>
 
-            {/* 3. text-s (오타) -> text-sm (작게 수정) */}
-            {/* 4. 그라데이션 색상 변경: gray-400(연한 회색)에서 시작해서 gray-600(중간 회색)으로 */}
-            <p className="mt-6 text-sm md:text-base leading-7 text-transparent bg-clip-text bg-gradient-to-r from-gray-400 via-gray-500 to-gray-600 font-medium">
-              말하는 대로 완성되는 나만의 커리어 콘텐츠.
-              <br />
-              블로그, 링크드인, 인스타, 쓰레드까지 AI가 알아서 정리해드립니다.
+            {/* 서브타이틀 수정 */}
+            {/* 1. text-xs: 글씨 크기를 아주 작게 설정 (약 12px) */}
+            <p className="mt-6 font-medium leading-7 text-xs md:text-sm">
+              {/* 첫째줄: 연하게(Gray-400) -> 진하게(Gray-900) */}
+              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-gray-400 via-gray-600 to-gray-900">
+                말하는 대로 완성되는 나만의 커리어 콘텐츠.
+              </span>
+
+              {/* 둘째줄: 진하게(Gray-900) -> 연하게(Gray-400) */}
+              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-gray-900 via-gray-600 to-gray-400">
+                블로그, 링크드인, 인스타, 쓰레드까지 AI가 알아서 정리해드립니다.
+              </span>
             </p>
           </div>
 
