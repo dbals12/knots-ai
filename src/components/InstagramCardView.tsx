@@ -28,7 +28,35 @@ const InstagramCardView = ({ content }: InstagramCardViewProps) => {
     const slides: ParsedSlide[] = [];
     let caption = '';
 
-    // Split by [Slide X] or [Caption] headers
+    // Try to parse as JSON first
+    try {
+      const parsed = JSON.parse(rawContent);
+      if (typeof parsed === 'object' && parsed !== null) {
+        // Handle JSON format: {"Slide 1": "...", "Caption": "..."}
+        Object.keys(parsed).forEach((key) => {
+          const value = parsed[key];
+          if (key.toLowerCase() === 'caption') {
+            caption = value?.trim() || '';
+          } else if (key.toLowerCase().startsWith('slide')) {
+            slides.push({
+              header: key.toUpperCase(),
+              content: value?.trim() || '',
+            });
+          }
+        });
+        // Sort slides by number
+        slides.sort((a, b) => {
+          const numA = parseInt(a.header.match(/\d+/)?.[0] || '0');
+          const numB = parseInt(b.header.match(/\d+/)?.[0] || '0');
+          return numA - numB;
+        });
+        return { slides, caption };
+      }
+    } catch {
+      // Not valid JSON, try text format parsing
+    }
+
+    // Fallback: Split by [Slide X] or [Caption] headers (text format)
     const parts = rawContent.split(/\[Slide \d+\]|\[Caption\]/gi);
     const headers = rawContent.match(/\[Slide \d+\]|\[Caption\]/gi) || [];
 
@@ -39,7 +67,7 @@ const InstagramCardView = ({ content }: InstagramCardViewProps) => {
         caption = partContent;
       } else {
         slides.push({
-          header: header.replace(/[\[\]]/g, ''),
+          header: header.replace(/[\[\]]/g, '').toUpperCase(),
           content: partContent,
         });
       }
