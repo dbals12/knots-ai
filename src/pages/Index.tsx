@@ -59,12 +59,12 @@ const Index = () => {
 
           {/* Main Headline + Subcopy - Left Aligned */}
           <div className="text-left mb-8">
-            <h2 className="text-2xl md:text-2xl font-extrabold leading-relaxed tracking-tight text-black text-left">
+            <h2 className="text-3xl md:text-3xl font-extrabold leading-relaxed tracking-tight text-black text-left">
               생각만 하세요
               <br />
               기록은 제가 할게요
             </h2>
-            <p className="mt-6 text-sm md:text-base leading-7 text-transparent bg-clip-text bg-gradient-to-br from-gray-600 to-gray-900 font-medium">
+            <p className="mt-6 text-s md:text-base leading-7 text-transparent bg-clip-text bg-gradient-to-br from-gray-600 to-gray-900 font-medium">
               말하는 대로 완성되는 나만의 커리어 콘텐츠.
               <br />
               블로그, 링크드인, 인스타, 쓰레드까지 AI가 알아서 정리해드립니다.
