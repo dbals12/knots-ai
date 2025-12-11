@@ -27,9 +27,9 @@ const Header = () => {
       {/* Center: Logo */}
       <button
         onClick={() => navigate('/')}
-        className="text-lg font-bold tracking-tight text-foreground"
+        className="text-lg font-bold tracking-tight text-foreground font-sans"
       >
-        Switch Manager
+        KNOTS
       </button>
 
       {/* Right: Settings & Logout */}
