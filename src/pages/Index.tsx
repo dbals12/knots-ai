@@ -69,12 +69,12 @@ const Index = () => {
             {/* 1. text-xs: 글씨 크기를 아주 작게 설정 (약 12px) */}
             <p className="mt-6 font-medium leading-7 text-2xs md:text-sm">
               {/* 첫째줄: 연하게(Gray-300) -> 진하게(Gray-370) */}
-              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-gray-300 via-gray-335 to-gray-370">
+              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-gray-300 via-gray-340 to-gray-380">
                 말하는 대로 완성되는 나만의 커리어 콘텐츠
               </span>
 
               {/* 둘째줄: 진하게(Gray-500) -> 연하게(Gray-300) */}
-              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-gray-370 via-gray-335 to-gray-300">
+              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-gray-380 via-gray-340 to-gray-300">
                 AI가 알아서 정리해드립니다
               </span>
             </p>
