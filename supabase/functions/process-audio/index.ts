@@ -44,7 +44,15 @@ First, analyze the {transcript} and determine the **Content Concept**:
 4. **Spacing:** Use \`\\n\\n\` (double line break) between paragraphs for readability.
 
 **Content Flow (Mandatory):**
-- **Title:** Emotional & Catchy Hook. (e.g., "The moment I realized 80% of my budget was wasted")
+- **Title (REALISTIC TITLE RULES):**
+  - NO exclamation marks (!). Keep it calm and professional.
+  - NO generic endings like "후기", "경험", "리뷰", "살펴보기".
+  - Use "Narrative" or "Insight" style:
+    - BAD: "스타트업 네트워킹 파티에서의 놀라운 경험!"
+    - GOOD (Narrative): "개발자가 굳이 네트워킹 파티에 간 이유"
+    - GOOD (Conflict): "명함 50장을 주고받았지만, 남은 건 하나였다"
+    - GOOD (Insight): "니치 마켓이 글로벌로 보이기 시작했다"
+  - Keep under 25 characters. Emotional but grounded.
 - **Intro:** Set the scene. (Time, Place, Context).
 - **## Section 1 (The Setup):** What I tried and why I was confident. (Build up the expectation).
 - **## Section 2 (The Twist):** The specific data/result/error that shocked me. (The Conflict).
