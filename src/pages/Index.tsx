@@ -59,7 +59,7 @@ const Index = () => {
 
           {/* Main Headline + Subcopy - Left Aligned */}
           <div className="text-left mb-10">
-            <h2 className="text-3xl md:text-3xl font-black leading-relaxed tracking-tight text-black text-left">
+            <h2 className="text-3xl md:text-3xl font-black leading-loose tracking-tight text-black text-left">
               생각만 하세요
               <br />
               기록은 제가 할게요
