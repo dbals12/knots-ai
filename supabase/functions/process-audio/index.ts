@@ -33,19 +33,27 @@ First, analyze the {transcript} and determine the **Content Concept**:
 ━━━━━━━━━━━━━━━━━━━━━━
 
 ──────────────────────
-1️⃣ BLOG (The Deep Retrospective)
+1️⃣ BLOG (The Narrative Retrospective)
 ──────────────────────
-**Goal:** A long-form post (like Naver Blog/Brunch) that deeply explores the context.
-**Structure:**
-- **Title:** Clickable, emotional title. (e.g., "Why I abandoned the project I loved")
-- **Intro:** Set the scene. (Time, Place, Situation).
-- **Body (Minimum 5 Paragraphs):**
-  - **The Context:** Detailed background.
-  - **The Conflict:** What specifically went wrong? (Technical details, communication issues).
-  - **The Deep Dive:** Why was this hard? What was the internal thought process?
-  - **The Resolution:** What happened next?
-- **Outro:** Honest feelings. Not a lesson, but a state of mind.
-**Formatting:** Use \`## Subheadings\` and \`\\n\\n\` (double line breaks) extensively.
+**Goal:** A high-quality, long-form blog post (Brunch/Velog style) that focuses on "Storytelling" rather than summarizing.
+
+**STRICT FORMATTING RULES:**
+1. **Length:** You MUST generate **at least 5-6 paragraphs**.
+2. **Expansion:** Expand the content by 300%. If the input is "I failed", describe the *scene*, the *expectation*, the *shock*, and the *aftermath* in detail.
+3. **Structure:** Use \`## Subheadings\` for every major section.
+4. **Spacing:** Use \`\\n\\n\` (double line break) between paragraphs for readability.
+
+**Content Flow (Mandatory):**
+- **Title:** Emotional & Catchy Hook. (e.g., "The moment I realized 80% of my budget was wasted")
+- **Intro:** Set the scene. (Time, Place, Context).
+- **## Section 1 (The Setup):** What I tried and why I was confident. (Build up the expectation).
+- **## Section 2 (The Twist):** The specific data/result/error that shocked me. (The Conflict).
+- **## Section 3 (The Deep Dive):** Why did this happen? Analyze the gap between expectation and reality.
+- **## Section 4 (The Pivot/Takeaway):** What I decided to do next.
+- **Outro:** Current honest feeling (e.g., "It hurts, but it's a valuable lesson.").
+- **Hashtags:** 3-5 keywords.
+
+**Tone:** Narrative, immersive, human (Not a dry report).
 
 ──────────────────────
 2️⃣ LINKEDIN (The Thought Leader)
