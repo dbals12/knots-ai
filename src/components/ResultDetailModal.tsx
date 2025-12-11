@@ -30,9 +30,11 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
-  // Undo/Redo history state
-  const [history, setHistory] = useState<string[]>([content]);
-  const [historyIndex, setHistoryIndex] = useState(0);
+  // Undo/Redo history state - use combined state for atomic updates
+  const [historyState, setHistoryState] = useState<{
+    history: string[];
+    index: number;
+  }>({ history: [content], index: 0 });
   
   const { toast } = useToast();
 
@@ -44,38 +46,44 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
   // Reset state when modal opens with new content
   useEffect(() => {
     setEditedContent(content);
-    setHistory([content]);
-    setHistoryIndex(0);
+    setHistoryState({ history: [content], index: 0 });
     setIsSaved(false);
     setHasRated(false);
   }, [content, outputId]);
 
-  // Push new content to history (for AI refinements, not manual typing)
+  // Push new content to history (for AI refinements)
   const pushToHistory = useCallback((newContent: string) => {
-    setHistory(prev => {
-      const newHistory = prev.slice(0, historyIndex + 1);
+    setHistoryState(prev => {
+      // Remove any "future" history when branching
+      const newHistory = prev.history.slice(0, prev.index + 1);
       newHistory.push(newContent);
-      return newHistory;
+      return {
+        history: newHistory,
+        index: newHistory.length - 1
+      };
     });
-    setHistoryIndex(prev => prev + 1);
-  }, [historyIndex]);
+  }, []);
 
-  const canUndo = historyIndex > 0;
-  const canRedo = historyIndex < history.length - 1;
+  const canUndo = historyState.index > 0;
+  const canRedo = historyState.index < historyState.history.length - 1;
 
-  const handleUndo = () => {
+  const handleUndo = useCallback(() => {
     if (!canUndo) return;
-    const newIndex = historyIndex - 1;
-    setHistoryIndex(newIndex);
-    setEditedContent(history[newIndex]);
-  };
+    setHistoryState(prev => {
+      const newIndex = prev.index - 1;
+      setEditedContent(prev.history[newIndex]);
+      return { ...prev, index: newIndex };
+    });
+  }, [canUndo]);
 
-  const handleRedo = () => {
+  const handleRedo = useCallback(() => {
     if (!canRedo) return;
-    const newIndex = historyIndex + 1;
-    setHistoryIndex(newIndex);
-    setEditedContent(history[newIndex]);
-  };
+    setHistoryState(prev => {
+      const newIndex = prev.index + 1;
+      setEditedContent(prev.history[newIndex]);
+      return { ...prev, index: newIndex };
+    });
+  }, [canRedo]);
 
   const platformTitles: Record<string, string> = {
     blog: '블로그 (회고형)',
