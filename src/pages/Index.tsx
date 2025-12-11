@@ -67,9 +67,9 @@ const Index = () => {
 
             {/* 서브타이틀 수정 */}
             {/* text-xs(12px)보다 살짝 더 작은 text-[11px]로 조정하여 안전하게 한 줄 처리 */}
-            <p className="mt-6 mb-16 font-medium leading-7 text-[11px] md:text-xs w-full space-y-2">
+            <p className="mt-6 mb-16 font-medium leading-7 text-[11px] md:text-xs w-full space-y-3">
               {/* 첫째줄: 연하게 -> 진하게 */}
-              <span className="block text-left text-transparent bg-clip-text bg-gradient-to-r from-gray-35--400 via-gray-500 to-gray-400 whitespace-nowrap">
+              <span className="block text-left text-transparent bg-clip-text bg-gradient-to-r from-gray-400 via-gray-500 to-gray-400 whitespace-nowrap">
                 말하는 대로 완성되는 나만의 커리어 콘텐츠.
               </span>
 
