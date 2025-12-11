@@ -59,16 +59,20 @@ const Index = () => {
 
           {/* Main Headline + Subcopy - Left Aligned */}
           <div className="text-left mb-8">
-            <h2 className="text-[28px] font-extrabold text-foreground tracking-tight leading-[1.2] mb-4">
+            <h2 className="text-[30px] font-black text-foreground tracking-relaxed leading-[1.2] mb-4">
               생각만 하세요
               <br />
               기록은 제가 할게요
             </h2>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              말하는 대로 완성되는 나만의 커리어 콘텐츠
-              <br />
-              블로그, 링크드인, 인스타, 쓰레드까지 AI가 알아서 정리해드립니다.
-            </p>
+            <div className="mt-6 bg-gray-50 border border-gray-100 rounded-2xl p-5 max-w-md">
+              <p className="text-[15px] leading-7 text-gray-600 font-medium">
+                말하는 대로 완성되는 나만의 커리어 콘텐츠.
+                <br />
+                <span className="text-gray-900 font-bold">블로그, 링크드인, 인스타, 쓰레드</span>까지
+                <br />
+                AI가 알아서 정리해드립니다.
+              </p>
+            </div>
           </div>
 
           {/* Mic + Channel Icons Area - Centered */}
