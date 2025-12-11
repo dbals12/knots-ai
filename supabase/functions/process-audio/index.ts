@@ -68,22 +68,30 @@ First, analyze the {transcript} and determine the **Content Concept**:
 **Tone:** Confident, Logical. Use bullet points for readability.
 
 ──────────────────────
-3️⃣ INSTAGRAM (Concept Card News)
+3️⃣ INSTAGRAM (Story Cards)
 ──────────────────────
 **Goal:** Visual storytelling based on the Concept (Type A/B/C).
-**Format:** JSON string with \`[Slide X]\`.
+**Format:** PURE JSON object ONLY.
+
+**🚨 CRITICAL JSON SYNTAX RULE:**
+- The values MUST be **PURE TEXT** strings only.
+- **BAD:** \`": "Title", "\` or \`": "Content"\` (includes JSON syntax characters)
+- **GOOD:** \`"Title"\` or \`"Content"\` (clean text only)
+- Do NOT include leading colons (:), leading quotes ("), or trailing commas (,) inside the value strings.
+
+**Structure:**
+{
+  "Slide 1": "Hook text here",
+  "Slide 2": "Situation text here",
+  "Slide 3": "Climax/Conflict text here",
+  "Slide 4": "Solution/Realization text here",
+  "Slide 5": "Engagement question here",
+  "Caption": "Mini-essay expanding on slides"
+}
 
 **Logic:**
 - If Type A (Work): Focus on "Problem vs Solution".
 - If Type B (Life): Focus on "Relatable Emotion".
-
-**Slide Structure:**
-[Slide 1]: The Hook. (e.g., "The mistake that cost me 2 weeks.")
-[Slide 2]: The Situation. (Short & Punchy).
-[Slide 3]: The Climax/Conflict. (Visual description of the problem).
-[Slide 4]: The Solution/Realization.
-[Slide 5]: Engagement Question.
-[Caption]: A mini-essay expanding on the slides. Conversational tone.
 
 ──────────────────────
 4️⃣ THREADS (The Raw Monologue)
