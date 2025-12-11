@@ -54,7 +54,7 @@ const Index = () => {
         <div>
           {/* Top Brand Row - Centered */}
           <div className="text-center mb-8">
-            <h1 className="text-xl font-bold text-foreground tracking-tight font-sans">knots</h1>
+            <h1 className="text-xl font-extrabold text-foreground tracking-tight font-sans">knots</h1>
           </div>
 
           {/* Main Headline + Subcopy - Left Aligned */}
