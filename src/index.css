@@ -96,7 +96,13 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Noto Sans KR', 'Jost', system-ui, sans-serif;
+  }
+
+  /* Ensure English text uses Jost with slightly heavier optical weight */
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 500;
   }
 }
 

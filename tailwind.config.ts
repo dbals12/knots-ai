@@ -14,6 +14,7 @@ export default {
     },
     extend: {
       fontFamily: {
+        'sans': ['"Noto Sans KR"', 'Jost', 'system-ui', 'sans-serif'],
         'jost': ['Jost', 'sans-serif'],
       },
       colors: {
