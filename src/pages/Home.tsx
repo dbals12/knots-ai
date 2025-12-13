@@ -9,6 +9,7 @@ import { Mic, ChevronLeft, ChevronRight, Loader2, Type } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import AppShell from '@/components/AppShell';
+import { trackSubmitInput, getEntrySource } from '@/lib/analytics';
 
 const sessionPurposes = [
   { value: 'record', label: '기록' },
@@ -254,6 +255,12 @@ const Home = () => {
       const { transcript, content } = aiResult;
 
       console.log('Inserting session into database...');
+      
+      // Dual-track: Fire analytics event in parallel with DB insert
+      const analyticsPromise = Promise.resolve().then(() => {
+        trackSubmitInput('voice', transcript.length);
+      });
+
       const { data: sessionData, error: sessionError } = await supabase
         .from('sessions')
         .insert({
@@ -263,6 +270,8 @@ const Home = () => {
           selected_persona: selectedPersona,
           session_purpose: isReturningUser ? (sessionPurpose || null) : null,
           keyword: keyword || null,
+          input_type: 'voice',
+          entry_source: getEntrySource(),
         })
         .select('id')
         .single();
@@ -291,6 +300,9 @@ const Home = () => {
         console.error('Outputs insert error:', outputsError);
         throw new Error(outputsError.message);
       }
+
+      // Wait for analytics (non-blocking)
+      await analyticsPromise.catch(console.error);
 
       console.log('All data saved successfully. Navigating to result...');
       navigate('/result');
@@ -370,6 +382,12 @@ const Home = () => {
       const { transcript, content } = aiResult;
 
       console.log('Inserting session into database...');
+      
+      // Dual-track: Fire analytics event in parallel with DB insert
+      const analyticsPromise = Promise.resolve().then(() => {
+        trackSubmitInput('text', transcript.length);
+      });
+
       const { data: sessionData, error: sessionError } = await supabase
         .from('sessions')
         .insert({
@@ -379,6 +397,8 @@ const Home = () => {
           selected_persona: selectedPersona,
           session_purpose: isReturningUser ? (sessionPurpose || null) : null,
           keyword: keyword || null,
+          input_type: 'text',
+          entry_source: getEntrySource(),
         })
         .select('id')
         .single();
@@ -407,6 +427,9 @@ const Home = () => {
         console.error('Outputs insert error:', outputsError);
         throw new Error(outputsError.message);
       }
+
+      // Wait for analytics (non-blocking)
+      await analyticsPromise.catch(console.error);
 
       console.log('All data saved successfully. Navigating to result...');
       navigate('/result');
