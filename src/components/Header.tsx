@@ -22,7 +22,7 @@ const Header = () => {
       {/* Center: Logo */}
       <button
         onClick={() => navigate("/")}
-        className="text-xl font-normal italic tracking-tight text-foreground font-bodoni"
+        className="text-xl font-light tracking-wide text-foreground font-jost"
       >
         knots
       </button>
