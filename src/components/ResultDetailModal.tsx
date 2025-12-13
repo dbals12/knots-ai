@@ -8,6 +8,7 @@ import { Copy, Save, Sparkles, ThumbsUp, ThumbsDown, Loader2, Check, Undo2, Redo
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import InstagramCardView from './InstagramCardView';
+import { trackClickCopy, trackSaveContent, trackRefineContent, trackRating } from '@/lib/analytics';
 
 interface ResultDetailModalProps {
   isOpen: boolean;
@@ -105,6 +106,10 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
 
   const handleCopy = () => {
     navigator.clipboard.writeText(editedContent);
+    
+    // Track copy event
+    trackClickCopy(platform, outputId);
+    
     toast({
       title: '복사되었습니다!',
       description: '클립보드에 저장되었습니다.',
@@ -120,6 +125,9 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
     setIsRefining(true);
     
     try {
+      // Track refinement event
+      trackRefineContent(refineMode, platform);
+      
       const response = await supabase.functions.invoke('refine-output', {
         body: {
           original_content: editedContent,
@@ -212,6 +220,9 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
 
       if (error) throw error;
 
+      // Track save event
+      trackSaveContent(platform, outputId);
+
       // Mark as saved
       setIsSaved(true);
       
@@ -235,7 +246,7 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
     }
   };
 
-  const handleRating = async (score: number) => {
+  const handleRatingClick = async (score: number) => {
     if (hasRated) {
       toast({
         title: '이미 평가하셨습니다.',
@@ -245,6 +256,9 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
     }
 
     try {
+      // Track rating event
+      trackRating(score === 5 ? 'positive' : 'negative', outputId);
+      
       const { error } = await supabase.from('edits').insert({
         output_id: outputId,
         feedback_score: score,
@@ -421,7 +435,7 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
             <p className="text-sm text-muted-foreground mb-3">이 결과가 도움이 되었나요?</p>
             <div className="flex gap-3">
               <Button
-                onClick={() => handleRating(5)}
+                onClick={() => handleRatingClick(5)}
                 variant="outline"
                 size="sm"
                 disabled={hasRated}
@@ -431,7 +445,7 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
                 좋아요
               </Button>
               <Button
-                onClick={() => handleRating(1)}
+                onClick={() => handleRatingClick(1)}
                 variant="outline"
                 size="sm"
                 disabled={hasRated}

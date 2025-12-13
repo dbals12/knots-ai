@@ -134,8 +134,10 @@ export type Database = {
           audio_url: string | null
           created_at: string
           device_type: string | null
+          entry_source: string | null
           id: string
           input_duration: number | null
+          input_type: string | null
           keyword: string | null
           raw_text: string | null
           selected_mood: string | null
@@ -147,8 +149,10 @@ export type Database = {
           audio_url?: string | null
           created_at?: string
           device_type?: string | null
+          entry_source?: string | null
           id?: string
           input_duration?: number | null
+          input_type?: string | null
           keyword?: string | null
           raw_text?: string | null
           selected_mood?: string | null
@@ -160,8 +164,10 @@ export type Database = {
           audio_url?: string | null
           created_at?: string
           device_type?: string | null
+          entry_source?: string | null
           id?: string
           input_duration?: number | null
+          input_type?: string | null
           keyword?: string | null
           raw_text?: string | null
           selected_mood?: string | null

@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import AppShell from '@/components/AppShell';
 import { Loader2 } from 'lucide-react';
+import { trackViewResult, trackClickCopy } from '@/lib/analytics';
 
 const platformIcons = {
   blog: { icon: SiNaver, color: '#03C75A', title: '블로그 (회고형)' },
@@ -77,6 +78,9 @@ const Results = () => {
           if (outputsError) throw outputsError;
           
           setOutputs(outputsData || []);
+          
+          // Track view_result event (Step B)
+          trackViewResult(sessionData.id, outputsData?.length || 4);
         }
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -99,6 +103,27 @@ const Results = () => {
 
   const handleCopy = async (content: string) => {
     await navigator.clipboard.writeText(content);
+    
+    // Dual-track: Track click_copy event (Step C - Conversion)
+    if (selectedOutput) {
+      // Fire analytics event
+      trackClickCopy(selectedOutput.platform_type, selectedOutput.id);
+      
+      // Insert into events table for DB tracking
+      supabase.from('events').insert({
+        user_id: user?.id,
+        session_id: sessionId,
+        event_type: 'click_copy',
+        platform_type: selectedOutput.platform_type,
+        metadata: {
+          target_platform: selectedOutput.platform_type,
+          output_id: selectedOutput.id,
+        },
+      }).then(({ error }) => {
+        if (error) console.error('Event logging error:', error);
+      });
+    }
+    
     toast({
       title: '복사 완료!',
       description: '클립보드에 복사되었습니다.',
