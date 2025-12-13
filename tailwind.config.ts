@@ -14,8 +14,7 @@ export default {
     },
     extend: {
       fontFamily: {
-        'playfair': ['"Playfair Display"', 'serif'],
-        'noto-serif': ['"Noto Serif KR"', 'serif'],
+        'bodoni': ['"Bodoni Moda"', 'serif'],
       },
       colors: {
         border: "hsl(var(--border))",

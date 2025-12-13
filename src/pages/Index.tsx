@@ -54,12 +54,12 @@ const Index = () => {
         <div>
           {/* Top Brand Row - Centered */}
           <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold italic text-foreground tracking-tight font-playfair">knots</h1>
+            <h1 className="text-2xl font-bold italic text-foreground tracking-tight font-bodoni">knots</h1>
           </div>
 
           {/* Main Headline + Subcopy - Left Aligned */}
           <div className="text-left mb-10">
-            <h2 className="text-3xl md:text-3xl font-black leading-loose tracking-tight text-black text-left font-noto-serif">
+            <h2 className="text-3xl md:text-3xl font-black leading-loose tracking-tight text-black text-left">
               생각만 하세요
               <br />
               기록은 제가 할게요
