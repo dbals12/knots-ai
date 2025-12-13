@@ -14,7 +14,7 @@ export default {
     },
     extend: {
       fontFamily: {
-        'bodoni': ['"Bodoni Moda"', 'serif'],
+        'jost': ['Jost', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
