@@ -126,7 +126,7 @@ const Index = () => {
                   <PenTool className="w-4 h-4 text-white" strokeWidth={1.5} />
                 </div>
                 <div>
-                  <div className="text-sm font-semibold text-foreground">새로운 기록 만들기</div>
+                  <div className="text-sm font-normal text-foreground">새로운 기록 만들기</div>
                   <div className="text-xs text-muted-foreground mt-0.5">오늘의 생각을 바로 남겨보세요</div>
                 </div>
               </button>
@@ -140,7 +140,7 @@ const Index = () => {
                   <FileText className="w-4 h-4 text-foreground" strokeWidth={1.5} />
                 </div>
                 <div>
-                  <div className="text-sm font-semibold text-foreground">내 기록 모아보기</div>
+                  <div className="text-sm font-normal text-foreground">내 기록 모아보기</div>
                   <div className="text-xs text-muted-foreground mt-0.5">이전 기록과 결과를 확인하세요</div>
                 </div>
               </button>
@@ -153,7 +153,7 @@ const Index = () => {
                   <Settings className="w-4 h-4 text-foreground" strokeWidth={1.5} />
                 </div>
                 <div>
-                  <div className="text-sm font-semibold text-foreground">내 정보 설정</div>
+                  <div className="text-sm font-normal text-foreground">내 정보 설정</div>
                   <div className="text-xs text-muted-foreground mt-0.5">기본 목적과 캐릭터를 수정합니다</div>
                 </div>
               </button>
