@@ -163,7 +163,7 @@ const Index = () => {
           <div className="flex flex-col">
             <Button
               onClick={() => navigate(isNewUser ? "/input" : "/login")}
-              className="w-full h-14 text-base font-semibold rounded-full bg-foreground text-white hover:bg-foreground/90"
+              className="w-full h-14 text-base font-normal rounded-full bg-foreground text-white hover:bg-foreground/90"
             >
               {isNewUser ? "첫 기록 시작하기" : "지금 바로 시작하기"}
             </Button>
