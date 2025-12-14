@@ -647,10 +647,8 @@ const Home = () => {
             <p className="text-lg font-medium text-foreground text-center">AI가 당신의 기록을 분석 중입니다...</p>
             <p className="text-sm text-muted-foreground text-center max-w-xs">
               {inputMode === "voice"
-                ? "음성을 텍스트로 변환하고" 
-                  <br /> 
-                  "4개 채널용 콘텐츠를 생성하는 중이에요."
-                : "텍스트를 분석하고" <br /> "4개 채널용 콘텐츠를 생성하는 중이에요."}
+                ? "음성을 텍스트로 변환하고 4개 채널용 콘텐츠를 생성하는 중이에요."
+                : "텍스트를 분석하고 4개 채널용 콘텐츠를 생성하는 중이에요."}
             </p>
           </div>
         </div>
