@@ -199,7 +199,7 @@ const History = () => {
 
               {/* Original text */}
               <div className="bg-muted/50 rounded-xl p-4">
-                <h3 className="text-xs font-semi bold mb-2">원본 기록</h3>
+                <h3 className="text-xs font-semibold mb-2">원본 기록</h3>
                 <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
                   {selectedSession.raw_text || "내용 없음"}
                 </p>
