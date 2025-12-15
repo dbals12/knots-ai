@@ -59,14 +59,14 @@ const Index = () => {
 
           {/* Main Headline + Subcopy - Left Aligned */}
           <div className="text-left mb-10">
-            <h2 className="text-3xl md:text-3xl font-normal leading-relaxed tracking-tight text-foreground text-left">
+            <h2 className="text-3xl md:text-3xl font-normal leading-snug tracking-tight text-foreground text-left">
               생각만 하세요
               <br />
               기록은 제가 할게요
             </h2>
 
             {/* 서브타이틀 수정 */}
-            <p className="mt-6 mb-16 font-normal leading-7 text-[11px] md:text-xs w-full space-y-1.5">
+            <p className="mt-6 mb-16 font-normal leading-7 text-[11px] md:text-xs w-full space-y-1">
               {/* 첫째줄: 연하게 -> 진하게 */}
               <span className="block text-left text-transparent bg-clip-text bg-gradient-to-r from-gray-600 via-gray-500 to-gray-500 whitespace-nowrap">
                 말하는 대로 완성되는 나만의 커리어 콘텐츠.
