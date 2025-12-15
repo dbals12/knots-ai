@@ -2,6 +2,7 @@ import * as SheetPrimitive from "@radix-ui/react-dialog";
 import { cva, type VariantProps } from "class-variance-authority";
 import { X } from "lucide-react";
 import * as React from "react";
+import { useRef, useState, useCallback } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -49,21 +50,101 @@ const sheetVariants = cva(
 
 interface SheetContentProps
   extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content>,
-    VariantProps<typeof sheetVariants> {}
+    VariantProps<typeof sheetVariants> {
+  onSwipeClose?: () => void;
+}
 
 const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Content>, SheetContentProps>(
-  ({ side = "right", className, children, ...props }, ref) => (
-    <SheetPortal>
-      <SheetOverlay />
-      <SheetPrimitive.Content ref={ref} className={cn(sheetVariants({ side }), className)} {...props}>
-        {children}
-        <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity data-[state=open]:bg-secondary hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
-          <X className="h-4 w-4" />
-          <span className="sr-only">Close</span>
-        </SheetPrimitive.Close>
-      </SheetPrimitive.Content>
-    </SheetPortal>
-  ),
+  ({ side = "right", className, children, onSwipeClose, ...props }, ref) => {
+    const [dragY, setDragY] = useState(0);
+    const [isDragging, setIsDragging] = useState(false);
+    const startYRef = useRef(0);
+    const contentRef = useRef<HTMLDivElement>(null);
+
+    const handleTouchStart = useCallback((e: React.TouchEvent) => {
+      // Only allow drag from the top area (handle zone)
+      const touch = e.touches[0];
+      const target = e.target as HTMLElement;
+      
+      // Check if we're at the top of scroll or touching the handle area
+      const scrollTop = contentRef.current?.scrollTop || 0;
+      const isInHandleZone = target.closest('[data-sheet-handle]') !== null;
+      
+      if (scrollTop <= 0 || isInHandleZone) {
+        startYRef.current = touch.clientY;
+        setIsDragging(true);
+      }
+    }, []);
+
+    const handleTouchMove = useCallback((e: React.TouchEvent) => {
+      if (!isDragging) return;
+      
+      const touch = e.touches[0];
+      const deltaY = touch.clientY - startYRef.current;
+      
+      // Only allow dragging down
+      if (deltaY > 0) {
+        setDragY(deltaY);
+      }
+    }, [isDragging]);
+
+    const handleTouchEnd = useCallback(() => {
+      if (!isDragging) return;
+      
+      // If dragged more than 100px, close the sheet
+      if (dragY > 100) {
+        onSwipeClose?.();
+        // Trigger close via the primitive's onOpenChange
+        const closeButton = contentRef.current?.querySelector('[data-radix-collection-item]');
+        if (closeButton instanceof HTMLElement) {
+          closeButton.click();
+        }
+      }
+      
+      setDragY(0);
+      setIsDragging(false);
+    }, [isDragging, dragY, onSwipeClose]);
+
+    const isBottomSheet = side === "bottom";
+
+    return (
+      <SheetPortal>
+        <SheetOverlay />
+        <SheetPrimitive.Content 
+          ref={ref} 
+          className={cn(sheetVariants({ side }), className)} 
+          style={isBottomSheet && isDragging ? { 
+            transform: `translateY(${dragY}px)`,
+            transition: 'none'
+          } : undefined}
+          {...props}
+        >
+          <div
+            ref={contentRef}
+            className="h-full flex flex-col"
+            onTouchStart={isBottomSheet ? handleTouchStart : undefined}
+            onTouchMove={isBottomSheet ? handleTouchMove : undefined}
+            onTouchEnd={isBottomSheet ? handleTouchEnd : undefined}
+          >
+            {/* Swipe handle for bottom sheets */}
+            {isBottomSheet && (
+              <div 
+                data-sheet-handle
+                className="flex justify-center pt-2 pb-4 cursor-grab active:cursor-grabbing"
+              >
+                <div className="w-12 h-1.5 bg-muted-foreground/30 rounded-full" />
+              </div>
+            )}
+            {children}
+          </div>
+          <SheetPrimitive.Close className="absolute right-4 top-4 rounded-full p-2 opacity-70 ring-offset-background transition-opacity data-[state=open]:bg-secondary hover:opacity-100 hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
+            <X className="h-5 w-5" />
+            <span className="sr-only">Close</span>
+          </SheetPrimitive.Close>
+        </SheetPrimitive.Content>
+      </SheetPortal>
+    );
+  },
 );
 SheetContent.displayName = SheetPrimitive.Content.displayName;
 
