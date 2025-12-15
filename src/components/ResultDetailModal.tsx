@@ -282,8 +282,12 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent side="bottom" className="h-[90vh] rounded-t-3xl">
-        <SheetHeader className="pb-4">
+      <SheetContent 
+        side="bottom" 
+        className="max-h-[85vh] rounded-t-3xl overflow-y-auto"
+        onSwipeClose={onClose}
+      >
+        <SheetHeader className="pb-4 sticky top-0 bg-background z-10">
           <SheetTitle className="text-xl font-bold">
             {platformTitles[platform] || platform}
           </SheetTitle>
@@ -298,135 +302,132 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
           </div>
         )}
 
-        <div className="flex flex-col h-[calc(100%-8rem)] space-y-4">
-          {/* Scrollable Content Area */}
-          <div className="flex-1 overflow-y-auto space-y-4">
-            {/* Generated Content - Special view for Instagram */}
-            {isInstagram ? (
-              <InstagramCardView content={editedContent} />
-            ) : (
-              <Textarea
-                value={editedContent}
-                onChange={(e) => setEditedContent(e.target.value)}
-                className="min-h-[300px] resize-none border-border rounded-xl font-normal"
-              />
-            )}
+        <div className="flex flex-col space-y-4 pb-safe">
+          {/* Generated Content - Special view for Instagram */}
+          {isInstagram ? (
+            <InstagramCardView content={editedContent} />
+          ) : (
+            <Textarea
+              value={editedContent}
+              onChange={(e) => setEditedContent(e.target.value)}
+              className="min-h-[200px] resize-none border-border rounded-xl font-normal"
+            />
+          )}
 
-            {/* AI Refinement Tools */}
-            <div className="space-y-3 pb-4">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-foreground">AI 수정 도구</p>
-                
-                {/* Undo/Redo Buttons */}
-                <div className="flex gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleUndo}
-                    disabled={!canUndo || isRefining}
-                    className="h-8 w-8 p-0 rounded-full"
-                    title="실행 취소"
-                  >
-                    <Undo2 className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleRedo}
-                    disabled={!canRedo || isRefining}
-                    className="h-8 w-8 p-0 rounded-full"
-                    title="다시 실행"
-                  >
-                    <Redo2 className="w-4 h-4" />
-                  </Button>
-                </div>
+          {/* AI Refinement Tools */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-foreground">AI 수정 도구</p>
+              
+              {/* Undo/Redo Buttons */}
+              <div className="flex gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleUndo}
+                  disabled={!canUndo || isRefining}
+                  className="h-8 w-8 p-0 rounded-full"
+                  title="실행 취소"
+                >
+                  <Undo2 className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRedo}
+                  disabled={!canRedo || isRefining}
+                  className="h-8 w-8 p-0 rounded-full"
+                  title="다시 실행"
+                >
+                  <Redo2 className="w-4 h-4" />
+                </Button>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {/* Tone Dropdown */}
-                <Select value={selectedTone} onValueChange={handleToneChange} disabled={isRefining}>
-                  <SelectTrigger className="w-[140px] h-9 rounded-full border-border bg-background">
-                    <SelectValue placeholder="톤 변경" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="professional">전문적으로</SelectItem>
-                    <SelectItem value="friendly">친근하게</SelectItem>
-                    <SelectItem value="witty">위트있게</SelectItem>
-                    <SelectItem value="serious">진지하게</SelectItem>
-                  </SelectContent>
-                </Select>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {/* Tone Dropdown */}
+              <Select value={selectedTone} onValueChange={handleToneChange} disabled={isRefining}>
+                <SelectTrigger className="w-[140px] h-9 rounded-full border-border bg-background">
+                  <SelectValue placeholder="톤 변경" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="professional">전문적으로</SelectItem>
+                  <SelectItem value="friendly">친근하게</SelectItem>
+                  <SelectItem value="witty">위트있게</SelectItem>
+                  <SelectItem value="serious">진지하게</SelectItem>
+                </SelectContent>
+              </Select>
 
-                {/* Length Toggle */}
-                {!showLengthOptions ? (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => setShowLengthOptions(true)}
-                    disabled={isRefining}
-                    className="h-9 rounded-full px-4 border-border bg-background"
-                  >
-                    길이 조절
-                  </Button>
-                ) : (
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => handleLengthAdjust('shorter')}
-                      disabled={isRefining}
-                      className="h-9 rounded-full px-3 border-border bg-background"
-                    >
-                      더 짧게
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => handleLengthAdjust('longer')}
-                      disabled={isRefining}
-                      className="h-9 rounded-full px-3 border-border bg-background"
-                    >
-                      더 길게
-                    </Button>
-                  </div>
-                )}
-
-                {/* Persona Enhance */}
+              {/* Length Toggle */}
+              {!showLengthOptions ? (
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  onClick={handlePersonaBoost}
+                  onClick={() => setShowLengthOptions(true)}
                   disabled={isRefining}
                   className="h-9 rounded-full px-4 border-border bg-background"
                 >
-                  <Sparkles className="w-3.5 h-3.5 mr-1" />
-                  페르소나 강화
+                  길이 조절
                 </Button>
-              </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => handleLengthAdjust('shorter')}
+                    disabled={isRefining}
+                    className="h-9 rounded-full px-3 border-border bg-background"
+                  >
+                    더 짧게
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => handleLengthAdjust('longer')}
+                    disabled={isRefining}
+                    className="h-9 rounded-full px-3 border-border bg-background"
+                  >
+                    더 길게
+                  </Button>
+                </div>
+              )}
 
-              {/* Additional Thoughts Input */}
-              <div className="flex gap-2">
-                <Input
-                  value={additionalThoughts}
-                  onChange={(e) => setAdditionalThoughts(e.target.value)}
-                  placeholder="내 생각 추가하기..."
-                  className="h-10 rounded-xl border-border bg-background flex-1"
-                  disabled={isRefining}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleAddThoughts();
-                    }
-                  }}
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleAddThoughts}
-                  disabled={isRefining || !additionalThoughts.trim()}
-                  className="h-10 px-4 rounded-xl border-border"
-                >
-                  추가
-                </Button>
-              </div>
+              {/* Persona Enhance */}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handlePersonaBoost}
+                disabled={isRefining}
+                className="h-9 rounded-full px-4 border-border bg-background"
+              >
+                <Sparkles className="w-3.5 h-3.5 mr-1" />
+                페르소나 강화
+              </Button>
+            </div>
+
+            {/* Additional Thoughts Input */}
+            <div className="flex gap-2">
+              <Input
+                value={additionalThoughts}
+                onChange={(e) => setAdditionalThoughts(e.target.value)}
+                placeholder="내 생각 추가하기..."
+                className="h-10 rounded-xl border-border bg-background flex-1"
+                disabled={isRefining}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleAddThoughts();
+                  }
+                }}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleAddThoughts}
+                disabled={isRefining || !additionalThoughts.trim()}
+                className="h-10 px-4 rounded-xl border-border"
+              >
+                추가
+              </Button>
             </div>
           </div>
 
@@ -457,8 +458,8 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
             </div>
           </div>
 
-          {/* Fixed Bottom Actions */}
-          <div className="flex gap-3 pt-4 border-t border-border">
+          {/* Bottom Actions */}
+          <div className="flex gap-3 pt-4 border-t border-border pb-4">
             <Button
               onClick={handleCopy}
               className="flex-1 h-12 rounded-xl bg-foreground text-background hover:bg-foreground/90"
