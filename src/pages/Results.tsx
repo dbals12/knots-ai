@@ -268,12 +268,12 @@ const Results = () => {
       
       <div className="flex-1 px-6 py-6 space-y-5 overflow-y-auto">
         {/* Page Title */}
-        <h2 className="text-xl font-bold text-foreground">오늘의 결과</h2>
+        <h2 className="text-xl font-semibold text-foreground">오늘의 결과</h2>
 
         {/* Original Input Text Section */}
         <div className="bg-[#F8F8F8] rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-bold text-foreground">오늘 내가 기록한 내용</h3>
+            <h3 className="text-sm font-medium text-foreground">오늘 내가 기록한 내용</h3>
             {!isEditing && (
               <Button
                 variant="outline"
@@ -345,10 +345,10 @@ const Results = () => {
                   </div>
                 )}
                 <div>
-                  <h3 className="font-bold text-foreground text-xs mb-1">
+                  <h3 className="font-medium text-foreground text-xs mb-1">
                     {title}
                   </h3>
-                  <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                  <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed font-normal">
                     {getSummary(output.generated_content)}
                   </p>
                 </div>
