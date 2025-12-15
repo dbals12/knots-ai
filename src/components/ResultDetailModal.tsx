@@ -314,39 +314,39 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
             />
           )}
 
-          {/* AI Refinement Tools */}
-          <div className="space-y-3">
+          {/* AI Refinement Tools - Compact */}
+          <div className="space-y-1.5 pt-2">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-foreground">AI 수정 도구</p>
+              <p className="text-xs font-medium text-muted-foreground">AI 수정 도구</p>
               
               {/* Undo/Redo Buttons */}
-              <div className="flex gap-1">
+              <div className="flex gap-0.5">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={handleUndo}
                   disabled={!canUndo || isRefining}
-                  className="h-8 w-8 p-0 rounded-full"
+                  className="h-6 w-6 p-0 rounded-full"
                   title="실행 취소"
                 >
-                  <Undo2 className="w-4 h-4" />
+                  <Undo2 className="w-3 h-3" />
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={handleRedo}
                   disabled={!canRedo || isRefining}
-                  className="h-8 w-8 p-0 rounded-full"
+                  className="h-6 w-6 p-0 rounded-full"
                   title="다시 실행"
                 >
-                  <Redo2 className="w-4 h-4" />
+                  <Redo2 className="w-3 h-3" />
                 </Button>
               </div>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {/* Tone Dropdown */}
               <Select value={selectedTone} onValueChange={handleToneChange} disabled={isRefining}>
-                <SelectTrigger className="w-[140px] h-9 rounded-full border-border bg-background">
+                <SelectTrigger className="w-[100px] h-7 text-xs rounded-full border-border bg-background">
                   <SelectValue placeholder="톤 변경" />
                 </SelectTrigger>
                 <SelectContent>
@@ -364,29 +364,29 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
                   size="sm" 
                   onClick={() => setShowLengthOptions(true)}
                   disabled={isRefining}
-                  className="h-9 rounded-full px-4 border-border bg-background"
+                  className="h-7 text-xs rounded-full px-2.5 border-border bg-background"
                 >
                   길이 조절
                 </Button>
               ) : (
-                <div className="flex gap-2">
+                <div className="flex gap-1">
                   <Button 
                     variant="outline" 
                     size="sm" 
                     onClick={() => handleLengthAdjust('shorter')}
                     disabled={isRefining}
-                    className="h-9 rounded-full px-3 border-border bg-background"
+                    className="h-7 text-xs rounded-full px-2 border-border bg-background"
                   >
-                    더 짧게
+                    짧게
                   </Button>
                   <Button 
                     variant="outline" 
                     size="sm" 
                     onClick={() => handleLengthAdjust('longer')}
                     disabled={isRefining}
-                    className="h-9 rounded-full px-3 border-border bg-background"
+                    className="h-7 text-xs rounded-full px-2 border-border bg-background"
                   >
-                    더 길게
+                    길게
                   </Button>
                 </div>
               )}
@@ -397,20 +397,20 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
                 size="sm" 
                 onClick={handlePersonaBoost}
                 disabled={isRefining}
-                className="h-9 rounded-full px-4 border-border bg-background"
+                className="h-7 text-xs rounded-full px-2.5 border-border bg-background"
               >
-                <Sparkles className="w-3.5 h-3.5 mr-1" />
-                페르소나 강화
+                <Sparkles className="w-3 h-3 mr-0.5" />
+                페르소나
               </Button>
             </div>
 
-            {/* Additional Thoughts Input */}
-            <div className="flex gap-2">
+            {/* Additional Thoughts Input - Compact */}
+            <div className="flex gap-1.5">
               <Input
                 value={additionalThoughts}
                 onChange={(e) => setAdditionalThoughts(e.target.value)}
-                placeholder="내 생각 추가하기..."
-                className="h-10 rounded-xl border-border bg-background flex-1"
+                placeholder="내 생각 추가..."
+                className="h-7 text-xs rounded-full border-border bg-background flex-1 px-3"
                 disabled={isRefining}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
@@ -424,65 +424,67 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
                 size="sm"
                 onClick={handleAddThoughts}
                 disabled={isRefining || !additionalThoughts.trim()}
-                className="h-10 px-4 rounded-xl border-border"
+                className="h-7 text-xs px-2.5 rounded-full border-border"
               >
                 추가
               </Button>
             </div>
           </div>
 
-          {/* Compact Footer - Rating + Actions in one row */}
-          <div className="pt-3 border-t border-border pb-4 space-y-2">
-            <div className="flex items-center gap-2">
-              {/* Rating Buttons - Icon only */}
+          {/* Compact Footer - All in one row */}
+          <div className="pt-2 border-t border-border pb-3">
+            <div className="flex items-center gap-1.5">
+              {/* Rating Buttons - Icon + Text, Small */}
               <Button
                 onClick={() => handleRatingClick(5)}
                 variant="ghost"
-                size="icon"
+                size="sm"
                 disabled={hasRated}
-                className="h-9 w-9 rounded-full"
-                title="좋아요"
+                className="h-7 px-2 text-xs rounded-full"
               >
-                <ThumbsUp className="w-4 h-4" />
+                <ThumbsUp className="w-3 h-3 mr-1" />
+                좋아요
               </Button>
               <Button
                 onClick={() => handleRatingClick(1)}
                 variant="ghost"
-                size="icon"
+                size="sm"
                 disabled={hasRated}
-                className="h-9 w-9 rounded-full"
-                title="별로예요"
+                className="h-7 px-2 text-xs rounded-full"
               >
-                <ThumbsDown className="w-4 h-4" />
+                <ThumbsDown className="w-3 h-3 mr-1" />
+                별로예요
               </Button>
               
               <div className="flex-1" />
               
-              {/* Copy/Save Buttons */}
+              {/* Save Button - Icon + Text */}
               <Button
                 onClick={handleSave}
-                variant="ghost"
-                size="icon"
+                variant="outline"
+                size="sm"
                 disabled={isSaved || isSaving}
-                className={`h-9 w-9 rounded-full ${
-                  isSaved ? 'text-green-600' : ''
+                className={`h-7 px-2 text-xs rounded-full border-border ${
+                  isSaved ? 'text-green-600 border-green-600' : ''
                 }`}
-                title={isSaved ? '저장됨' : '저장'}
               >
                 {isSaving ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
                 ) : isSaved ? (
-                  <Check className="w-4 h-4" />
+                  <Check className="w-3 h-3 mr-1" />
                 ) : (
-                  <Save className="w-4 h-4" />
+                  <Save className="w-3 h-3 mr-1" />
                 )}
+                {isSaved ? '저장됨' : '저장'}
               </Button>
+              
+              {/* Copy Button - Primary */}
               <Button
                 onClick={handleCopy}
                 size="sm"
-                className="h-9 px-4 rounded-full bg-foreground text-background hover:bg-foreground/90"
+                className="h-7 px-3 text-xs rounded-full bg-foreground text-background hover:bg-foreground/90"
               >
-                <Copy className="w-4 h-4 mr-1.5" />
+                <Copy className="w-3 h-3 mr-1" />
                 복사
               </Button>
             </div>
