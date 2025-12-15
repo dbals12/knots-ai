@@ -37,6 +37,16 @@
       fbq('init', '1933112004347571');
       fbq('track', 'PageView');
     </script>
+
+    <style>
+      /* 화면 구석에 고정된 Lovable 배지/버튼 숨김 처리 */
+      div[class*="lovable-badge"],
+      a[href*="lovable.dev"] {
+        display: none !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+      }
+    </style>
   </head>
 
   <body>
