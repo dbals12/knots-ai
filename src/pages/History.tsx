@@ -199,7 +199,7 @@ const History = () => {
 
               {/* Original text */}
               <div className="bg-muted/50 rounded-xl p-4">
-                <h3 className="text-xs font-normal mb-2">원본 기록</h3>
+                <h3 className="text-xs font-semi bold mb-2">원본 기록</h3>
                 <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
                   {selectedSession.raw_text || "내용 없음"}
                 </p>
@@ -208,7 +208,7 @@ const History = () => {
               {/* Platform outputs - Now clickable! */}
               {outputs.length > 0 && (
                 <div className="space-y-3">
-                  <h3 className="text-xs font-normal">채널별 결과</h3>
+                  <h3 className="text-xs font-semibold">채널별 결과</h3>
                   <p className="text-xs text-muted-foreground">💡 카드를 클릭하면 전체 내용을 보고 수정할 수 있어요</p>
                   <div className="grid grid-cols-2 gap-2">
                     {outputs.map((output) => {
