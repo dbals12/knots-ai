@@ -431,69 +431,61 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
             </div>
           </div>
 
-          {/* Rating UI */}
-          <div className="pt-4 border-t border-border">
-            <p className="text-sm text-muted-foreground mb-3">이 결과가 도움이 되었나요?</p>
-            <div className="flex gap-3">
+          {/* Compact Footer - Rating + Actions in one row */}
+          <div className="pt-3 border-t border-border pb-4 space-y-2">
+            <div className="flex items-center gap-2">
+              {/* Rating Buttons - Icon only */}
               <Button
                 onClick={() => handleRatingClick(5)}
-                variant="outline"
-                size="sm"
+                variant="ghost"
+                size="icon"
                 disabled={hasRated}
-                className="flex-1 h-10 rounded-xl border-border"
+                className="h-9 w-9 rounded-full"
+                title="좋아요"
               >
-                <ThumbsUp className="w-4 h-4 mr-2" />
-                좋아요
+                <ThumbsUp className="w-4 h-4" />
               </Button>
               <Button
                 onClick={() => handleRatingClick(1)}
-                variant="outline"
-                size="sm"
+                variant="ghost"
+                size="icon"
                 disabled={hasRated}
-                className="flex-1 h-10 rounded-xl border-border"
+                className="h-9 w-9 rounded-full"
+                title="별로예요"
               >
-                <ThumbsDown className="w-4 h-4 mr-2" />
-                별로예요
+                <ThumbsDown className="w-4 h-4" />
+              </Button>
+              
+              <div className="flex-1" />
+              
+              {/* Copy/Save Buttons */}
+              <Button
+                onClick={handleSave}
+                variant="ghost"
+                size="icon"
+                disabled={isSaved || isSaving}
+                className={`h-9 w-9 rounded-full ${
+                  isSaved ? 'text-green-600' : ''
+                }`}
+                title={isSaved ? '저장됨' : '저장'}
+              >
+                {isSaving ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : isSaved ? (
+                  <Check className="w-4 h-4" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+              </Button>
+              <Button
+                onClick={handleCopy}
+                size="sm"
+                className="h-9 px-4 rounded-full bg-foreground text-background hover:bg-foreground/90"
+              >
+                <Copy className="w-4 h-4 mr-1.5" />
+                복사
               </Button>
             </div>
-          </div>
-
-          {/* Bottom Actions */}
-          <div className="flex gap-3 pt-4 border-t border-border pb-4">
-            <Button
-              onClick={handleCopy}
-              className="flex-1 h-12 rounded-xl bg-foreground text-background hover:bg-foreground/90"
-            >
-              <Copy className="w-4 h-4 mr-2" />
-              복사하기
-            </Button>
-            <Button
-              onClick={handleSave}
-              variant="outline"
-              disabled={isSaved || isSaving}
-              className={`h-12 px-6 rounded-xl border-border transition-all ${
-                isSaved 
-                  ? 'bg-green-50 border-green-300 text-green-700 hover:bg-green-50' 
-                  : ''
-              }`}
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  저장 중...
-                </>
-              ) : isSaved ? (
-                <>
-                  <Check className="w-4 h-4 mr-2" />
-                  저장됨
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4 mr-2" />
-                  저장
-                </>
-              )}
-            </Button>
           </div>
         </div>
       </SheetContent>
