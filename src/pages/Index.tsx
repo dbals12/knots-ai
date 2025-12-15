@@ -10,22 +10,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500&family=Noto+Sans+KR:wght@300;400;500&display=swap" rel="stylesheet">
     <meta name="description" content="흩어진 생각을 단단한 커리어 자산으로. AI 기록 파트너, knots." />
     <meta name="author" content="knots" />
-
     <meta property="og:title" content="knots | 나만의 속도로 기록하다" />
-    <meta property="og:description" content="흩어진 생각을 단단한 커리어 자산으로. AI 기록 파트너, knots." />
-    <meta property="og:type" content="website" />
     <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
-
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@knots" />
-    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
 
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-7QEFBSDR3H"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-
       gtag('config', 'G-7QEFBSDR3H'); 
     </script>
 
@@ -38,10 +31,11 @@
     t.src=v;s=b.getElementsByTagName(e)[0];
     s.parentNode.insertBefore(t,s)}(window, document,'script',
     'https://connect.facebook.net/en_US/fbevents.js');
-    fbq('init', '1933112004347571');
+    fbq('init', '1933112004347571'); 
     fbq('track', 'PageView');
     </script>
-    </head> 
+
+  </head> 
 
   <body>
     <noscript><img height="1" width="1" style="display:none"
