@@ -154,7 +154,7 @@ const History = () => {
     <AppShell className="min-h-[700px]">
       <div className="flex-1 px-6 py-6 space-y-5 overflow-y-auto">
         {/* Page Title */}
-        <h2 className="text-xl font-normal text-foreground">내 기록 보기</h2>
+        <h2 className="text-xl font-semibold text-foreground">내 기록 보기</h2>
 
         {/* Sessions List */}
         {sessions.length === 0 ? (
