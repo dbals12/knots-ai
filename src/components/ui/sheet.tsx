@@ -62,15 +62,12 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Con
     const contentRef = useRef<HTMLDivElement>(null);
 
     const handleTouchStart = useCallback((e: React.TouchEvent) => {
-      // Only allow drag from the top area (handle zone)
-      const touch = e.touches[0];
+      // ONLY allow drag from the handle zone - not from content area
       const target = e.target as HTMLElement;
-      
-      // Check if we're at the top of scroll or touching the handle area
-      const scrollTop = contentRef.current?.scrollTop || 0;
       const isInHandleZone = target.closest('[data-sheet-handle]') !== null;
       
-      if (scrollTop <= 0 || isInHandleZone) {
+      if (isInHandleZone) {
+        const touch = e.touches[0];
         startYRef.current = touch.clientY;
         setIsDragging(true);
       }
