@@ -284,10 +284,10 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent 
         side="bottom" 
-        className="max-h-[85vh] rounded-t-3xl overflow-y-auto"
+        className="h-[85vh] max-h-[85vh] rounded-t-3xl flex flex-col overflow-hidden"
         onSwipeClose={onClose}
       >
-        <SheetHeader className="pb-4 sticky top-0 bg-background z-10">
+        <SheetHeader className="pb-3 flex-shrink-0">
           <SheetTitle className="text-xl font-bold">
             {platformTitles[platform] || platform}
           </SheetTitle>
@@ -302,20 +302,22 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
           </div>
         )}
 
-        <div className="flex flex-col space-y-4 pb-safe">
-          {/* Generated Content - Special view for Instagram */}
-          {isInstagram ? (
-            <InstagramCardView content={editedContent} />
-          ) : (
-            <Textarea
-              value={editedContent}
-              onChange={(e) => setEditedContent(e.target.value)}
-              className="min-h-[200px] resize-none border-border rounded-xl font-normal"
-            />
-          )}
+        <div className="flex flex-col flex-1 min-h-0 pb-safe">
+          {/* Generated Content - Flex-grow to fill available space */}
+          <div className="flex-1 min-h-0 overflow-y-auto mb-3">
+            {isInstagram ? (
+              <InstagramCardView content={editedContent} />
+            ) : (
+              <Textarea
+                value={editedContent}
+                onChange={(e) => setEditedContent(e.target.value)}
+                className="h-full min-h-full resize-none border-border rounded-xl font-normal"
+              />
+            )}
+          </div>
 
-          {/* AI Refinement Tools - Compact */}
-          <div className="space-y-1.5 pt-2">
+          {/* AI Refinement Tools - Compact, fixed at bottom */}
+          <div className="space-y-1.5 pt-2 flex-shrink-0">
             <div className="flex items-center justify-between">
               <p className="text-xs font-medium text-muted-foreground">AI 수정 도구</p>
               
@@ -431,8 +433,8 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
             </div>
           </div>
 
-          {/* Compact Footer - All in one row */}
-          <div className="pt-2 border-t border-border pb-3">
+          {/* Compact Footer - All in one row, fixed at bottom */}
+          <div className="pt-2 border-t border-border pb-3 flex-shrink-0">
             <div className="flex items-center gap-1.5">
               {/* Rating Buttons - Icon + Text, Small */}
               <Button
