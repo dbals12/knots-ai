@@ -284,7 +284,7 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent 
         side="bottom" 
-        className="h-[85vh] max-h-[85vh] rounded-t-3xl flex flex-col"
+        className="h-[85vh] max-h-[85vh] rounded-t-3xl flex flex-col overflow-hidden"
         onSwipeClose={onClose}
       >
         <SheetHeader className="pb-3 flex-shrink-0">
@@ -302,9 +302,9 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
           </div>
         )}
 
-        <div className="flex flex-col flex-1 min-h-0 overflow-y-auto pb-safe">
+        <div className="flex flex-col flex-1 min-h-0 pb-safe">
           {/* Generated Content - Flex-grow to fill available space */}
-          <div className="flex-1 min-h-0 mb-3">
+          <div className="flex-1 min-h-0 overflow-y-auto mb-3">
             {isInstagram ? (
               <InstagramCardView content={editedContent} />
             ) : (
