@@ -7,9 +7,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import useAnalytics from "@/hooks/useAnalytics";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
-import Onboarding from "./pages/Onboarding";
 import Settings from "./pages/Settings";
-import Home from "./pages/Home";
 import Results from "./pages/Results";
 import History from "./pages/History";
 import NotFound from "./pages/NotFound";
@@ -29,7 +27,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
   
-  return user ? <>{children}</> : <Navigate to="/auth" />;
+  return user ? <>{children}</> : <Navigate to="/login" />;
 };
 
 const App = () => (
@@ -43,9 +41,8 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Auth />} />
-              <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-              <Route path="/input" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+              <Route path="/input" element={<Navigate to="/" replace />} />
               <Route path="/result" element={<ProtectedRoute><Results /></ProtectedRoute>} />
               <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
               <Route path="*" element={<Navigate to="/" replace />} />
