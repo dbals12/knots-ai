@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { FcGoogle } from "react-icons/fc";
 import { RiKakaoTalkFill } from "react-icons/ri";
 import { getPendingSubmission } from "@/lib/pendingSubmission";
+import { getGuestPendingSubmission } from "@/lib/guestPendingSubmission";
 
 const Auth = () => {
   const [loading, setLoading] = useState(false);
@@ -20,8 +21,9 @@ const Auth = () => {
       } = await supabase.auth.getUser();
 
       if (user) {
-        // If there's a pending submission, skip onboarding/dashboard and go straight to input.
+        // If there's a pending submission, skip onboarding/dashboard and go straight to processing.
         const pending = getPendingSubmission();
+        const guestPending = getGuestPendingSubmission();
 
         // Ensure user exists in users table
         const { data: userData } = await supabase
@@ -37,6 +39,12 @@ const Auth = () => {
             email: user.email,
             created_at: new Date().toISOString(),
           });
+        }
+
+        if (guestPending) {
+          console.log("[auth] guest_pending_submission detected → /processing");
+          navigate("/processing", { replace: true });
+          return;
         }
 
         if (pending) {

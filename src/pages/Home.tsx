@@ -17,6 +17,11 @@ import {
   setPendingSubmissionAutoExecute,
   type PendingSubmission,
 } from "@/lib/pendingSubmission";
+import {
+  blobToBase64,
+  saveGuestPendingSubmission,
+  updateGuestPendingSubmission,
+} from "@/lib/guestPendingSubmission";
 
 const sessionPurposes = [
   { value: "record", label: "기록" },
@@ -318,16 +323,63 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
   // Voice submit handler
   const handleVoiceSubmit = async () => {
-    // Guest user: save to localStorage (voice not supported for guest, redirect to login)
+    // Guest user: save to localStorage (including audio if possible) then redirect to login
     if (!user || isGuest) {
-      toast({
-        title: "음성 입력은 로그인 후 사용 가능합니다",
-        description: "텍스트 입력을 사용하거나 로그인해주세요.",
-        variant: "destructive",
+      if (!selectedMood || !selectedPersona) {
+        toast({
+          title: "선택이 필요해요",
+          description: "오늘의 기분과 모드를 먼저 선택해주세요.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!recordedBlob) {
+        toast({
+          title: "녹음된 오디오가 없습니다",
+          description: "녹음을 완료한 후 제출해주세요.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // 1) Save core fields synchronously (audio may be added async)
+      const baseDraft = {
+        selectedMood,
+        selectedPersona,
+        sessionPurpose,
+        keyword,
+        textInput: textInput || "",
+        inputMode: "voice" as const,
+        audioLost: false,
+      };
+
+      window.localStorage.setItem("guest_pending_submission", JSON.stringify(baseDraft));
+      console.log("[save] guest_pending_submission (core) saved", {
+        size: JSON.stringify(baseDraft).length,
+        blobSize: recordedBlob.size,
       });
+
+      // 2) Try to attach audio as base64 if not too large
+      const MAX_AUDIO_BYTES = 5 * 1024 * 1024;
+      if (recordedBlob.size > MAX_AUDIO_BYTES) {
+        updateGuestPendingSubmission({ audioLost: true });
+        console.log("[save] audio too large, saved without audio_base64", { blobSize: recordedBlob.size });
+      } else {
+        try {
+          const audioBase64 = await blobToBase64(recordedBlob);
+          updateGuestPendingSubmission({ audioBase64, audioLost: false });
+          console.log("[save] audio saved as base64", { length: audioBase64.length });
+        } catch (e) {
+          updateGuestPendingSubmission({ audioLost: true });
+          console.warn("[save] failed to convert audio → saving without audio", e);
+        }
+      }
+
       navigate("/login");
       return;
     }
+
 
     if (!recordedBlob) {
       toast({
@@ -452,22 +504,26 @@ const Home = ({ isGuest = false }: HomeProps) => {
         return;
       }
 
-      // Save to localStorage synchronously before triggering any login redirect
-      savePendingSubmission({
+      const draft = {
         selectedMood,
         selectedPersona,
         sessionPurpose,
         keyword,
         textInput,
-        inputMode,
-        autoExecute: true,
-      });
+        inputMode: "text" as const,
+      };
 
-      // Redirect to login
+      // CRITICAL: save synchronously before redirect
+      window.localStorage.setItem("guest_pending_submission", JSON.stringify(draft));
+      console.log("[save] guest_pending_submission saved", { size: JSON.stringify(draft).length });
+
+      // Also store via helper (same key) to keep one codepath
+      saveGuestPendingSubmission(draft);
+
       navigate("/login");
       return;
-
     }
+
 
     if (!selectedMood || !selectedPersona) {
       toast({
