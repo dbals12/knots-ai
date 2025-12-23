@@ -46,8 +46,8 @@ const GuestPendingSubmissionInterceptor = ({
   const { user } = useAuth();
 
   useEffect(() => {
-    // If we've already moved to /processing, stop blocking.
-    if (location.pathname === "/processing") setIntercepting(false);
+    // If we've already moved to /input, stop blocking.
+    if (location.pathname === "/input") setIntercepting(false);
   }, [location.pathname, setIntercepting]);
 
   useEffect(() => {
@@ -64,11 +64,11 @@ const GuestPendingSubmissionInterceptor = ({
         console.log("[restore-interceptor] auth event:", event, "hasPending:", !!raw, "user:", currentUser.id);
 
         if (!raw) return;
-        if (location.pathname === "/processing") return;
+        if (location.pathname === "/input") return;
 
         setIntercepting(true);
         toast({ title: "아까 작성하신 기록을 불러왔어요!" });
-        navigate("/processing", { replace: true });
+        navigate("/input", { replace: true });
       } catch (e) {
         console.error("[restore-interceptor] failed to check localStorage", e);
       }
