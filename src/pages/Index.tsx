@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getPendingSubmission } from "@/lib/pendingSubmission";
 import { Button } from "@/components/ui/button";
 import AppShell from "@/components/AppShell";
-import { Mic, FileText, Settings, PenTool, ArrowRight } from "lucide-react";
+import { Mic, FileText, Settings, PenTool, ArrowRight, Loader2 } from "lucide-react";
 import { SiNaver, SiLinkedin, SiInstagram, SiThreads } from "react-icons/si";
 import Home from "./Home";
 
@@ -14,6 +14,29 @@ const Index = () => {
   const navigate = useNavigate();
   const [hasPreviousSession, setHasPreviousSession] = useState(false);
   const [sessionCheckLoading, setSessionCheckLoading] = useState(true);
+
+  // Global-ish safety net: if a guest draft exists when a user lands here after login,
+  // immediately redirect to /processing and show a spinner (avoid showing dashboard CTA buttons).
+  const [autoRestorePending] = useState(() => {
+    try {
+      return typeof window !== "undefined" && !!window.localStorage.getItem("guest_pending_submission");
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    if (!user) return;
+    if (!autoRestorePending) return;
+
+    const raw = window.localStorage.getItem("guest_pending_submission");
+    console.log("[home-auto-submit] Draft check on mount:", { hasDraft: !!raw });
+
+    if (!raw) return;
+
+    console.log("[home-auto-submit] Draft found! Redirecting to /processing...");
+    navigate("/processing", { replace: true });
+  }, [autoRestorePending, navigate, user]);
 
   useEffect(() => {
     const checkSessions = async () => {
@@ -52,6 +75,18 @@ const Index = () => {
       <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5]">
         <p className="text-muted-foreground">로딩 중...</p>
       </div>
+    );
+  }
+
+  // If a guest draft exists, show loading immediately and let /processing handle the generation.
+  if (isAuthenticated && autoRestorePending) {
+    return (
+      <AppShell showHeader={false}>
+        <div className="flex-1 flex flex-col items-center justify-center gap-3">
+          <Loader2 className="w-10 h-10 animate-spin text-foreground" />
+          <p className="text-sm text-muted-foreground">분석 중입니다...</p>
+        </div>
+      </AppShell>
     );
   }
 
