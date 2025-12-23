@@ -1,6 +1,6 @@
 export const PENDING_SUBMISSION_KEY = "pending_submission";
 export const LEGACY_GUEST_INPUT_KEY = "knots_guest_input";
-
+export const GUEST_PENDING_KEY = "guest_pending_submission";
 export type PendingSubmission = {
   selectedMood: string;
   selectedPersona: string;
@@ -54,10 +54,12 @@ export function savePendingSubmission(data: PendingSubmission) {
 }
 
 export function getPendingSubmission(): PendingSubmission | null {
-  const raw = safeGet(PENDING_SUBMISSION_KEY) ?? safeGet(LEGACY_GUEST_INPUT_KEY);
+  // Check all possible keys where guest input might be stored
+  const raw = safeGet(PENDING_SUBMISSION_KEY) ?? safeGet(GUEST_PENDING_KEY) ?? safeGet(LEGACY_GUEST_INPUT_KEY);
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as PendingSubmission;
+    console.log("[restore] found pending submission", parsed);
     return {
       ...parsed,
       inputMode: parsed.inputMode ?? "text",
@@ -76,5 +78,6 @@ export function setPendingSubmissionAutoExecute(autoExecute: boolean) {
 
 export function clearPendingSubmission() {
   safeRemove(PENDING_SUBMISSION_KEY);
+  safeRemove(GUEST_PENDING_KEY);
   safeRemove(LEGACY_GUEST_INPUT_KEY);
 }
