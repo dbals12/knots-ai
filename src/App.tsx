@@ -51,10 +51,17 @@ const GuestPendingSubmissionInterceptor = ({
   }, [location.pathname, setIntercepting]);
 
   useEffect(() => {
-    const checkAndRedirect = (event: string) => {
+    const checkAndRedirect = async (event: string) => {
       try {
+        // CRITICAL: Only intercept if there's actually a logged-in user
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        if (!currentUser) {
+          console.log("[restore-interceptor] no user, skipping interception");
+          return;
+        }
+
         const raw = window.localStorage.getItem("guest_pending_submission");
-        console.log("[restore-interceptor] auth event:", event, "hasPending:", !!raw);
+        console.log("[restore-interceptor] auth event:", event, "hasPending:", !!raw, "user:", currentUser.id);
 
         if (!raw) return;
         if (location.pathname === "/processing") return;
