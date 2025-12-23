@@ -32,6 +32,35 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return user ? <>{children}</> : <Navigate to="/login" />;
 };
 
+/**
+ * Router-level traffic controller.
+ * - If the user is authenticated AND a guest draft exists, send them to /input (executor).
+ * - Otherwise, show the normal landing (Index).
+ */
+const AuthRouteHandler = () => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
+
+  if (user) {
+    let hasDraft = false;
+    try {
+      hasDraft = !!window.localStorage.getItem("guest_pending_submission");
+    } catch {
+      hasDraft = false;
+    }
+
+    if (hasDraft) {
+      console.log("[router-guard] Draft found. Redirecting to /input...");
+      return <Navigate to="/input" replace />;
+    }
+  }
+
+  return <Index />;
+};
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -42,7 +71,7 @@ function App() {
           <BrowserRouter>
             <AnalyticsProvider>
               <Routes>
-                <Route path="/" element={<Index />} />
+                <Route path="/" element={<AuthRouteHandler />} />
                 <Route path="/login" element={<Auth />} />
                 <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
