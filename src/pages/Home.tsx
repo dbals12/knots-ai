@@ -10,8 +10,13 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import AppShell from "@/components/AppShell";
 import { trackSubmitInput, getEntrySource } from "@/lib/analytics";
-
-const GUEST_INPUT_STORAGE_KEY = "knots_guest_input";
+import {
+  clearPendingSubmission,
+  getPendingSubmission,
+  savePendingSubmission,
+  setPendingSubmissionAutoExecute,
+  type PendingSubmission,
+} from "@/lib/pendingSubmission";
 
 const sessionPurposes = [
   { value: "record", label: "기록" },
@@ -70,62 +75,45 @@ const Home = ({ isGuest = false }: HomeProps) => {
   const personaScrollRef = useRef<HTMLDivElement>(null);
   const purposeScrollRef = useRef<HTMLDivElement>(null);
 
-  // Check for pending guest input after login
+  // Restore & optionally auto-execute a pending submission after login
   useEffect(() => {
-    const processPendingGuestInput = async () => {
-      if (!user) return;
-      
-      const storedData = localStorage.getItem(GUEST_INPUT_STORAGE_KEY);
-      if (!storedData) return;
+    if (!user) return;
 
-      try {
-        const guestInput = JSON.parse(storedData);
-        localStorage.removeItem(GUEST_INPUT_STORAGE_KEY);
+    const pending = getPendingSubmission();
+    if (!pending) return;
 
-        // Set the state from stored data
-        setSelectedMood(guestInput.selectedMood || "");
-        setSelectedPersona(guestInput.selectedPersona || "");
-        setKeyword(guestInput.keyword || "");
-        setTextInput(guestInput.textInput || "");
-        setInputMode(guestInput.inputMode || "text");
+    setSelectedMood(pending.selectedMood || "");
+    setSelectedPersona(pending.selectedPersona || "");
+    setSessionPurpose(pending.sessionPurpose || "");
+    setKeyword(pending.keyword || "");
+    setTextInput(pending.textInput || "");
+    setInputMode(pending.inputMode || "text");
 
-        // If there's text input, process it immediately
-        if (guestInput.textInput?.trim()) {
-          // Small delay to ensure state is set
-          setTimeout(() => {
-            processGuestInput(guestInput);
-          }, 100);
-        }
-      } catch (error) {
-        console.error("Error processing pending guest input:", error);
-        localStorage.removeItem(GUEST_INPUT_STORAGE_KEY);
-      }
-    };
+    // If we previously failed, restore the draft only (avoid infinite loops)
+    if (pending.autoExecute === false) return;
 
-    processPendingGuestInput();
+    if (pending.textInput?.trim()) {
+      void processGuestInput(pending);
+    }
   }, [user]);
 
-  // Process guest input after login
-  const processGuestInput = async (guestInput: {
-    selectedMood: string;
-    selectedPersona: string;
-    keyword: string;
-    textInput: string;
-    inputMode: string;
-  }) => {
+  // Process a pending submission after login
+  const processGuestInput = async (pending: PendingSubmission) => {
     if (!user) return;
 
     setIsProcessing(true);
 
     try {
-      const personaLabel = personas.find((p) => p.value === guestInput.selectedPersona)?.label || guestInput.selectedPersona;
-      const moodLabel = moods.find((m) => m.value === guestInput.selectedMood)?.label || guestInput.selectedMood;
+      const personaLabel = personas.find((p) => p.value === pending.selectedPersona)?.label || pending.selectedPersona;
+      const moodLabel = moods.find((m) => m.value === pending.selectedMood)?.label || pending.selectedMood;
+      const purposeLabel =
+        sessionPurposes.find((p) => p.value === pending.sessionPurpose)?.label || pending.sessionPurpose || "";
 
       const formData = new FormData();
-      formData.append("raw_text", guestInput.textInput.trim());
+      formData.append("raw_text", pending.textInput.trim());
       formData.append("user_persona", personaLabel);
       formData.append("user_mood", moodLabel);
-      formData.append("session_purpose", "");
+      formData.append("session_purpose", purposeLabel);
 
       const response = await fetch(`https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/process-audio`, {
         method: "POST",
@@ -149,9 +137,10 @@ const Home = ({ isGuest = false }: HomeProps) => {
         .insert({
           user_id: user.id,
           raw_text: transcript,
-          selected_mood: guestInput.selectedMood,
-          selected_persona: guestInput.selectedPersona,
-          keyword: guestInput.keyword || null,
+          selected_mood: pending.selectedMood,
+          selected_persona: pending.selectedPersona,
+          session_purpose: pending.sessionPurpose || null,
+          keyword: pending.keyword || null,
           input_type: "text",
           entry_source: getEntrySource(),
         })
@@ -172,9 +161,17 @@ const Home = ({ isGuest = false }: HomeProps) => {
       if (outputsError) throw new Error(outputsError.message);
 
       await analyticsPromise.catch(console.error);
+
+      // Prevent replays after success
+      clearPendingSubmission();
+
       navigate("/result");
     } catch (err) {
-      console.error("Error processing guest input:", err);
+      console.error("Error processing pending submission:", err);
+
+      // Keep the draft but stop auto-executing to avoid infinite loops.
+      setPendingSubmissionAutoExecute(false);
+
       toast({
         title: "처리에 실패했습니다",
         description: err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.",
@@ -455,19 +452,21 @@ const Home = ({ isGuest = false }: HomeProps) => {
         return;
       }
 
-      // Save to localStorage
-      const guestInput = {
+      // Save to localStorage synchronously before triggering any login redirect
+      savePendingSubmission({
         selectedMood,
         selectedPersona,
+        sessionPurpose,
         keyword,
         textInput,
         inputMode,
-      };
-      localStorage.setItem(GUEST_INPUT_STORAGE_KEY, JSON.stringify(guestInput));
-      
+        autoExecute: true,
+      });
+
       // Redirect to login
       navigate("/login");
       return;
+
     }
 
     if (!selectedMood || !selectedPersona) {

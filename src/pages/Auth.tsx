@@ -5,8 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { FcGoogle } from "react-icons/fc";
 import { RiKakaoTalkFill } from "react-icons/ri";
-
-const GUEST_INPUT_STORAGE_KEY = "knots_guest_input";
+import { getPendingSubmission } from "@/lib/pendingSubmission";
 
 const Auth = () => {
   const [loading, setLoading] = useState(false);
@@ -21,9 +20,9 @@ const Auth = () => {
       } = await supabase.auth.getUser();
 
       if (user) {
-        // Check if there's pending guest input
-        const hasPendingInput = localStorage.getItem(GUEST_INPUT_STORAGE_KEY);
-        
+        // If there's a pending submission, skip onboarding/dashboard and go straight to input.
+        const pending = getPendingSubmission();
+
         // Ensure user exists in users table
         const { data: userData } = await supabase
           .from("users")
@@ -40,18 +39,17 @@ const Auth = () => {
           });
         }
 
-        // If there's pending guest input, skip onboarding and go to input page
-        if (hasPendingInput) {
-          navigate("/input");
+        if (pending) {
+          navigate("/input", { replace: true });
           return;
         }
 
         // Normal flow: check if onboarding is complete
         if (userData && userData.job_role && userData.usage_purpose && userData.preferred_tone) {
-          navigate("/input");
+          navigate("/input", { replace: true });
           return;
         } else {
-          navigate("/onboarding");
+          navigate("/onboarding", { replace: true });
           return;
         }
       }
