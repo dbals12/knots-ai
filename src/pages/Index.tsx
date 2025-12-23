@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { getPendingSubmission } from "@/lib/pendingSubmission";
 import { Button } from "@/components/ui/button";
 import AppShell from "@/components/AppShell";
 import { Mic, FileText, Settings, PenTool, ArrowRight } from "lucide-react";
@@ -17,6 +18,12 @@ const Index = () => {
   useEffect(() => {
     const checkSessions = async () => {
       if (!user) {
+        setSessionCheckLoading(false);
+        return;
+      }
+
+      // If there's a pending submission, we won't show the dashboard anyway.
+      if (getPendingSubmission()) {
         setSessionCheckLoading(false);
         return;
       }
@@ -37,14 +44,20 @@ const Index = () => {
   }, [user]);
 
   const isAuthenticated = !!user;
+  const pendingSubmission = isAuthenticated ? getPendingSubmission() : null;
   const isReturningUser = isAuthenticated && hasPreviousSession;
 
-  if (loading || (user && sessionCheckLoading)) {
+  if (loading || (user && sessionCheckLoading && !pendingSubmission)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5]">
         <p className="text-muted-foreground">로딩 중...</p>
       </div>
     );
+  }
+
+  // If the user just logged in and has a pending submission, jump straight into processing.
+  if (isAuthenticated && pendingSubmission) {
+    return <Home isGuest={false} />;
   }
 
   // Guest users: render Input Page directly
