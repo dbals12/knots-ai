@@ -2,36 +2,41 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { getPendingSubmission } from "@/lib/pendingSubmission";
-import { Button } from "@/components/ui/button";
+import { getGuestPendingSubmission } from "@/lib/guestPendingSubmission";
 import AppShell from "@/components/AppShell";
 import { Mic, FileText, Settings, PenTool, ArrowRight } from "lucide-react";
 import { SiNaver, SiLinkedin, SiInstagram, SiThreads } from "react-icons/si";
 import Home from "./Home";
+
+// Helper to check for any guest draft (single source of truth)
+const hasGuestDraft = (): boolean => {
+  try {
+    return !!window.localStorage.getItem("guest_pending_submission");
+  } catch {
+    return false;
+  }
+};
 
 const Index = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [hasPreviousSession, setHasPreviousSession] = useState(false);
   const [sessionCheckLoading, setSessionCheckLoading] = useState(true);
+  const [hasDraft, setHasDraft] = useState(false);
 
-  // Relay station: if a guest draft exists after login, immediately send the user to /input
-  // so the Input page can restore + execute with a valid user id.
+  // Check for guest draft on mount (before auth state settles)
+  useEffect(() => {
+    setHasDraft(hasGuestDraft());
+  }, []);
+
+  // Once user is authenticated and we have a draft, go straight to Home (which auto-executes)
   useEffect(() => {
     if (!user) return;
+    if (!hasGuestDraft()) return;
 
-    let raw: string | null = null;
-    try {
-      raw = window.localStorage.getItem("guest_pending_submission");
-    } catch {
-      raw = null;
-    }
-
-    if (!raw) return;
-
-    console.log("[draft-relay] Draft found in Home. Redirecting to Input...");
-    navigate("/input", { replace: true });
-  }, [navigate, user]);
+    console.log("[draft-relay] User logged in with draft. Rendering Home for auto-execution...");
+    setHasDraft(true);
+  }, [user]);
 
   useEffect(() => {
     const checkSessions = async () => {
@@ -40,8 +45,8 @@ const Index = () => {
         return;
       }
 
-      // If there's a pending submission, we won't show the dashboard anyway.
-      if (getPendingSubmission()) {
+      // Skip session check if we have a draft to process
+      if (hasGuestDraft()) {
         setSessionCheckLoading(false);
         return;
       }
@@ -62,20 +67,19 @@ const Index = () => {
   }, [user]);
 
   const isAuthenticated = !!user;
-  const pendingSubmission = isAuthenticated ? getPendingSubmission() : null;
   const isReturningUser = isAuthenticated && hasPreviousSession;
 
-  if (loading || (user && sessionCheckLoading && !pendingSubmission)) {
+  // Show loading while auth is initializing OR while checking sessions (unless we have a draft)
+  if (loading || (user && sessionCheckLoading && !hasDraft)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F5F5F5]">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <p className="text-muted-foreground">로딩 중...</p>
       </div>
     );
   }
 
-
-  // If the user just logged in and has a pending submission, jump straight into processing.
-  if (isAuthenticated && pendingSubmission) {
+  // If authenticated user has a draft, render Home to auto-execute it
+  if (isAuthenticated && hasDraft) {
     return <Home isGuest={false} />;
   }
 
