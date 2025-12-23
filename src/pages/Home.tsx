@@ -11,6 +11,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import AppShell from "@/components/AppShell";
 import { trackSubmitInput, getEntrySource } from "@/lib/analytics";
 
+const GUEST_INPUT_STORAGE_KEY = "knots_guest_input";
+
 const sessionPurposes = [
   { value: "record", label: "기록" },
   { value: "career", label: "커리어 브랜딩" },
@@ -35,7 +37,11 @@ const personas = [
   { value: "authentic", label: "💬 날것의 나", desc: "포장 없이 있는 그대로", icon: null },
 ];
 
-const Home = () => {
+interface HomeProps {
+  isGuest?: boolean;
+}
+
+const Home = ({ isGuest = false }: HomeProps) => {
   // Input mode: 'voice' or 'text'
   const [inputMode, setInputMode] = useState<"voice" | "text">("voice");
 
@@ -63,6 +69,121 @@ const Home = () => {
   const moodScrollRef = useRef<HTMLDivElement>(null);
   const personaScrollRef = useRef<HTMLDivElement>(null);
   const purposeScrollRef = useRef<HTMLDivElement>(null);
+
+  // Check for pending guest input after login
+  useEffect(() => {
+    const processPendingGuestInput = async () => {
+      if (!user) return;
+      
+      const storedData = localStorage.getItem(GUEST_INPUT_STORAGE_KEY);
+      if (!storedData) return;
+
+      try {
+        const guestInput = JSON.parse(storedData);
+        localStorage.removeItem(GUEST_INPUT_STORAGE_KEY);
+
+        // Set the state from stored data
+        setSelectedMood(guestInput.selectedMood || "");
+        setSelectedPersona(guestInput.selectedPersona || "");
+        setKeyword(guestInput.keyword || "");
+        setTextInput(guestInput.textInput || "");
+        setInputMode(guestInput.inputMode || "text");
+
+        // If there's text input, process it immediately
+        if (guestInput.textInput?.trim()) {
+          // Small delay to ensure state is set
+          setTimeout(() => {
+            processGuestInput(guestInput);
+          }, 100);
+        }
+      } catch (error) {
+        console.error("Error processing pending guest input:", error);
+        localStorage.removeItem(GUEST_INPUT_STORAGE_KEY);
+      }
+    };
+
+    processPendingGuestInput();
+  }, [user]);
+
+  // Process guest input after login
+  const processGuestInput = async (guestInput: {
+    selectedMood: string;
+    selectedPersona: string;
+    keyword: string;
+    textInput: string;
+    inputMode: string;
+  }) => {
+    if (!user) return;
+
+    setIsProcessing(true);
+
+    try {
+      const personaLabel = personas.find((p) => p.value === guestInput.selectedPersona)?.label || guestInput.selectedPersona;
+      const moodLabel = moods.find((m) => m.value === guestInput.selectedMood)?.label || guestInput.selectedMood;
+
+      const formData = new FormData();
+      formData.append("raw_text", guestInput.textInput.trim());
+      formData.append("user_persona", personaLabel);
+      formData.append("user_mood", moodLabel);
+      formData.append("session_purpose", "");
+
+      const response = await fetch(`https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/process-audio`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "AI processing failed");
+      }
+
+      const aiResult = await response.json();
+      const { transcript, content } = aiResult;
+
+      const analyticsPromise = Promise.resolve().then(() => {
+        trackSubmitInput("text", transcript.length);
+      });
+
+      const { data: sessionData, error: sessionError } = await supabase
+        .from("sessions")
+        .insert({
+          user_id: user.id,
+          raw_text: transcript,
+          selected_mood: guestInput.selectedMood,
+          selected_persona: guestInput.selectedPersona,
+          keyword: guestInput.keyword || null,
+          input_type: "text",
+          entry_source: getEntrySource(),
+        })
+        .select("id")
+        .single();
+
+      if (sessionError) throw new Error(sessionError.message);
+
+      const sessionId = sessionData.id;
+      const outputsToInsert = [
+        { session_id: sessionId, platform_type: "blog", generated_content: content.blog_content },
+        { session_id: sessionId, platform_type: "linkedin", generated_content: content.linkedin_content },
+        { session_id: sessionId, platform_type: "reels", generated_content: content.reels_content },
+        { session_id: sessionId, platform_type: "threads", generated_content: content.threads_content },
+      ];
+
+      const { error: outputsError } = await supabase.from("outputs").insert(outputsToInsert);
+      if (outputsError) throw new Error(outputsError.message);
+
+      await analyticsPromise.catch(console.error);
+      navigate("/result");
+    } catch (err) {
+      console.error("Error processing guest input:", err);
+      toast({
+        title: "처리에 실패했습니다",
+        description: err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   // Check if user has previous sessions
   useEffect(() => {
@@ -200,11 +321,14 @@ const Home = () => {
 
   // Voice submit handler
   const handleVoiceSubmit = async () => {
-    if (!user) {
+    // Guest user: save to localStorage (voice not supported for guest, redirect to login)
+    if (!user || isGuest) {
       toast({
-        title: "로그인이 필요합니다",
+        title: "음성 입력은 로그인 후 사용 가능합니다",
+        description: "텍스트 입력을 사용하거나 로그인해주세요.",
         variant: "destructive",
       });
+      navigate("/login");
       return;
     }
 
@@ -311,11 +435,37 @@ const Home = () => {
 
   // Text submit handler
   const handleTextSubmit = async () => {
-    if (!user) {
-      toast({
-        title: "로그인이 필요합니다",
-        variant: "destructive",
-      });
+    // Guest user: save to localStorage and redirect to login
+    if (!user || isGuest) {
+      if (!selectedMood || !selectedPersona) {
+        toast({
+          title: "선택이 필요해요",
+          description: "오늘의 기분과 모드를 먼저 선택해주세요.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!textInput.trim()) {
+        toast({
+          title: "입력이 필요해요",
+          description: "내용을 입력해주세요.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Save to localStorage
+      const guestInput = {
+        selectedMood,
+        selectedPersona,
+        keyword,
+        textInput,
+        inputMode,
+      };
+      localStorage.setItem(GUEST_INPUT_STORAGE_KEY, JSON.stringify(guestInput));
+      
+      // Redirect to login
       navigate("/login");
       return;
     }
@@ -431,7 +581,7 @@ const Home = () => {
   };
 
   return (
-    <AppShell className="min-h-[700px]">
+    <AppShell className="min-h-[700px]" isGuest={isGuest}>
       {/* Main Content */}
       <div className="flex-1 px-6 py-6 space-y-6 overflow-y-auto">
         {/* Session Purpose Selector - Only for returning users */}
