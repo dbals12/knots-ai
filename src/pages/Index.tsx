@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import AppShell from "@/components/AppShell";
 import { Mic, FileText, Settings, PenTool, ArrowRight } from "lucide-react";
 import { SiNaver, SiLinkedin, SiInstagram, SiThreads } from "react-icons/si";
+import Home from "./Home";
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -36,7 +37,6 @@ const Index = () => {
   }, [user]);
 
   const isAuthenticated = !!user;
-  const isNewUser = isAuthenticated && !hasPreviousSession;
   const isReturningUser = isAuthenticated && hasPreviousSession;
 
   if (loading || (user && sessionCheckLoading)) {
@@ -47,68 +47,74 @@ const Index = () => {
     );
   }
 
-  return (
-    <AppShell showHeader={false}>
-      <div className="px-6 py-10 flex flex-col flex-1 justify-between min-h-full">
-        {/* Top Content Section */}
-        <div>
-          {/* Top Brand Row - Centered */}
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-normal text-foreground tracking-wide font-jost">knots</h1>
-          </div>
+  // Guest users: render Input Page directly
+  if (!isAuthenticated) {
+    return <Home isGuest={true} />;
+  }
 
-          {/* Main Headline + Subcopy - Left Aligned */}
-          <div className="text-left mb-10">
-            <h2 className="text-3xl md:text-3xl font-normal leading-snug tracking-tight text-foreground text-left">
-              생각만 하세요
-              <br />
-              기록은 제가 할게요
-            </h2>
-
-            {/* 서브타이틀 수정 */}
-            <p className="mt-6 mb-16 font-normal leading-normal text-[11px] md:text-xs w-full space-y-0.5">
-              {/* 첫째줄: 연하게 -> 진하게 */}
-              <span className="block text-left text-transparent bg-clip-text bg-gradient-to-r from-gray-600 via-gray-500 to-gray-500 whitespace-nowrap">
-                말하는 대로 완성되는 나만의 커리어 콘텐츠
-              </span>
-
-              {/* 둘째줄: 진하게 -> 연하게 */}
-              <span className="block text-left text-transparent bg-clip-text bg-gradient-to-r from-gray-500 via-gray-600 to-gray-500 whitespace-nowrap tracking-tighter">
-                블로그, 링크드인, 인스타, 쓰레드까지 AI가 알아서 정리해드립니다.
-              </span>
-            </p>
-          </div>
-
-          {/* Mic + Channel Icons Area - Centered */}
-          <div className="flex items-center justify-center gap-4 mb-12">
-            {/* Mic Icon with shadow */}
-            <div className="flex items-center justify-center w-14 h-14 rounded-full bg-white shadow-[0_4px_16px_rgba(0,0,0,0.1)]">
-              <Mic className="w-6 h-6 text-foreground" strokeWidth={1.5} />
+  // Returning users: show dashboard
+  if (isReturningUser) {
+    return (
+      <AppShell showHeader={false}>
+        <div className="px-6 py-10 flex flex-col flex-1 justify-between min-h-full">
+          {/* Top Content Section */}
+          <div>
+            {/* Top Brand Row - Centered */}
+            <div className="text-center mb-8">
+              <h1 className="text-2xl font-normal text-foreground tracking-wide font-jost">knots</h1>
             </div>
 
-            {/* Arrow */}
-            <ArrowRight className="w-5 h-5 text-muted-foreground" strokeWidth={1.5} />
+            {/* Main Headline + Subcopy - Left Aligned */}
+            <div className="text-left mb-10">
+              <h2 className="text-3xl md:text-3xl font-normal leading-snug tracking-tight text-foreground text-left">
+                생각만 하세요
+                <br />
+                기록은 제가 할게요
+              </h2>
 
-            {/* Platform Grid - 2x2 with real platform icons in B&W */}
-            <div className="grid grid-cols-2 gap-2">
-              <div className="w-11 h-11 rounded-xl bg-[#F8F8F8] flex items-center justify-center">
-                <SiNaver className="w-4 h-4 text-foreground" />
+              {/* 서브타이틀 수정 */}
+              <p className="mt-6 mb-16 font-normal leading-normal text-[11px] md:text-xs w-full space-y-0.5">
+                {/* 첫째줄: 연하게 -> 진하게 */}
+                <span className="block text-left text-transparent bg-clip-text bg-gradient-to-r from-gray-600 via-gray-500 to-gray-500 whitespace-nowrap">
+                  말하는 대로 완성되는 나만의 커리어 콘텐츠
+                </span>
+
+                {/* 둘째줄: 진하게 -> 연하게 */}
+                <span className="block text-left text-transparent bg-clip-text bg-gradient-to-r from-gray-500 via-gray-600 to-gray-500 whitespace-nowrap tracking-tighter">
+                  블로그, 링크드인, 인스타, 쓰레드까지 AI가 알아서 정리해드립니다.
+                </span>
+              </p>
+            </div>
+
+            {/* Mic + Channel Icons Area - Centered */}
+            <div className="flex items-center justify-center gap-4 mb-12">
+              {/* Mic Icon with shadow */}
+              <div className="flex items-center justify-center w-14 h-14 rounded-full bg-white shadow-[0_4px_16px_rgba(0,0,0,0.1)]">
+                <Mic className="w-6 h-6 text-foreground" strokeWidth={1.5} />
               </div>
-              <div className="w-11 h-11 rounded-xl bg-[#F8F8F8] flex items-center justify-center">
-                <SiLinkedin className="w-5 h-5 text-foreground" />
-              </div>
-              <div className="w-11 h-11 rounded-xl bg-[#F8F8F8] flex items-center justify-center">
-                <SiInstagram className="w-5 h-5 text-foreground" />
-              </div>
-              <div className="w-11 h-11 rounded-xl bg-[#F8F8F8] flex items-center justify-center">
-                <SiThreads className="w-5 h-5 text-foreground" />
+
+              {/* Arrow */}
+              <ArrowRight className="w-5 h-5 text-muted-foreground" strokeWidth={1.5} />
+
+              {/* Platform Grid - 2x2 with real platform icons in B&W */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="w-11 h-11 rounded-xl bg-[#F8F8F8] flex items-center justify-center">
+                  <SiNaver className="w-4 h-4 text-foreground" />
+                </div>
+                <div className="w-11 h-11 rounded-xl bg-[#F8F8F8] flex items-center justify-center">
+                  <SiLinkedin className="w-5 h-5 text-foreground" />
+                </div>
+                <div className="w-11 h-11 rounded-xl bg-[#F8F8F8] flex items-center justify-center">
+                  <SiInstagram className="w-5 h-5 text-foreground" />
+                </div>
+                <div className="w-11 h-11 rounded-xl bg-[#F8F8F8] flex items-center justify-center">
+                  <SiThreads className="w-5 h-5 text-foreground" />
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Bottom CTA Section */}
-        {isReturningUser ? (
+          {/* Bottom CTA Section */}
           <div className="flex flex-col">
             {/* Welcome Text - Centered */}
             <p className="text-center text-muted-foreground text-xs mb-5">
@@ -159,19 +165,13 @@ const Index = () => {
               </button>
             </div>
           </div>
-        ) : (
-          <div className="flex flex-col">
-            <Button
-              onClick={() => navigate(isNewUser ? "/input" : "/login")}
-              className="w-full h-14 text-base font-normal rounded-full bg-foreground text-white hover:bg-foreground/90"
-            >
-              {isNewUser ? "첫 기록 시작하기" : "지금 바로 시작하기"}
-            </Button>
-          </div>
-        )}
-      </div>
-    </AppShell>
-  );
+        </div>
+      </AppShell>
+    );
+  }
+
+  // New authenticated user: go to input page
+  return <Home isGuest={false} />;
 };
 
 export default Index;

@@ -6,6 +6,8 @@ import { useToast } from "@/hooks/use-toast";
 import { FcGoogle } from "react-icons/fc";
 import { RiKakaoTalkFill } from "react-icons/ri";
 
+const GUEST_INPUT_STORAGE_KEY = "knots_guest_input";
+
 const Auth = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -19,24 +21,36 @@ const Auth = () => {
       } = await supabase.auth.getUser();
 
       if (user) {
+        // Check if there's pending guest input
+        const hasPendingInput = localStorage.getItem(GUEST_INPUT_STORAGE_KEY);
+        
+        // Ensure user exists in users table
         const { data: userData } = await supabase
           .from("users")
           .select("job_role, usage_purpose, preferred_tone")
           .eq("id", user.id)
           .single();
 
-        if (userData && userData.job_role && userData.usage_purpose && userData.preferred_tone) {
-          navigate("/input");
-          return;
-        } else if (userData) {
-          navigate("/onboarding");
-          return;
-        } else {
+        if (!userData) {
+          // Create user record if doesn't exist
           await supabase.from("users").insert({
             id: user.id,
             email: user.email,
             created_at: new Date().toISOString(),
           });
+        }
+
+        // If there's pending guest input, skip onboarding and go to input page
+        if (hasPendingInput) {
+          navigate("/input");
+          return;
+        }
+
+        // Normal flow: check if onboarding is complete
+        if (userData && userData.job_role && userData.usage_purpose && userData.preferred_tone) {
+          navigate("/input");
+          return;
+        } else {
           navigate("/onboarding");
           return;
         }
@@ -80,7 +94,7 @@ const Auth = () => {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <h1 className="text-2xl font-normal italic text-foreground tracking-tight font-bodoni">knots</h1>
-          <p className="text-muted-foreground whitespace-pre-line mt-2">{"로그인하고 기록 시작하기"}</p>
+          <p className="text-muted-foreground whitespace-pre-line mt-2">{"3초 만에 시작하고\n나만의 콘텐츠를 만드세요"}</p>
         </div>
 
         <div className="bg-card rounded-2xl p-8 shadow-sm border flex flex-col items-center justify-center">

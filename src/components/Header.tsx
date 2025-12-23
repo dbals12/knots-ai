@@ -3,7 +3,11 @@ import { Home, Settings, LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 
-const Header = () => {
+interface HeaderProps {
+  isGuest?: boolean;
+}
+
+const Header = ({ isGuest = false }: HeaderProps) => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
 
@@ -32,9 +36,18 @@ const Header = () => {
         knots
       </button>
 
-      {/* Right: Settings & Logout - Absolute positioned */}
+      {/* Right: Settings & Logout OR Login button */}
       <div className="absolute right-5 flex flex-row items-center gap-1">
-        {user ? (
+        {isGuest ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/login")}
+            className="text-sm font-medium text-foreground hover:bg-muted"
+          >
+            로그인
+          </Button>
+        ) : user ? (
           <>
             <Button
               variant="ghost"
