@@ -11,16 +11,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import AppShell from "@/components/AppShell";
 import { trackSubmitInput, getEntrySource } from "@/lib/analytics";
 import {
-  clearPendingSubmission,
-  getPendingSubmission,
-  savePendingSubmission,
-  setPendingSubmissionAutoExecute,
-  type PendingSubmission,
-} from "@/lib/pendingSubmission";
-import {
   blobToBase64,
-  saveGuestPendingSubmission,
+  clearGuestPendingSubmission,
+  dataUrlToBlob,
+  getGuestPendingSubmission,
   updateGuestPendingSubmission,
+  type GuestPendingSubmission,
 } from "@/lib/guestPendingSubmission";
 
 const sessionPurposes = [
@@ -80,112 +76,133 @@ const Home = ({ isGuest = false }: HomeProps) => {
   const personaScrollRef = useRef<HTMLDivElement>(null);
   const purposeScrollRef = useRef<HTMLDivElement>(null);
 
-  // Restore & optionally auto-execute a pending submission after login
+  const autoRestoreRanRef = useRef(false);
+
+  const ensureUserRow = async () => {
+    if (!user?.id) throw new Error("User is not initialized");
+
+    const { error } = await supabase.from("users").upsert(
+      {
+        id: user.id,
+        email: user.email ?? null,
+      },
+      { onConflict: "id" }
+    );
+
+    if (error) throw new Error(error.message);
+  };
+
+  // Restore & auto-execute a guest draft after login (Executor).
   useEffect(() => {
     if (!user) return;
+    if (autoRestoreRanRef.current) return;
 
-    const pending = getPendingSubmission();
-    if (!pending) return;
+    const draft = getGuestPendingSubmission();
+    if (!draft) return;
 
-    setSelectedMood(pending.selectedMood || "");
-    setSelectedPersona(pending.selectedPersona || "");
-    setSessionPurpose(pending.sessionPurpose || "");
-    setKeyword(pending.keyword || "");
-    setTextInput(pending.textInput || "");
-    setInputMode(pending.inputMode || "text");
+    autoRestoreRanRef.current = true;
 
-    // If we previously failed, restore the draft only (avoid infinite loops)
-    if (pending.autoExecute === false) return;
+    console.log("[draft-executor] Draft found in Input. Restoring & preparing execution...", {
+      inputMode: draft.inputMode,
+      audioLost: draft.audioLost,
+    });
 
-    if (pending.textInput?.trim()) {
-      void processGuestInput(pending);
-    }
-  }, [user]);
+    setSelectedMood(draft.selectedMood || "");
+    setSelectedPersona(draft.selectedPersona || "");
+    setSessionPurpose(draft.sessionPurpose || "");
+    setKeyword(draft.keyword || "");
+    setTextInput(draft.textInput || "");
+    setInputMode(draft.inputMode || "text");
 
-  // Process a pending submission after login
-  const processGuestInput = async (pending: PendingSubmission) => {
-    if (!user) return;
+    // Execute only after we have a valid user id + user row (prevents FK constraint issues).
+    const run = async () => {
+      setIsProcessing(true);
+      try {
+        await ensureUserRow();
 
-    setIsProcessing(true);
+        const personaLabel = personas.find((p) => p.value === draft.selectedPersona)?.label || draft.selectedPersona;
+        const moodLabel = moods.find((m) => m.value === draft.selectedMood)?.label || draft.selectedMood;
+        const purposeLabel =
+          sessionPurposes.find((p) => p.value === draft.sessionPurpose)?.label || draft.sessionPurpose || "";
 
-    try {
-      const personaLabel = personas.find((p) => p.value === pending.selectedPersona)?.label || pending.selectedPersona;
-      const moodLabel = moods.find((m) => m.value === pending.selectedMood)?.label || pending.selectedMood;
-      const purposeLabel =
-        sessionPurposes.find((p) => p.value === pending.sessionPurpose)?.label || pending.sessionPurpose || "";
+        const formData = new FormData();
 
-      const formData = new FormData();
-      formData.append("raw_text", pending.textInput.trim());
-      formData.append("user_persona", personaLabel);
-      formData.append("user_mood", moodLabel);
-      formData.append("session_purpose", purposeLabel);
+        if (draft.inputMode === "voice" && draft.audioBase64 && draft.audioLost !== true) {
+          const audioBlob = dataUrlToBlob(draft.audioBase64);
+          formData.append("audio", audioBlob, "recording.webm");
+        } else {
+          formData.append("raw_text", (draft.textInput || "").trim());
+        }
 
-      const response = await fetch(`https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/process-audio`, {
-        method: "POST",
-        body: formData,
-      });
+        formData.append("user_persona", personaLabel);
+        formData.append("user_mood", moodLabel);
+        formData.append("session_purpose", purposeLabel);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "AI processing failed");
+        const response = await fetch(`https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/process-audio`, {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error((errorData as any)?.error || "AI processing failed");
+        }
+
+        const aiResult = await response.json();
+        const { transcript, content } = aiResult;
+
+        const analyticsPromise = Promise.resolve().then(() => {
+          trackSubmitInput(draft.inputMode === "voice" ? "voice" : "text", (transcript || "").length);
+        });
+
+        const { data: sessionData, error: sessionError } = await supabase
+          .from("sessions")
+          .insert({
+            user_id: user.id,
+            raw_text: transcript,
+            selected_mood: draft.selectedMood,
+            selected_persona: draft.selectedPersona,
+            session_purpose: draft.sessionPurpose || null,
+            keyword: draft.keyword || null,
+            input_type: draft.inputMode === "voice" ? "voice" : "text",
+            entry_source: getEntrySource(),
+          })
+          .select("id")
+          .single();
+
+        if (sessionError) throw new Error(sessionError.message);
+
+        const sessionId = sessionData.id;
+        const outputsToInsert = [
+          { session_id: sessionId, platform_type: "blog", generated_content: content.blog_content },
+          { session_id: sessionId, platform_type: "linkedin", generated_content: content.linkedin_content },
+          { session_id: sessionId, platform_type: "reels", generated_content: content.reels_content },
+          { session_id: sessionId, platform_type: "threads", generated_content: content.threads_content },
+        ];
+
+        const { error: outputsError } = await supabase.from("outputs").insert(outputsToInsert);
+        if (outputsError) throw new Error(outputsError.message);
+
+        await analyticsPromise.catch(console.error);
+
+        console.log("[draft-executor] success → clearing guest_pending_submission and navigating to /result");
+        clearGuestPendingSubmission();
+        navigate("/result", { replace: true });
+      } catch (err) {
+        console.error("[draft-executor] failed:", err);
+        toast({
+          title: "처리에 실패했습니다",
+          description: err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.",
+          variant: "destructive",
+        });
+        // Keep guest_pending_submission for retry.
+      } finally {
+        setIsProcessing(false);
       }
+    };
 
-      const aiResult = await response.json();
-      const { transcript, content } = aiResult;
-
-      const analyticsPromise = Promise.resolve().then(() => {
-        trackSubmitInput("text", transcript.length);
-      });
-
-      const { data: sessionData, error: sessionError } = await supabase
-        .from("sessions")
-        .insert({
-          user_id: user.id,
-          raw_text: transcript,
-          selected_mood: pending.selectedMood,
-          selected_persona: pending.selectedPersona,
-          session_purpose: pending.sessionPurpose || null,
-          keyword: pending.keyword || null,
-          input_type: "text",
-          entry_source: getEntrySource(),
-        })
-        .select("id")
-        .single();
-
-      if (sessionError) throw new Error(sessionError.message);
-
-      const sessionId = sessionData.id;
-      const outputsToInsert = [
-        { session_id: sessionId, platform_type: "blog", generated_content: content.blog_content },
-        { session_id: sessionId, platform_type: "linkedin", generated_content: content.linkedin_content },
-        { session_id: sessionId, platform_type: "reels", generated_content: content.reels_content },
-        { session_id: sessionId, platform_type: "threads", generated_content: content.threads_content },
-      ];
-
-      const { error: outputsError } = await supabase.from("outputs").insert(outputsToInsert);
-      if (outputsError) throw new Error(outputsError.message);
-
-      await analyticsPromise.catch(console.error);
-
-      // Prevent replays after success
-      clearPendingSubmission();
-
-      navigate("/result");
-    } catch (err) {
-      console.error("Error processing pending submission:", err);
-
-      // Keep the draft but stop auto-executing to avoid infinite loops.
-      setPendingSubmissionAutoExecute(false);
-
-      toast({
-        title: "처리에 실패했습니다",
-        description: err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsProcessing(false);
-    }
-  };
+    void run();
+  }, [navigate, toast, user]);
 
   // Check if user has previous sessions
   useEffect(() => {
@@ -427,6 +444,17 @@ const Home = ({ isGuest = false }: HomeProps) => {
         trackSubmitInput("voice", transcript.length);
       });
 
+      if (!user?.id) {
+        toast({
+          title: "로그인이 필요합니다",
+          description: "사용자 정보를 불러오는 중이에요. 잠시 후 다시 시도해주세요.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      await ensureUserRow();
+
       const { data: sessionData, error: sessionError } = await supabase
         .from("sessions")
         .insert({
@@ -516,9 +544,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
       // CRITICAL: save synchronously before redirect
       window.localStorage.setItem("guest_pending_submission", JSON.stringify(draft));
       console.log("[save] guest_pending_submission saved", { size: JSON.stringify(draft).length });
-
-      // Also store via helper (same key) to keep one codepath
-      saveGuestPendingSubmission(draft);
 
       navigate("/login");
       return;
