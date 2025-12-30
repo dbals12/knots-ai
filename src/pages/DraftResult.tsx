@@ -168,8 +168,12 @@ const DraftResult = () => {
     });
   };
 
+  // ✅ [수정] 결과 데이터가 존재하는지 확인
+  const hasResult = draft?.result_data && Object.keys(draft.result_data).length > 0;
+
   // 렌더링: 로딩 중
-  if (loading || (draft && (draft.status === "idle" || draft.status === "generating"))) {
+  // 조건: (초기 로딩 중) OR (결과 데이터가 없고, 상태가 진행 중일 때)
+  if (loading || (!hasResult && draft && (draft.status === "idle" || draft.status === "generating"))) {
     return (
       <AppShell showHeader={false}>
         <div className="flex-1 flex flex-col items-center justify-center gap-6 min-h-[600px]">
