@@ -7,32 +7,24 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import useAnalytics from "@/hooks/useAnalytics";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
-import AuthCallback from "./pages/AuthCallback";
+import AuthCallback from "./pages/AuthCallback"; // 이 파일이 필요함
 import Onboarding from "./pages/Onboarding";
 import Settings from "./pages/Settings";
-import InputPage from "./pages/InputPage";
-import DraftResult from "./pages/DraftResult";
-import Results from "./pages/Results";
+import InputPage from "./pages/InputPage"; // 사실 Index가 Input 역할을 겸하므로 안 쓸 수도 있음
+import DraftResult from "./pages/DraftResult"; // 이 파일이 핵심
+import Results from "./pages/Results"; // 구버전 (참고용)
 import History from "./pages/History";
 
 const queryClient = new QueryClient();
 
-// Analytics wrapper component (must be inside BrowserRouter)
 const AnalyticsProvider = ({ children }: { children: React.ReactNode }) => {
   useAnalytics();
   return <>{children}</>;
 };
 
-/**
- * ProtectedRoute - requires authentication
- */
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
-
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  }
-
+  if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   return user ? <>{children}</> : <Navigate to="/login" />;
 };
 
@@ -50,19 +42,39 @@ function App() {
                 <Route path="/" element={<Index />} />
                 <Route path="/login" element={<Auth />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
-                
-                {/* Input page - accessible to both guest and logged-in */}
-                <Route path="/input" element={<InputPage />} />
-                
-                {/* Result page - accessible to both guest and logged-in (NO auth guard!) */}
+
+                {/* Guest & Member accessible Result Page */}
                 <Route path="/result/:draftId" element={<DraftResult />} />
-                
+
+                {/* Legacy or Direct Input Route (Optional) */}
+                <Route path="/input" element={<InputPage />} />
+
                 {/* Protected routes */}
-                <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
-                <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-                <Route path="/result" element={<ProtectedRoute><Results /></ProtectedRoute>} />
-                <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
-                
+                <Route
+                  path="/onboarding"
+                  element={
+                    <ProtectedRoute>
+                      <Onboarding />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/settings"
+                  element={
+                    <ProtectedRoute>
+                      <Settings />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/history"
+                  element={
+                    <ProtectedRoute>
+                      <History />
+                    </ProtectedRoute>
+                  }
+                />
+
                 {/* Fallback */}
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>

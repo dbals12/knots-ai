@@ -9,15 +9,8 @@ import { Mic, ChevronLeft, ChevronRight, Loader2, Type } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import AppShell from "@/components/AppShell";
-import { trackSubmitInput, getEntrySource } from "@/lib/analytics";
-import {
-  blobToBase64,
-  clearGuestPendingSubmission,
-  dataUrlToBlob,
-  getGuestPendingSubmission,
-  updateGuestPendingSubmission,
-  type GuestPendingSubmission,
-} from "@/lib/guestPendingSubmission";
+import { blobToBase64 } from "@/lib/guestPendingSubmission"; // base64 변환용 유틸만 사용
+import { getEntrySource } from "@/lib/analytics";
 
 const sessionPurposes = [
   { value: "record", label: "기록" },
@@ -48,22 +41,23 @@ interface HomeProps {
 }
 
 const Home = ({ isGuest = false }: HomeProps) => {
-  // Input mode: 'voice' or 'text'
   const [inputMode, setInputMode] = useState<"voice" | "text">("voice");
-
   const [isRecording, setIsRecording] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+
+  // 입력 상태들
   const [sessionPurpose, setSessionPurpose] = useState("");
   const [selectedMood, setSelectedMood] = useState("");
   const [selectedPersona, setSelectedPersona] = useState("");
   const [keyword, setKeyword] = useState("");
   const [textInput, setTextInput] = useState("");
+
+  // 상태 관리
   const [isReturningUser, setIsReturningUser] = useState(false);
   const [isLoadingUserStatus, setIsLoadingUserStatus] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false); // 저장 중 로딩
 
-  // Audio recording refs
+  // 오디오 관련 Refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioStreamRef = useRef<MediaStream | null>(null);
@@ -72,139 +66,13 @@ const Home = ({ isGuest = false }: HomeProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
+
+  // 스크롤 Refs
   const moodScrollRef = useRef<HTMLDivElement>(null);
   const personaScrollRef = useRef<HTMLDivElement>(null);
   const purposeScrollRef = useRef<HTMLDivElement>(null);
 
-  const autoRestoreRanRef = useRef(false);
-
-  const ensureUserRow = async () => {
-    if (!user?.id) throw new Error("User is not initialized");
-
-    const { error } = await supabase.from("users").upsert(
-      {
-        id: user.id,
-        email: user.email ?? null,
-      },
-      { onConflict: "id" }
-    );
-
-    if (error) throw new Error(error.message);
-  };
-
-  // Restore & auto-execute a guest draft after login (Executor).
-  useEffect(() => {
-    if (!user) return;
-    if (autoRestoreRanRef.current) return;
-
-    const draft = getGuestPendingSubmission();
-    if (!draft) return;
-
-    autoRestoreRanRef.current = true;
-
-    console.log("[draft-executor] Draft found in Input. Restoring & preparing execution...", {
-      inputMode: draft.inputMode,
-      audioLost: draft.audioLost,
-    });
-
-    setSelectedMood(draft.selectedMood || "");
-    setSelectedPersona(draft.selectedPersona || "");
-    setSessionPurpose(draft.sessionPurpose || "");
-    setKeyword(draft.keyword || "");
-    setTextInput(draft.textInput || "");
-    setInputMode(draft.inputMode || "text");
-
-    // Execute only after we have a valid user id + user row (prevents FK constraint issues).
-    const run = async () => {
-      setIsProcessing(true);
-      try {
-        await ensureUserRow();
-
-        const personaLabel = personas.find((p) => p.value === draft.selectedPersona)?.label || draft.selectedPersona;
-        const moodLabel = moods.find((m) => m.value === draft.selectedMood)?.label || draft.selectedMood;
-        const purposeLabel =
-          sessionPurposes.find((p) => p.value === draft.sessionPurpose)?.label || draft.sessionPurpose || "";
-
-        const formData = new FormData();
-
-        if (draft.inputMode === "voice" && draft.audioBase64 && draft.audioLost !== true) {
-          const audioBlob = dataUrlToBlob(draft.audioBase64);
-          formData.append("audio", audioBlob, "recording.webm");
-        } else {
-          formData.append("raw_text", (draft.textInput || "").trim());
-        }
-
-        formData.append("user_persona", personaLabel);
-        formData.append("user_mood", moodLabel);
-        formData.append("session_purpose", purposeLabel);
-
-        const response = await fetch(`https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/process-audio`, {
-          method: "POST",
-          body: formData,
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error((errorData as any)?.error || "AI processing failed");
-        }
-
-        const aiResult = await response.json();
-        const { transcript, content } = aiResult;
-
-        const analyticsPromise = Promise.resolve().then(() => {
-          trackSubmitInput(draft.inputMode === "voice" ? "voice" : "text", (transcript || "").length);
-        });
-
-        const { data: sessionData, error: sessionError } = await supabase
-          .from("sessions")
-          .insert({
-            user_id: user.id,
-            raw_text: transcript,
-            selected_mood: draft.selectedMood,
-            selected_persona: draft.selectedPersona,
-            session_purpose: draft.sessionPurpose || null,
-            keyword: draft.keyword || null,
-            input_type: draft.inputMode === "voice" ? "voice" : "text",
-            entry_source: getEntrySource(),
-          })
-          .select("id")
-          .single();
-
-        if (sessionError) throw new Error(sessionError.message);
-
-        const sessionId = sessionData.id;
-        const outputsToInsert = [
-          { session_id: sessionId, platform_type: "blog", generated_content: content.blog_content },
-          { session_id: sessionId, platform_type: "linkedin", generated_content: content.linkedin_content },
-          { session_id: sessionId, platform_type: "reels", generated_content: content.reels_content },
-          { session_id: sessionId, platform_type: "threads", generated_content: content.threads_content },
-        ];
-
-        const { error: outputsError } = await supabase.from("outputs").insert(outputsToInsert);
-        if (outputsError) throw new Error(outputsError.message);
-
-        await analyticsPromise.catch(console.error);
-
-        console.log("[draft-executor] success → clearing guest_pending_submission and navigating to /result");
-        clearGuestPendingSubmission();
-        navigate("/result", { replace: true });
-      } catch (err) {
-        console.error("[draft-executor] failed:", err);
-        toast({
-          title: "처리에 실패했습니다",
-          description: err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.",
-          variant: "destructive",
-        });
-        // Keep guest_pending_submission for retry.
-      } finally {
-        setIsProcessing(false);
-      }
-    };
-
-    void run();
-  }, [navigate, toast, user]);
-
-  // Check if user has previous sessions
+  // ✅ [중요] 기존 유저 설정 불러오기 (UI 커스텀용)
   useEffect(() => {
     const checkUserStatus = async () => {
       if (!user) {
@@ -213,32 +81,24 @@ const Home = ({ isGuest = false }: HomeProps) => {
       }
 
       try {
+        // sessions 테이블 확인은 '기록 모아보기' 버튼 노출 여부 등을 위해 유지 (선택사항)
         const { data: sessions, error } = await supabase.from("sessions").select("id").eq("user_id", user.id).limit(1);
+        if (!error) {
+          setIsReturningUser(sessions && sessions.length > 0);
+        }
 
-        if (error) throw error;
+        // 유저 선호 설정 불러오기
+        const { data: userData } = await supabase.from("users").select("usage_purpose").eq("id", user.id).single();
 
-        const hasPreviousSession = sessions && sessions.length > 0;
-        setIsReturningUser(hasPreviousSession);
-
-        if (!hasPreviousSession) {
-          const { data: userData, error: userError } = await supabase
-            .from("users")
-            .select("usage_purpose")
-            .eq("id", user.id)
-            .single();
-
-          if (userError) throw userError;
-
-          if (userData?.usage_purpose) {
-            const purposeMap: Record<string, string> = {
-              "빠르게 하루를 정리하고 싶어요": "record",
-              "커리어 브랜딩을 시작하고 싶어요": "career",
-              "업무 성과를 정리하는 게 어려워요": "review",
-              "마음·감정을 정리하고 싶어요": "emotion",
-              "콘텐츠 아이디어가 필요해요": "idea",
-            };
-            setSessionPurpose(purposeMap[userData.usage_purpose] || "");
-          }
+        if (userData?.usage_purpose) {
+          const purposeMap: Record<string, string> = {
+            "빠르게 하루를 정리하고 싶어요": "record",
+            "커리어 브랜딩을 시작하고 싶어요": "career",
+            "업무 성과를 정리하는 게 어려워요": "review",
+            "마음·감정을 정리하고 싶어요": "emotion",
+            "콘텐츠 아이디어가 필요해요": "idea",
+          };
+          setSessionPurpose(purposeMap[userData.usage_purpose] || "");
         }
       } catch (error) {
         console.error("Error checking user status:", error);
@@ -250,7 +110,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
     checkUserStatus();
   }, [user]);
 
-  // Cleanup on unmount
+  // 마이크 스트림 정리
   useEffect(() => {
     return () => {
       if (audioStreamRef.current) {
@@ -269,6 +129,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
     }
   };
 
+  // --- 녹음 관련 로직 (기존 유지) ---
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -287,12 +148,10 @@ const Home = ({ isGuest = false }: HomeProps) => {
       mediaRecorder.onstop = () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
         setRecordedBlob(audioBlob);
-        console.log("Recording stopped. Blob size:", audioBlob.size);
       };
 
       mediaRecorder.start(1000);
       setIsRecording(true);
-      console.log("Recording started");
     } catch (error) {
       console.error("Error starting recording:", error);
       toast({
@@ -311,25 +170,16 @@ const Home = ({ isGuest = false }: HomeProps) => {
       }
       setIsRecording(false);
       setShowConfirmation(true);
-      console.log("Recording stopped");
     }
   };
 
   const toggleRecording = () => {
     if (!selectedMood || !selectedPersona) {
-      toast({
-        title: "선택이 필요해요",
-        description: "오늘의 기분과 모드를 먼저 선택해주세요.",
-        variant: "destructive",
-      });
+      toast({ title: "선택이 필요해요", description: "기분과 모드를 먼저 선택해주세요.", variant: "destructive" });
       return;
     }
-
-    if (!isRecording) {
-      startRecording();
-    } else {
-      stopRecording();
-    }
+    if (!isRecording) startRecording();
+    else stopRecording();
   };
 
   const handleRetry = () => {
@@ -338,326 +188,74 @@ const Home = ({ isGuest = false }: HomeProps) => {
     setIsRecording(false);
   };
 
-  // Voice submit handler
-  const handleVoiceSubmit = async () => {
-    // Guest user: save to localStorage (including audio if possible) then redirect to login
-    if (!user || isGuest) {
-      if (!selectedMood || !selectedPersona) {
-        toast({
-          title: "선택이 필요해요",
-          description: "오늘의 기분과 모드를 먼저 선택해주세요.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (!recordedBlob) {
-        toast({
-          title: "녹음된 오디오가 없습니다",
-          description: "녹음을 완료한 후 제출해주세요.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // 1) Save core fields synchronously (audio may be added async)
-      const baseDraft = {
+  // --- ✅ 핵심 로직: Draft 생성 및 리다이렉트 (공통) ---
+  const createDraftAndRedirect = async (mode: "voice" | "text") => {
+    setIsSubmitting(true);
+    try {
+      // 1. 입력 데이터 준비 (JSONB에 넣을 객체)
+      const inputData: any = {
+        inputMode: mode,
         selectedMood,
         selectedPersona,
         sessionPurpose,
         keyword,
-        textInput: textInput || "",
-        inputMode: "voice" as const,
-        audioLost: false,
+        entrySource: getEntrySource(),
       };
 
-      window.localStorage.setItem("guest_pending_submission", JSON.stringify(baseDraft));
-      console.log("[save] guest_pending_submission (core) saved", {
-        size: JSON.stringify(baseDraft).length,
-        blobSize: recordedBlob.size,
-      });
-
-      // 2) Try to attach audio as base64 if not too large
-      const MAX_AUDIO_BYTES = 5 * 1024 * 1024;
-      if (recordedBlob.size > MAX_AUDIO_BYTES) {
-        updateGuestPendingSubmission({ audioLost: true });
-        console.log("[save] audio too large, saved without audio_base64", { blobSize: recordedBlob.size });
+      // 2. 텍스트 vs 음성 데이터 처리
+      if (mode === "voice") {
+        if (!recordedBlob) throw new Error("No audio recorded");
+        // 오디오를 Base64로 변환하여 저장 (MVP용)
+        const audioBase64 = await blobToBase64(recordedBlob);
+        inputData.audioBase64 = audioBase64;
       } else {
-        try {
-          const audioBase64 = await blobToBase64(recordedBlob);
-          updateGuestPendingSubmission({ audioBase64, audioLost: false });
-          console.log("[save] audio saved as base64", { length: audioBase64.length });
-        } catch (e) {
-          updateGuestPendingSubmission({ audioLost: true });
-          console.warn("[save] failed to convert audio → saving without audio", e);
-        }
+        if (!textInput.trim()) throw new Error("No text input");
+        inputData.textInput = textInput;
       }
 
-      navigate("/login");
-      return;
-    }
-
-
-    if (!recordedBlob) {
-      toast({
-        title: "녹음된 오디오가 없습니다",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setShowConfirmation(false);
-    setIsProcessing(true);
-
-    try {
-      const personaLabel = personas.find((p) => p.value === selectedPersona)?.label || selectedPersona;
-      const moodLabel = moods.find((m) => m.value === selectedMood)?.label || selectedMood;
-      const purposeLabel = sessionPurposes.find((p) => p.value === sessionPurpose)?.label || sessionPurpose;
-
-      console.log("Calling process-audio edge function...");
-
-      const formData = new FormData();
-      formData.append("audio", recordedBlob, "recording.webm");
-      formData.append("user_persona", personaLabel);
-      formData.append("user_mood", moodLabel);
-      formData.append("session_purpose", purposeLabel || "");
-
-      const response = await fetch(`https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/process-audio`, {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "AI processing failed");
-      }
-
-      const aiResult = await response.json();
-      console.log("AI processing completed:", aiResult);
-
-      const { transcript, content } = aiResult;
-
-      console.log("Inserting session into database...");
-
-      // Dual-track: Fire analytics event in parallel with DB insert
-      const analyticsPromise = Promise.resolve().then(() => {
-        trackSubmitInput("voice", transcript.length);
-      });
-
-      if (!user?.id) {
-        toast({
-          title: "로그인이 필요합니다",
-          description: "사용자 정보를 불러오는 중이에요. 잠시 후 다시 시도해주세요.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      await ensureUserRow();
-
-      const { data: sessionData, error: sessionError } = await supabase
-        .from("sessions")
+      // 3. Drafts 테이블에 INSERT (sessions가 아님!)
+      // user_id는 로그인 상태면 넣고, 아니면 null (Guest)
+      const { data, error } = await supabase
+        .from("drafts")
         .insert({
-          user_id: user.id,
-          raw_text: transcript,
-          selected_mood: selectedMood,
-          selected_persona: selectedPersona,
-          session_purpose: isReturningUser ? sessionPurpose || null : null,
-          keyword: keyword || null,
-          input_type: "voice",
-          entry_source: getEntrySource(),
+          user_id: user?.id || null, // Guest 허용
+          status: "idle", // 아직 AI 안 돌림 -> Result 페이지가 돌릴 것임
+          input_data: inputData,
         })
         .select("id")
         .single();
 
-      if (sessionError) {
-        console.error("Session insert error:", sessionError);
-        throw new Error(sessionError.message);
-      }
+      if (error) throw error;
 
-      const sessionId = sessionData.id;
-      console.log("Session created with ID:", sessionId);
+      // 4. 안전장치: LocalStorage에 ID 저장 (로그인 튕김 방지용)
+      localStorage.setItem("pending_draft_id", data.id);
 
-      console.log("Inserting outputs into database...");
-      const outputsToInsert = [
-        { session_id: sessionId, platform_type: "blog", generated_content: content.blog_content },
-        { session_id: sessionId, platform_type: "linkedin", generated_content: content.linkedin_content },
-        { session_id: sessionId, platform_type: "reels", generated_content: content.reels_content },
-        { session_id: sessionId, platform_type: "threads", generated_content: content.threads_content },
-      ];
-
-      const { error: outputsError } = await supabase.from("outputs").insert(outputsToInsert);
-
-      if (outputsError) {
-        console.error("Outputs insert error:", outputsError);
-        throw new Error(outputsError.message);
-      }
-
-      // Wait for analytics (non-blocking)
-      await analyticsPromise.catch(console.error);
-
-      console.log("All data saved successfully. Navigating to result...");
-      navigate("/result");
-    } catch (err) {
-      console.error("Error in handleVoiceSubmit:", err);
+      // 5. Result 페이지로 납치 (여기서 AI 로딩 시작)
+      console.log("Draft created:", data.id, "Redirecting to result...");
+      navigate(`/result/${data.id}`);
+    } catch (error: any) {
+      console.error("Draft creation failed:", error);
       toast({
-        title: "AI 처리 또는 저장에 실패했습니다",
-        description: err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.",
+        title: "저장 실패",
+        description: error.message || "알 수 없는 오류가 발생했습니다.",
         variant: "destructive",
       });
-    } finally {
-      setIsProcessing(false);
+      setIsSubmitting(false);
     }
   };
 
-  // Text submit handler
-  const handleTextSubmit = async () => {
-    // Guest user: save to localStorage and redirect to login
-    if (!user || isGuest) {
-      if (!selectedMood || !selectedPersona) {
-        toast({
-          title: "선택이 필요해요",
-          description: "오늘의 기분과 모드를 먼저 선택해주세요.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (!textInput.trim()) {
-        toast({
-          title: "입력이 필요해요",
-          description: "내용을 입력해주세요.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const draft = {
-        selectedMood,
-        selectedPersona,
-        sessionPurpose,
-        keyword,
-        textInput,
-        inputMode: "text" as const,
-      };
-
-      // CRITICAL: save synchronously before redirect
-      window.localStorage.setItem("guest_pending_submission", JSON.stringify(draft));
-      console.log("[save] guest_pending_submission saved", { size: JSON.stringify(draft).length });
-
-      navigate("/login");
-      return;
-    }
-
-
+  // 핸들러 연결
+  const handleVoiceSubmit = () => createDraftAndRedirect("voice");
+  const handleTextSubmit = () => {
     if (!selectedMood || !selectedPersona) {
-      toast({
-        title: "선택이 필요해요",
-        description: "오늘의 기분과 모드를 먼저 선택해주세요.",
-        variant: "destructive",
-      });
+      toast({ title: "선택이 필요해요", description: "기분과 모드를 선택해주세요.", variant: "destructive" });
       return;
     }
-
     if (!textInput.trim()) {
-      toast({
-        title: "입력이 필요해요",
-        description: "내용을 입력해주세요.",
-        variant: "destructive",
-      });
+      toast({ title: "입력이 필요해요", description: "내용을 입력해주세요.", variant: "destructive" });
       return;
     }
-
-    setIsProcessing(true);
-
-    try {
-      const personaLabel = personas.find((p) => p.value === selectedPersona)?.label || selectedPersona;
-      const moodLabel = moods.find((m) => m.value === selectedMood)?.label || selectedMood;
-      const purposeLabel = sessionPurposes.find((p) => p.value === sessionPurpose)?.label || sessionPurpose;
-
-      console.log("Calling process-audio edge function with text input...");
-
-      const formData = new FormData();
-      formData.append("raw_text", textInput.trim());
-      formData.append("user_persona", personaLabel);
-      formData.append("user_mood", moodLabel);
-      formData.append("session_purpose", purposeLabel || "");
-
-      const response = await fetch(`https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/process-audio`, {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "AI processing failed");
-      }
-
-      const aiResult = await response.json();
-      console.log("AI processing completed:", aiResult);
-
-      const { transcript, content } = aiResult;
-
-      console.log("Inserting session into database...");
-
-      // Dual-track: Fire analytics event in parallel with DB insert
-      const analyticsPromise = Promise.resolve().then(() => {
-        trackSubmitInput("text", transcript.length);
-      });
-
-      const { data: sessionData, error: sessionError } = await supabase
-        .from("sessions")
-        .insert({
-          user_id: user.id,
-          raw_text: transcript,
-          selected_mood: selectedMood,
-          selected_persona: selectedPersona,
-          session_purpose: isReturningUser ? sessionPurpose || null : null,
-          keyword: keyword || null,
-          input_type: "text",
-          entry_source: getEntrySource(),
-        })
-        .select("id")
-        .single();
-
-      if (sessionError) {
-        console.error("Session insert error:", sessionError);
-        throw new Error(sessionError.message);
-      }
-
-      const sessionId = sessionData.id;
-      console.log("Session created with ID:", sessionId);
-
-      console.log("Inserting outputs into database...");
-      const outputsToInsert = [
-        { session_id: sessionId, platform_type: "blog", generated_content: content.blog_content },
-        { session_id: sessionId, platform_type: "linkedin", generated_content: content.linkedin_content },
-        { session_id: sessionId, platform_type: "reels", generated_content: content.reels_content },
-        { session_id: sessionId, platform_type: "threads", generated_content: content.threads_content },
-      ];
-
-      const { error: outputsError } = await supabase.from("outputs").insert(outputsToInsert);
-
-      if (outputsError) {
-        console.error("Outputs insert error:", outputsError);
-        throw new Error(outputsError.message);
-      }
-
-      // Wait for analytics (non-blocking)
-      await analyticsPromise.catch(console.error);
-
-      console.log("All data saved successfully. Navigating to result...");
-      navigate("/result");
-    } catch (err) {
-      console.error("Error in handleTextSubmit:", err);
-      toast({
-        title: "AI 처리 또는 저장에 실패했습니다",
-        description: err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsProcessing(false);
-    }
+    createDraftAndRedirect("text");
   };
 
   return (
@@ -703,7 +301,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
           </div>
         )}
 
-        {/* Mood Selector - Always Visible */}
+        {/* Mood Selector */}
         <div className="space-y-3">
           <h2 className="text-base font-semibold text-foreground">오늘 하루는 어땠나요?</h2>
           <div className="relative group">
@@ -737,7 +335,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
           </div>
         </div>
 
-        {/* Persona Selector - Always Visible */}
+        {/* Persona Selector */}
         <div className="space-y-3">
           <h2 className="text-base font-semibold text-foreground">오늘은 어떤 나로 정리할까요?</h2>
           <div className="relative group">
@@ -796,8 +394,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
                 : "bg-muted text-muted-foreground hover:bg-muted/80"
             }`}
           >
-            <Mic className="w-4 h-4" />
-            음성
+            <Mic className="w-4 h-4" /> 음성
           </button>
           <button
             onClick={() => setInputMode("text")}
@@ -807,14 +404,12 @@ const Home = ({ isGuest = false }: HomeProps) => {
                 : "bg-muted text-muted-foreground hover:bg-muted/80"
             }`}
           >
-            <Type className="w-4 h-4" />
-            텍스트
+            <Type className="w-4 h-4" /> 텍스트
           </button>
         </div>
 
         {/* Conditional Input Area */}
         {inputMode === "voice" ? (
-          /* Voice Recording Area */
           <div className="flex flex-col items-center space-y-4 py-6">
             <button
               onClick={toggleRecording}
@@ -829,7 +424,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
             </p>
           </div>
         ) : (
-          /* Text Input Area */
           <div className="space-y-4">
             <Textarea
               value={textInput}
@@ -839,10 +433,10 @@ const Home = ({ isGuest = false }: HomeProps) => {
             />
             <Button
               onClick={handleTextSubmit}
-              disabled={isProcessing}
+              disabled={isSubmitting}
               className="w-full h-12 rounded-xl bg-foreground text-background hover:bg-foreground/90"
             >
-              {isProcessing ? "처리 중..." : "완료"}
+              {isSubmitting ? "저장 중..." : "완료"}
             </Button>
           </div>
         )}
@@ -869,28 +463,11 @@ const Home = ({ isGuest = false }: HomeProps) => {
         </SheetContent>
       </Sheet>
 
-      {/* Full-screen Processing Overlay */}
-      {isProcessing && (
-        <div className="fixed inset-0 z-50 bg-background flex flex-col items-center justify-center">
-          <div className="flex flex-col items-center gap-6">
-            <Loader2 className="w-12 h-12 text-foreground animate-spin" />
-            <p className="text-lg font-medium text-foreground text-center">AI가 당신의 기록을 분석 중입니다...</p>
-            <p className="text-sm text-muted-foreground text-center max-w-xs">
-              {inputMode === "voice" ? (
-                <>
-                  음성을 텍스트로 변환하고
-                  <br />
-                  4개 채널용 콘텐츠를 생성하는 중이에요.
-                </>
-              ) : (
-                <>
-                  텍스트를 분석하고
-                  <br />
-                  4개 채널용 콘텐츠를 생성하는 중이에요.
-                </>
-              )}
-            </p>
-          </div>
+      {/* Full-screen Loading Overlay (Submission) */}
+      {isSubmitting && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center">
+          <Loader2 className="w-12 h-12 text-foreground animate-spin" />
+          <p className="mt-4 text-lg font-medium text-foreground">기록을 저장하고 있어요...</p>
         </div>
       )}
     </AppShell>
