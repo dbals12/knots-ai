@@ -147,9 +147,9 @@ const DraftResult = () => {
     claimDraft();
   }, [user, draft, toast]);
 
-  // ✅ 로그인 유도 핸들러 (이벤트 버블링 방지 추가)
+  // ✅ 로그인 유도 핸들러
   const handleLoginToSave = async (e?: React.MouseEvent) => {
-    // 이벤트 전파 중단 (모달 내부 로직 실행 방지)
+    // 이벤트 전파 중단
     if (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -160,7 +160,6 @@ const DraftResult = () => {
       return;
     }
 
-    // 즉시 리다이렉트
     await supabase.auth.signInWithOAuth({
       provider: "kakao",
       options: { redirectTo: `${window.location.origin}/auth/callback?next=/result/${draftId}` },
@@ -199,7 +198,6 @@ const DraftResult = () => {
 
   return (
     <AppShell>
-      {/* 하단 버튼 공간 확보를 위해 pb 값 증가 */}
       <div className="flex-1 px-6 py-6 space-y-8 overflow-y-auto pb-32">
         <h1 className="text-2xl font-bold text-foreground">오늘의 결과</h1>
 
@@ -211,7 +209,7 @@ const DraftResult = () => {
               {draft?.input_data?.textInput || "음성으로 기록한 내용입니다."}
             </p>
           </div>
-          {/* 게스트는 수정 불가 -> 로그인 유도 */}
+          {/* 게스트용 저장 버튼 */}
           <Button variant="outline" size="sm" onClick={handleLoginToSave} className="text-xs h-8">
             저장
           </Button>
@@ -256,7 +254,7 @@ const DraftResult = () => {
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 z-50 safe-area-bottom">
           <div className="max-w-md mx-auto">
             <Button
-              onClick={handleLoginToSave}
+              onClick={(e) => handleLoginToSave(e)}
               className="w-full h-12 rounded-xl text-base font-bold bg-[#FEE500] text-black hover:bg-[#FEE500]/90 shadow-sm"
             >
               로그인하고 텍스트 복사/수정하기
@@ -265,7 +263,7 @@ const DraftResult = () => {
         </div>
       )}
 
-      {/* 상세 모달 */}
+      {/* 상세 모달 (타입 에러 수정됨) */}
       {selectedPlatform && (
         <ResultDetailModal
           isOpen={isModalOpen}
@@ -276,9 +274,9 @@ const DraftResult = () => {
           platform={selectedPlatform}
           content={getContent(selectedPlatform) || ""}
           outputId={draftId || ""}
-          // 🔥 핵심: 모달 이벤트가 발생해도 handleLoginToSave만 실행되도록 연결
-          onSave={handleLoginToSave}
-          onCopy={handleLoginToSave}
+          // ✅ 수정: 인자를 무시하고 로그인 함수만 호출하도록 래핑
+          onSave={() => handleLoginToSave()}
+          onCopy={() => handleLoginToSave()}
           onContentUpdate={() => {}}
         />
       )}
