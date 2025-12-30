@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      drafts: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          input_data: Json | null
+          result_data: Json | null
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          input_data?: Json | null
+          result_data?: Json | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          input_data?: Json | null
+          result_data?: Json | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       edits: {
         Row: {
           created_at: string

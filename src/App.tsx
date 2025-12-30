@@ -7,12 +7,13 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import useAnalytics from "@/hooks/useAnalytics";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import AuthCallback from "./pages/AuthCallback";
 import Onboarding from "./pages/Onboarding";
 import Settings from "./pages/Settings";
-import Home from "./pages/Home";
+import InputPage from "./pages/InputPage";
+import DraftResult from "./pages/DraftResult";
 import Results from "./pages/Results";
 import History from "./pages/History";
-import Processing from "./pages/Processing";
 
 const queryClient = new QueryClient();
 
@@ -22,6 +23,9 @@ const AnalyticsProvider = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+/**
+ * ProtectedRoute - requires authentication
+ */
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
 
@@ -30,35 +34,6 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   return user ? <>{children}</> : <Navigate to="/login" />;
-};
-
-/**
- * Router-level traffic controller.
- * - If the user is authenticated AND a guest draft exists, send them to /input (executor).
- * - Otherwise, show the normal landing (Index).
- */
-const AuthRouteHandler = () => {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  }
-
-  if (user) {
-    let hasDraft = false;
-    try {
-      hasDraft = !!window.localStorage.getItem("guest_pending_submission");
-    } catch {
-      hasDraft = false;
-    }
-
-    if (hasDraft) {
-      console.log("[router-guard] Draft found. Redirecting to /input...");
-      return <Navigate to="/input" replace />;
-    }
-  }
-
-  return <Index />;
 };
 
 function App() {
@@ -71,14 +46,24 @@ function App() {
           <BrowserRouter>
             <AnalyticsProvider>
               <Routes>
-                <Route path="/" element={<AuthRouteHandler />} />
+                {/* Public routes */}
+                <Route path="/" element={<Index />} />
                 <Route path="/login" element={<Auth />} />
+                <Route path="/auth/callback" element={<AuthCallback />} />
+                
+                {/* Input page - accessible to both guest and logged-in */}
+                <Route path="/input" element={<InputPage />} />
+                
+                {/* Result page - accessible to both guest and logged-in (NO auth guard!) */}
+                <Route path="/result/:draftId" element={<DraftResult />} />
+                
+                {/* Protected routes */}
                 <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-                <Route path="/input" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-                <Route path="/processing" element={<ProtectedRoute><Processing /></ProtectedRoute>} />
                 <Route path="/result" element={<ProtectedRoute><Results /></ProtectedRoute>} />
                 <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
+                
+                {/* Fallback */}
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </AnalyticsProvider>
@@ -90,4 +75,3 @@ function App() {
 }
 
 export default App;
-
