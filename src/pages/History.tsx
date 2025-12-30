@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { SiNaver, SiLinkedin, SiInstagram, SiThreads } from "react-icons/si";
 import AppShell from "@/components/AppShell";
@@ -20,14 +19,11 @@ const platformIcons = {
 interface Session {
   id: string;
   created_at: string;
-  // drafts 테이블의 input_data JSONB에서 꺼내올 필드들
   input_data: {
     textInput?: string;
     sessionPurpose?: string;
     keyword?: string;
-    // 필요한 다른 필드들도 여기에 정의
   } | null;
-  // drafts 테이블의 result_data JSONB
   result_data: {
     blog_content?: string;
     linkedin_content?: string;
@@ -37,12 +33,11 @@ interface Session {
 }
 
 interface Output {
-  id: string; // 여기서는 가상의 ID 혹은 index 사용
+  id: string;
   platform_type: string;
   generated_content: string | null;
 }
 
-// Helper to parse Instagram content for preview (기존 유지)
 const getInstagramPreview = (content: string | null): string => {
   if (!content) return "생성된 콘텐츠 없음";
   const cleanContent = content
@@ -64,25 +59,22 @@ const getInstagramPreview = (content: string | null): string => {
 
 const History = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const { toast } = useToast();
 
   const [sessions, setSessions] = useState<Session[]>([]);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
-  const [outputs, setOutputs] = useState<Output[]>([]); // UI용 가상 Output 목록
+  const [outputs, setOutputs] = useState<Output[]>([]);
   const [loading, setLoading] = useState(true);
 
   // State for detail modal
   const [selectedOutput, setSelectedOutput] = useState<Output | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
-  // ✅ [수정] sessions 테이블 대신 drafts 테이블 조회
   useEffect(() => {
     const fetchSessions = async () => {
       if (!user) return;
 
       setLoading(true);
-      // user_id가 내 것인 drafts만 조회 (Claim 된 것들 포함)
       const { data, error } = await supabase
         .from("drafts")
         .select("*")
@@ -92,7 +84,6 @@ const History = () => {
       if (error) {
         console.error("Error fetching history:", error);
       } else if (data) {
-        // 타입 캐스팅 (Supabase 결과 -> Session 인터페이스)
         setSessions(data as any[]);
       }
       setLoading(false);
@@ -101,18 +92,16 @@ const History = () => {
     fetchSessions();
   }, [user]);
 
-  // ✅ [수정] Session 클릭 시 Output 목록 구성 (JSON 파싱)
   const handleSessionClick = (session: Session) => {
     setSelectedSession(session);
 
-    // result_data JSON을 Output 배열 형태로 변환
     const result = session.result_data || {};
     const newOutputs: Output[] = [
       { id: `${session.id}-blog`, platform_type: "blog", generated_content: result.blog_content || null },
       { id: `${session.id}-linkedin`, platform_type: "linkedin", generated_content: result.linkedin_content || null },
       { id: `${session.id}-reels`, platform_type: "reels", generated_content: result.reels_content || null },
       { id: `${session.id}-threads`, platform_type: "threads", generated_content: result.threads_content || null },
-    ].filter((o) => o.generated_content !== null); // 내용 있는 것만 표시
+    ].filter((o) => o.generated_content !== null);
 
     setOutputs(newOutputs);
   };
@@ -126,7 +115,6 @@ const History = () => {
     if (selectedOutput) {
       setOutputs((prev) => prev.map((o) => (o.id === selectedOutput.id ? { ...o, generated_content: newContent } : o)));
       setSelectedOutput((prev) => (prev ? { ...prev, generated_content: newContent } : null));
-      // TODO: 실제 DB 업데이트 로직 (JSONB 필드 업데이트) 추가 필요 (MVP 단계에선 생략 가능)
     }
   };
 
@@ -176,11 +164,9 @@ const History = () => {
                 className="w-full bg-muted/50 rounded-2xl p-4 hover:bg-muted/70 transition-all text-left"
               >
                 <p className="text-xs text-muted-foreground mb-2">{formatDate(session.created_at)}</p>
-                {/* input_data 내부 필드 접근 */}
                 {session.input_data?.sessionPurpose && (
                   <p className="text-xs text-muted-foreground mb-1">목적: {session.input_data.sessionPurpose}</p>
                 )}
-                {/* raw_text 표시 (input_data.textInput) */}
                 <p className="text-sm text-foreground line-clamp-2">{session.input_data?.textInput || "음성 기록"}</p>
               </button>
             ))}
@@ -188,7 +174,6 @@ const History = () => {
         )}
       </div>
 
-      {/* Detail Modal */}
       <Dialog open={!!selectedSession} onOpenChange={() => setSelectedSession(null)}>
         <DialogContent className="sm:max-w-[400px] max-h-[80vh] overflow-y-auto rounded-2xl">
           <DialogHeader>
@@ -226,15 +211,10 @@ const History = () => {
                           onClick={() => handleOutputClick(output)}
                           className="bg-muted/50 rounded-xl p-3 text-left hover:bg-muted/70 transition-all cursor-pointer group"
                         >
-                          {/* 아이콘 및 스타일 기존 유지 */}
+                          {/* ✅ 수정된 부분: className을 하나로 합쳤습니다 */}
                           <div
-                            className="w-7 h-7 rounded-lg flex items-center justify-center mb-2"
+                            className={`w-7 h-7 rounded-lg flex items-center justify-center mb-2 ${platformKey === "reels" ? "bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af]" : ""}`}
                             style={{ backgroundColor: platformKey === "reels" ? undefined : color }}
-                            className={
-                              platformKey === "reels"
-                                ? "bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af]"
-                                : ""
-                            }
                           >
                             <Icon className="w-3.5 h-3.5 text-white" />
                           </div>
@@ -251,7 +231,6 @@ const History = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Result Detail Modal */}
       {selectedOutput && (
         <ResultDetailModal
           isOpen={isDetailModalOpen}
