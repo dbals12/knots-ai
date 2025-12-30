@@ -7,6 +7,7 @@ import AppShell from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { SiNaver, SiLinkedin, SiInstagram, SiThreads } from "react-icons/si";
+import ResultDetailModal from "@/components/ResultDetailModal";
 
 // 결과 데이터 타입 정의
 interface Draft {
@@ -24,10 +25,30 @@ interface Draft {
 }
 
 const platformIcons = {
-  blog: { icon: SiNaver, color: "#03C75A", label: "블로그" },
-  linkedin: { icon: SiLinkedin, color: "#0077B5", label: "LinkedIn" },
-  reels: { icon: SiInstagram, color: "#E4405F", label: "Instagram" },
-  threads: { icon: SiThreads, color: "#000000", label: "Threads" },
+  blog: { icon: SiNaver, color: "#03C75A", label: "블로그 (회고형)" },
+  linkedin: { icon: SiLinkedin, color: "#0077B5", label: "LinkedIn (인사이트형)" },
+  reels: { icon: SiInstagram, color: "#E4405F", label: "인스타 (카드뉴스 & 캡션)" },
+  threads: { icon: SiThreads, color: "#000000", label: "Threads (짧은 에세이)" },
+};
+
+// 인스타 미리보기 헬퍼 함수
+const getInstagramPreview = (content: string | null): string => {
+  if (!content) return "생성된 콘텐츠 없음";
+  const cleanContent = content
+    .replace(/```json\s*/gi, "")
+    .replace(/```\s*/gi, "")
+    .trim();
+  try {
+    const parsed = JSON.parse(cleanContent);
+    if (typeof parsed === "object" && parsed !== null) {
+      const slide1 = parsed["Slide 1"] || parsed["slide 1"];
+      if (slide1) return slide1.replace(/^[:\s"]+|[",\s}]+$/g, "").trim();
+    }
+  } catch {
+    const match = content.match(/\[Slide 1\]([\s\S]*?)(?=\[Slide|\[Caption|$)/i);
+    if (match?.[1]) return match[1].trim();
+  }
+  return content.substring(0, 100) + "...";
 };
 
 const DraftResult = () => {
@@ -39,6 +60,10 @@ const DraftResult = () => {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // 모달 상태 관리
+  const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // 1. Draft 데이터 불러오기
   useEffect(() => {
@@ -53,14 +78,13 @@ const DraftResult = () => {
         navigate("/");
         return;
       }
-
       setDraft(data as any);
       setLoading(false);
     };
 
     fetchDraft();
 
-    // 실시간 구독 (생성 상태 변경 감지용)
+    // 실시간 구독
     const channel = supabase
       .channel(`draft-${draftId}`)
       .on(
@@ -77,29 +101,21 @@ const DraftResult = () => {
     };
   }, [draftId, navigate, toast]);
 
-  // 2. AI 생성 실행 (Status가 'idle'일 때 자동 실행)
+  // 2. AI 생성 실행 logic
   useEffect(() => {
     if (!draft || draft.status !== "idle" || isProcessing) return;
 
     const runAI = async () => {
       setIsProcessing(true);
-      console.log("Starting AI generation for draft:", draft.id);
-
       try {
-        // 상태를 generating으로 변경
         await supabase.from("drafts").update({ status: "generating" }).eq("id", draft.id);
-
-        // Edge Function 호출 params 준비
         const { inputMode, textInput, audioBase64, selectedMood, selectedPersona, sessionPurpose } = draft.input_data;
         const formData = new FormData();
-
-        // 폼 데이터 구성
         formData.append("user_persona", selectedPersona);
         formData.append("user_mood", selectedMood);
         formData.append("session_purpose", sessionPurpose || "");
 
         if (inputMode === "voice" && audioBase64) {
-          // Base64 -> Blob 변환
           const res = await fetch(audioBase64);
           const blob = await res.blob();
           formData.append("audio", blob, "recording.webm");
@@ -107,50 +123,31 @@ const DraftResult = () => {
           formData.append("raw_text", textInput || "");
         }
 
-        // Edge Function 호출
         const response = await fetch(`https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/process-audio`, {
           method: "POST",
           body: formData,
         });
 
         if (!response.ok) throw new Error("AI Processing Failed");
-
         const aiResult = await response.json();
-        const { content } = aiResult; // content: { blog_content, ... }
 
-        // 결과 저장 및 완료 처리
-        await supabase
-          .from("drafts")
-          .update({
-            status: "completed",
-            result_data: content,
-          })
-          .eq("id", draft.id);
+        await supabase.from("drafts").update({ status: "completed", result_data: aiResult.content }).eq("id", draft.id);
       } catch (error) {
-        console.error("AI Gen Error:", error);
         await supabase.from("drafts").update({ status: "failed", error_message: "생성 실패" }).eq("id", draft.id);
-        toast({
-          title: "생성 실패",
-          description: "AI가 응답하지 않습니다. 다시 시도해주세요.",
-          variant: "destructive",
-        });
       } finally {
         setIsProcessing(false);
       }
     };
-
     runAI();
   }, [draft, isProcessing]);
 
-  // 3. Claim (저장) 로직: 로그인 유저가 주인 없는 Draft를 보면 내 것으로 만듦
+  // 3. Claim (저장) 로직
   useEffect(() => {
     const claimDraft = async () => {
       if (user && draft && draft.user_id === null) {
         const { error } = await supabase.from("drafts").update({ user_id: user.id }).eq("id", draft.id);
-
         if (!error) {
-          toast({ title: "저장 완료", description: "내 기록에 안전하게 저장되었습니다!" });
-          // 로컬 스토리지 청소
+          toast({ title: "저장 완료", description: "내 기록함에 안전하게 저장되었습니다!" });
           localStorage.removeItem("pending_draft_id");
         }
       }
@@ -158,21 +155,36 @@ const DraftResult = () => {
     claimDraft();
   }, [user, draft, toast]);
 
-  // 로그인 핸들러
+  // 로그인 핸들러 (저장 버튼 클릭 시)
   const handleLoginToSave = async () => {
+    if (user) {
+      toast({ title: "이미 저장되었습니다", description: "내 기록함에서 확인하세요." });
+      return;
+    }
     await supabase.auth.signInWithOAuth({
-      provider: "kakao", // 또는 google
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=/result/${draftId}`,
-      },
+      provider: "kakao",
+      options: { redirectTo: `${window.location.origin}/auth/callback?next=/result/${draftId}` },
     });
   };
 
-  // ✅ [수정] 결과 데이터가 존재하는지 확인
+  const handlePlatformClick = (platformKey: string) => {
+    setSelectedPlatform(platformKey);
+    setIsModalOpen(true);
+  };
+
+  const getContent = (key: string) => {
+    if (!draft?.result_data) return "";
+    if (key === "blog") return draft.result_data.blog_content;
+    if (key === "linkedin") return draft.result_data.linkedin_content;
+    if (key === "reels") return draft.result_data.reels_content;
+    if (key === "threads") return draft.result_data.threads_content;
+    return "";
+  };
+
+  // 결과 데이터 존재 확인
   const hasResult = draft?.result_data && Object.keys(draft.result_data).length > 0;
 
-  // 렌더링: 로딩 중
-  // 조건: (초기 로딩 중) OR (결과 데이터가 없고, 상태가 진행 중일 때)
+  // 로딩 화면
   if (loading || (!hasResult && draft && (draft.status === "idle" || draft.status === "generating"))) {
     return (
       <AppShell showHeader={false}>
@@ -187,49 +199,96 @@ const DraftResult = () => {
     );
   }
 
-  // 렌더링: 결과 화면
   return (
     <AppShell>
-      <div className="flex-1 px-6 py-6 space-y-8 overflow-y-auto pb-20">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">생성된 결과</h1>
-          {/* 비로그인 유저에게만 저장 버튼 노출 */}
-          {!user && (
-            <Button onClick={handleLoginToSave} className="bg-[#FEE500] text-black hover:bg-[#FEE500]/90">
-              카카오로 3초 만에 저장하기
-            </Button>
-          )}
+      <div className="flex-1 px-6 py-6 space-y-8 overflow-y-auto pb-36">
+        <h1 className="text-2xl font-bold text-foreground">오늘의 결과</h1>
+
+        {/* 1. 입력 내용 요약 카드 */}
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex justify-between items-start">
+          <div>
+            <h3 className="text-sm font-semibold mb-2">오늘 내가 기록한 내용</h3>
+            <p className="text-sm text-gray-600 line-clamp-2">
+              {draft?.input_data?.textInput || "음성으로 기록한 내용입니다."}
+            </p>
+          </div>
+          {/* 게스트는 수정 불가 -> 로그인 유도 */}
+          <Button variant="outline" size="sm" onClick={handleLoginToSave} className="text-xs h-8">
+            저장
+          </Button>
         </div>
 
-        {/* 결과 카드 리스트 */}
+        {/* 2. 2x2 그리드 레이아웃 */}
         {draft?.result_data && (
-          <div className="grid gap-4">
-            {Object.entries(draft.result_data).map(([key, content]) => {
-              if (!content) return null;
-              const type = key.replace("_content", "") as keyof typeof platformIcons;
-              const meta = platformIcons[type] || platformIcons.blog;
+          <div className="grid grid-cols-2 gap-3">
+            {Object.keys(platformIcons).map((key) => {
+              const meta = platformIcons[key as keyof typeof platformIcons];
               const Icon = meta.icon;
+              const content = getContent(key);
+              const isInstagram = key === "reels";
+              const preview = isInstagram ? getInstagramPreview(content || "") : content || "";
 
               return (
-                <div key={key} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                <button
+                  key={key}
+                  onClick={() => handlePlatformClick(key)}
+                  className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-left hover:shadow-md transition-all flex flex-col h-48 relative overflow-hidden group"
+                >
                   <div className="flex items-center gap-2 mb-3">
                     <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center"
-                      style={{ backgroundColor: meta.color }}
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center ${isInstagram ? "bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af]" : ""}`}
+                      style={{ backgroundColor: isInstagram ? undefined : meta.color }}
                     >
                       <Icon className="text-white w-4 h-4" />
                     </div>
-                    <span className="font-semibold">{meta.label}</span>
                   </div>
-                  <div className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto">
-                    {content}
-                  </div>
-                </div>
+                  <h3 className="text-sm font-bold text-gray-900 mb-1 line-clamp-1">{meta.label}</h3>
+                  <p className="text-xs text-gray-500 line-clamp-4 leading-relaxed">{preview}</p>
+
+                  {/* Hover Overlay */}
+                  <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </button>
               );
             })}
           </div>
         )}
       </div>
+
+      {/* 3. 하단 고정 버튼 (게스트용) */}
+      {!user && (
+        <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-white via-white to-transparent pt-10 z-20">
+          <div className="max-w-md mx-auto space-y-3">
+            <Button
+              onClick={handleLoginToSave}
+              className="w-full h-14 text-lg font-bold rounded-2xl bg-[#FEE500] text-black hover:bg-[#FEE500]/90 shadow-lg shadow-orange-100"
+            >
+              {/* ✅ 요청하신 문구 적용 */}
+              로그인하고 텍스트 복사/수정하기
+            </Button>
+            <Button variant="ghost" onClick={() => navigate("/")} className="w-full text-muted-foreground text-xs">
+              저장하지 않고 홈으로
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* 4. 상세 모달 (버튼 가로채기 적용) */}
+      {selectedPlatform && (
+        <ResultDetailModal
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedPlatform(null);
+          }}
+          platform={selectedPlatform}
+          content={getContent(selectedPlatform) || ""}
+          outputId={draftId || ""}
+          // 🔥 모달 안의 '저장/복사' 버튼을 누르면 로그인 함수 실행
+          onSave={handleLoginToSave}
+          onCopy={handleLoginToSave}
+          onContentUpdate={() => {}}
+        />
+      )}
     </AppShell>
   );
 };
