@@ -31,7 +31,6 @@ const platformIcons = {
   threads: { icon: SiThreads, color: "#000000", label: "Threads (짧은 에세이)" },
 };
 
-// 인스타 미리보기 헬퍼 함수
 const getInstagramPreview = (content: string | null): string => {
   if (!content) return "생성된 콘텐츠 없음";
   const cleanContent = content
@@ -61,19 +60,15 @@ const DraftResult = () => {
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // 모달 상태 관리
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // 1. Draft 데이터 불러오기
+  // 1. Draft Fetching
   useEffect(() => {
     if (!draftId) return;
-
     const fetchDraft = async () => {
       const { data, error } = await supabase.from("drafts").select("*").eq("id", draftId).single();
-
       if (error) {
-        console.error("Error fetching draft:", error);
         toast({ title: "오류", description: "기록을 찾을 수 없습니다.", variant: "destructive" });
         navigate("/");
         return;
@@ -81,10 +76,8 @@ const DraftResult = () => {
       setDraft(data as any);
       setLoading(false);
     };
-
     fetchDraft();
 
-    // 실시간 구독
     const channel = supabase
       .channel(`draft-${draftId}`)
       .on(
@@ -101,10 +94,9 @@ const DraftResult = () => {
     };
   }, [draftId, navigate, toast]);
 
-  // 2. AI 생성 실행 logic
+  // 2. AI Generation
   useEffect(() => {
     if (!draft || draft.status !== "idle" || isProcessing) return;
-
     const runAI = async () => {
       setIsProcessing(true);
       try {
@@ -141,13 +133,13 @@ const DraftResult = () => {
     runAI();
   }, [draft, isProcessing]);
 
-  // 3. Claim (저장) 로직
+  // 3. Claim Logic
   useEffect(() => {
     const claimDraft = async () => {
       if (user && draft && draft.user_id === null) {
         const { error } = await supabase.from("drafts").update({ user_id: user.id }).eq("id", draft.id);
         if (!error) {
-          toast({ title: "저장 완료", description: "내 기록함에 안전하게 저장되었습니다!" });
+          toast({ title: "저장 완료", description: "내 기록함에 안전하게 저장되었습니다." });
           localStorage.removeItem("pending_draft_id");
         }
       }
@@ -155,12 +147,20 @@ const DraftResult = () => {
     claimDraft();
   }, [user, draft, toast]);
 
-  // 로그인 핸들러 (저장 버튼 클릭 시)
-  const handleLoginToSave = async () => {
+  // ✅ 로그인 유도 핸들러 (이벤트 버블링 방지 추가)
+  const handleLoginToSave = async (e?: React.MouseEvent) => {
+    // 이벤트 전파 중단 (모달 내부 로직 실행 방지)
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
     if (user) {
       toast({ title: "이미 저장되었습니다", description: "내 기록함에서 확인하세요." });
       return;
     }
+
+    // 즉시 리다이렉트
     await supabase.auth.signInWithOAuth({
       provider: "kakao",
       options: { redirectTo: `${window.location.origin}/auth/callback?next=/result/${draftId}` },
@@ -181,10 +181,8 @@ const DraftResult = () => {
     return "";
   };
 
-  // 결과 데이터 존재 확인
   const hasResult = draft?.result_data && Object.keys(draft.result_data).length > 0;
 
-  // 로딩 화면
   if (loading || (!hasResult && draft && (draft.status === "idle" || draft.status === "generating"))) {
     return (
       <AppShell showHeader={false}>
@@ -201,10 +199,11 @@ const DraftResult = () => {
 
   return (
     <AppShell>
-      <div className="flex-1 px-6 py-6 space-y-8 overflow-y-auto pb-36">
+      {/* 하단 버튼 공간 확보를 위해 pb 값 증가 */}
+      <div className="flex-1 px-6 py-6 space-y-8 overflow-y-auto pb-32">
         <h1 className="text-2xl font-bold text-foreground">오늘의 결과</h1>
 
-        {/* 1. 입력 내용 요약 카드 */}
+        {/* 요약 카드 */}
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex justify-between items-start">
           <div>
             <h3 className="text-sm font-semibold mb-2">오늘 내가 기록한 내용</h3>
@@ -218,7 +217,7 @@ const DraftResult = () => {
           </Button>
         </div>
 
-        {/* 2. 2x2 그리드 레이아웃 */}
+        {/* 2x2 그리드 */}
         {draft?.result_data && (
           <div className="grid grid-cols-2 gap-3">
             {Object.keys(platformIcons).map((key) => {
@@ -244,8 +243,6 @@ const DraftResult = () => {
                   </div>
                   <h3 className="text-sm font-bold text-gray-900 mb-1 line-clamp-1">{meta.label}</h3>
                   <p className="text-xs text-gray-500 line-clamp-4 leading-relaxed">{preview}</p>
-
-                  {/* Hover Overlay */}
                   <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </button>
               );
@@ -254,25 +251,21 @@ const DraftResult = () => {
         )}
       </div>
 
-      {/* 3. 하단 고정 버튼 (게스트용) */}
+      {/* ✅ 하단 고정 CTA (디자인 개선) */}
       {!user && (
-        <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-white via-white to-transparent pt-10 z-20">
-          <div className="max-w-md mx-auto space-y-3">
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 z-50 safe-area-bottom">
+          <div className="max-w-md mx-auto">
             <Button
               onClick={handleLoginToSave}
-              className="w-full h-14 text-lg font-bold rounded-2xl bg-[#FEE500] text-black hover:bg-[#FEE500]/90 shadow-lg shadow-orange-100"
+              className="w-full h-12 rounded-xl text-base font-bold bg-[#FEE500] text-black hover:bg-[#FEE500]/90 shadow-sm"
             >
-              {/* ✅ 요청하신 문구 적용 */}
               로그인하고 텍스트 복사/수정하기
-            </Button>
-            <Button variant="ghost" onClick={() => navigate("/")} className="w-full text-muted-foreground text-xs">
-              저장하지 않고 홈으로
             </Button>
           </div>
         </div>
       )}
 
-      {/* 4. 상세 모달 (버튼 가로채기 적용) */}
+      {/* 상세 모달 */}
       {selectedPlatform && (
         <ResultDetailModal
           isOpen={isModalOpen}
@@ -283,7 +276,7 @@ const DraftResult = () => {
           platform={selectedPlatform}
           content={getContent(selectedPlatform) || ""}
           outputId={draftId || ""}
-          // 🔥 모달 안의 '저장/복사' 버튼을 누르면 로그인 함수 실행
+          // 🔥 핵심: 모달 이벤트가 발생해도 handleLoginToSave만 실행되도록 연결
           onSave={handleLoginToSave}
           onCopy={handleLoginToSave}
           onContentUpdate={() => {}}
