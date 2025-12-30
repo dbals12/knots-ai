@@ -123,7 +123,20 @@ const DraftResult = () => {
         if (!response.ok) throw new Error("AI Processing Failed");
         const aiResult = await response.json();
 
-        await supabase.from("drafts").update({ status: "completed", result_data: aiResult.content }).eq("id", draft.id);
+        // ✅ [수정] AI가 변환한 텍스트(transcript)도 input_data에 저장해야 화면에 보임!
+        const updatedInputData = {
+          ...draft.input_data,
+          textInput: aiResult.transcript || draft.input_data.textInput, // 음성 변환 텍스트 우선 사용
+        };
+
+        await supabase
+          .from("drafts")
+          .update({
+            status: "completed",
+            result_data: aiResult.content,
+            input_data: updatedInputData, // 텍스트 업데이트
+          })
+          .eq("id", draft.id);
       } catch (error) {
         await supabase.from("drafts").update({ status: "failed", error_message: "생성 실패" }).eq("id", draft.id);
       } finally {
@@ -147,19 +160,15 @@ const DraftResult = () => {
     claimDraft();
   }, [user, draft, toast]);
 
-  // ✅ 로그인 유도 핸들러
-  const handleLoginToSave = async (e?: React.MouseEvent) => {
-    // 이벤트 전파 중단
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-
+  // ✅ [수정] 강력한 로그인 핸들러
+  const handleLoginToSave = async () => {
+    // 이미 로그인 상태라면 저장 완료 메시지
     if (user) {
       toast({ title: "이미 저장되었습니다", description: "내 기록함에서 확인하세요." });
       return;
     }
 
+    // 비로그인 상태면 강제 리다이렉트
     await supabase.auth.signInWithOAuth({
       provider: "kakao",
       options: { redirectTo: `${window.location.origin}/auth/callback?next=/result/${draftId}` },
@@ -201,21 +210,18 @@ const DraftResult = () => {
       <div className="flex-1 px-6 py-6 space-y-8 overflow-y-auto pb-32">
         <h1 className="text-2xl font-bold text-foreground">오늘의 결과</h1>
 
-        {/* 요약 카드 */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex justify-between items-start">
-          <div>
-            <h3 className="text-sm font-semibold mb-2">오늘 내가 기록한 내용</h3>
-            <p className="text-sm text-gray-600 line-clamp-2">
-              {draft?.input_data?.textInput || "음성으로 기록한 내용입니다."}
+        {/* 1. 입력 내용 요약 카드 (디자인 복구) */}
+        <div className="bg-[#F8F8F8] rounded-2xl p-6 flex justify-between items-start">
+          <div className="flex-1 pr-4">
+            <h3 className="text-sm font-semibold mb-2 text-foreground">오늘 내가 기록한 내용</h3>
+            <p className="text-sm text-gray-600 line-clamp-3 leading-relaxed">
+              {/* ✅ 이제 DB에 저장된 transcript가 여기에 뜹니다 */}
+              {draft?.input_data?.textInput || "음성 기록을 변환 중입니다..."}
             </p>
           </div>
-          {/* 게스트용 저장 버튼 */}
-          <Button variant="outline" size="sm" onClick={handleLoginToSave} className="text-xs h-8">
-            저장
-          </Button>
         </div>
 
-        {/* 2x2 그리드 */}
+        {/* 2. 2x2 그리드 레이아웃 (디자인 복구) */}
         {draft?.result_data && (
           <div className="grid grid-cols-2 gap-3">
             {Object.keys(platformIcons).map((key) => {
@@ -229,19 +235,23 @@ const DraftResult = () => {
                 <button
                   key={key}
                   onClick={() => handlePlatformClick(key)}
-                  className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-left hover:shadow-md transition-all flex flex-col h-48 relative overflow-hidden group"
+                  // ✅ [디자인 복구] 흰색 배경+테두리 제거 -> 회색 배경(#F8F8F8) 복귀
+                  className="bg-[#F8F8F8] rounded-2xl p-5 text-left hover:bg-gray-100 transition-all flex flex-col h-52 relative overflow-hidden group"
                 >
-                  <div className="flex items-center gap-2 mb-3">
+                  <div className="flex items-center gap-2 mb-4">
+                    {/* 아이콘 배경 스타일 유지 */}
                     <div
-                      className={`w-8 h-8 rounded-lg flex items-center justify-center ${isInstagram ? "bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af]" : ""}`}
-                      style={{ backgroundColor: isInstagram ? undefined : meta.color }}
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center ${isInstagram ? "bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af]" : "bg-white"}`}
                     >
-                      <Icon className="text-white w-4 h-4" />
+                      <Icon
+                        className={`w-5 h-5 ${isInstagram ? "text-white" : ""}`}
+                        style={{ color: isInstagram ? undefined : meta.color }}
+                      />
                     </div>
                   </div>
-                  <h3 className="text-sm font-bold text-gray-900 mb-1 line-clamp-1">{meta.label}</h3>
-                  <p className="text-xs text-gray-500 line-clamp-4 leading-relaxed">{preview}</p>
-                  <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  {/* 폰트 스타일 복구 */}
+                  <h3 className="text-sm font-bold text-foreground mb-2 line-clamp-1">{meta.label}</h3>
+                  <p className="text-xs text-muted-foreground line-clamp-4 leading-relaxed">{preview}</p>
                 </button>
               );
             })}
@@ -249,13 +259,13 @@ const DraftResult = () => {
         )}
       </div>
 
-      {/* ✅ 하단 고정 CTA (디자인 개선) */}
+      {/* ✅ 3. 하단 고정 CTA (블랙 버튼 + 위치 수정) */}
       {!user && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 z-50 safe-area-bottom">
+        <div className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-white via-white to-transparent pt-10 z-20">
           <div className="max-w-md mx-auto">
             <Button
-              onClick={(e) => handleLoginToSave(e)}
-              className="w-full h-12 rounded-xl text-base font-bold bg-[#FEE500] text-black hover:bg-[#FEE500]/90 shadow-sm"
+              onClick={() => handleLoginToSave()}
+              className="w-full h-14 rounded-2xl text-base font-bold bg-foreground text-background hover:bg-foreground/90 shadow-lg"
             >
               로그인하고 텍스트 복사/수정하기
             </Button>
@@ -263,7 +273,7 @@ const DraftResult = () => {
         </div>
       )}
 
-      {/* 상세 모달 (타입 에러 수정됨) */}
+      {/* 4. 상세 모달 (이벤트 차단 로직 적용) */}
       {selectedPlatform && (
         <ResultDetailModal
           isOpen={isModalOpen}
@@ -274,7 +284,7 @@ const DraftResult = () => {
           platform={selectedPlatform}
           content={getContent(selectedPlatform) || ""}
           outputId={draftId || ""}
-          // ✅ 수정: 인자를 무시하고 로그인 함수만 호출하도록 래핑
+          // 🔥 [중요] 모달 내부의 이벤트가 밖으로 새지 않도록 래핑
           onSave={() => handleLoginToSave()}
           onCopy={() => handleLoginToSave()}
           onContentUpdate={() => {}}
