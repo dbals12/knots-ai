@@ -8,6 +8,16 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { SiNaver, SiLinkedin, SiInstagram, SiThreads } from "react-icons/si";
 import ResultDetailModal from "@/components/ResultDetailModal";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // 결과 데이터 타입 정의
 interface Draft {
@@ -24,15 +34,17 @@ interface Draft {
   error_message?: string;
 }
 
+// 기존 Results.tsx의 아이콘 설정 그대로 사용
 const platformIcons = {
-  blog: { icon: SiNaver, color: "#03C75A", label: "블로그 (회고형)" },
-  linkedin: { icon: SiLinkedin, color: "#0077B5", label: "LinkedIn (인사이트형)" },
-  reels: { icon: SiInstagram, color: "#E4405F", label: "인스타 (카드뉴스 & 캡션)" },
-  threads: { icon: SiThreads, color: "#000000", label: "Threads (짧은 에세이)" },
+  blog: { icon: SiNaver, color: "#03C75A", title: "블로그 (회고형)" },
+  linkedin: { icon: SiLinkedin, color: "#0077B5", title: "LinkedIn (인사이트형)" },
+  reels: { icon: SiInstagram, color: "#E4405F", title: "인스타 (카드뉴스 & 캡션)" },
+  threads: { icon: SiThreads, color: "#000000", title: "Threads (짧은 에세이)" },
 };
 
-const getInstagramPreview = (content: string | null): string => {
-  if (!content) return "생성된 콘텐츠 없음";
+const getSummary = (content: string | null) => {
+  if (!content) return "콘텐츠가 생성되지 않았습니다.";
+  // 인스타그램 JSON 처리 등을 포함한 요약 로직
   const cleanContent = content
     .replace(/```json\s*/gi, "")
     .replace(/```\s*/gi, "")
@@ -40,14 +52,18 @@ const getInstagramPreview = (content: string | null): string => {
   try {
     const parsed = JSON.parse(cleanContent);
     if (typeof parsed === "object" && parsed !== null) {
-      const slide1 = parsed["Slide 1"] || parsed["slide 1"];
-      if (slide1) return slide1.replace(/^[:\s"]+|[",\s}]+$/g, "").trim();
+      // 인스타의 경우 첫 슬라이드나 캡션을 요약으로 사용
+      return (
+        (parsed["Slide 1"] || parsed["slide 1"] || parsed["Caption"] || parsed["caption"] || content).substring(
+          0,
+          100,
+        ) + "..."
+      );
     }
   } catch {
-    const match = content.match(/\[Slide 1\]([\s\S]*?)(?=\[Slide|\[Caption|$)/i);
-    if (match?.[1]) return match[1].trim();
+    // 일반 텍스트
   }
-  return content.substring(0, 100) + "...";
+  return content.length > 100 ? content.substring(0, 100) + "..." : content;
 };
 
 const DraftResult = () => {
@@ -62,6 +78,7 @@ const DraftResult = () => {
 
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showLoginAlert, setShowLoginAlert] = useState(false);
 
   // 1. Draft Fetching
   useEffect(() => {
@@ -123,11 +140,14 @@ const DraftResult = () => {
         if (!response.ok) throw new Error("AI Processing Failed");
         const aiResult = await response.json();
 
-        // 텍스트 업데이트 및 결과 저장
         const updatedInputData = {
           ...draft.input_data,
           textInput: aiResult.transcript || draft.input_data.textInput,
         };
+
+        setDraft((prev) =>
+          prev ? { ...prev, status: "completed", result_data: aiResult.content, input_data: updatedInputData } : null,
+        );
 
         await supabase
           .from("drafts")
@@ -146,7 +166,7 @@ const DraftResult = () => {
     runAI();
   }, [draft, isProcessing]);
 
-  // 3. Claim Logic (Login 후 자동 저장)
+  // 3. Claim Logic
   useEffect(() => {
     const claimDraft = async () => {
       if (user && draft && draft.user_id === null) {
@@ -160,33 +180,34 @@ const DraftResult = () => {
     claimDraft();
   }, [user, draft, toast]);
 
-  // ✅ 로그인 유도 핸들러
-  const handleLoginToSave = async () => {
-    if (user) {
-      toast({ title: "이미 저장되었습니다", description: "내 기록함에서 확인하세요." });
-      return;
+  // 로그인 핸들러 & 팝업 트리거
+  const triggerLoginAlert = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
     }
+    if (user) return;
+    setShowLoginAlert(true);
+  };
 
-    // 카카오 로그인 트리거 (redirectTo가 현재 페이지)
+  const performLogin = async () => {
     await supabase.auth.signInWithOAuth({
       provider: "kakao",
       options: { redirectTo: `${window.location.origin}/auth/callback?next=/result/${draftId}` },
     });
   };
 
-  // ✅ 복사 핸들러 (게스트는 로그인 유도, 회원은 복사 수행)
   const handleCopyAction = (content: string) => {
     if (!user) {
-      handleLoginToSave();
+      setShowLoginAlert(true);
       return;
     }
-    // 여기에 실제 클립보드 복사 로직 (ResultDetailModal 내부에서 수행하지만, 상위 제어용)
     navigator.clipboard.writeText(content).then(() => {
       toast({ title: "복사 완료", description: "클립보드에 복사되었습니다." });
     });
   };
 
-  const handlePlatformClick = (platformKey: string) => {
+  const handleCardClick = (platformKey: string) => {
     setSelectedPlatform(platformKey);
     setIsModalOpen(true);
   };
@@ -205,103 +226,88 @@ const DraftResult = () => {
   if (loading || (!hasResult && draft && (draft.status === "idle" || draft.status === "generating"))) {
     return (
       <AppShell showHeader={false}>
-        <div className="flex-1 flex flex-col items-center justify-center gap-6 min-h-[600px]">
-          <Loader2 className="w-12 h-12 text-foreground animate-spin" />
-          <div className="text-center space-y-2">
-            <h2 className="text-xl font-semibold">AI가 기록을 정리하고 있어요</h2>
-            <p className="text-muted-foreground text-sm">약 10~20초 정도 걸립니다. 잠시만 기다려주세요.</p>
-          </div>
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
         </div>
       </AppShell>
     );
   }
 
   return (
-    <AppShell>
-      <div className="flex-1 px-6 py-6 space-y-8 overflow-y-auto">
-        <h1 className="text-2xl font-bold text-foreground font-jost">오늘의 결과</h1>
+    <AppShell className="min-h-[700px]">
+      <div className="flex-1 px-6 py-6 space-y-5 overflow-y-auto">
+        <h2 className="text-xl font-semibold text-foreground">오늘의 결과</h2>
 
-        {/* 1. 입력 내용 요약 카드 (예전 UI 스타일 복원) */}
-        {/* 흰색 박스 + 그림자 제거 + 연회색 배경 */}
-        <div className="flex justify-between items-start">
-          <div className="flex-1">
-            <h3 className="text-sm font-semibold mb-2 text-foreground">오늘 내가 기록한 내용</h3>
-            <p className="text-sm text-gray-600 line-clamp-3 leading-relaxed">
-              {draft?.input_data?.textInput || "음성 기록을 변환 중입니다..."}
-            </p>
+        {/* 1. 입력 내용 요약 카드 (기존 Results.tsx 스타일 적용) */}
+        <div className="bg-[#F8F8F8] rounded-2xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-medium text-foreground">오늘 내가 기록한 내용</h3>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={(e) => (user ? navigate("/input") : triggerLoginAlert(e))}
+              className="h-8 text-xs"
+            >
+              {user ? "수정하기" : "저장"}
+            </Button>
           </div>
-          {/* 게스트: 수정 불가(로그인 유도), 회원: 수정 가능(추후 구현) */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleLoginToSave}
-            className="text-xs h-8 ml-4 shrink-0 rounded-lg border-gray-200"
-          >
-            {user ? "수정하기" : "저장"}
-          </Button>
+          <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap line-clamp-4">
+            {draft?.input_data?.textInput || "음성 기록을 변환 중입니다..."}
+          </p>
         </div>
 
-        {/* 2. 2x2 그리드 레이아웃 (예전 UI 스타일 복원) */}
+        {/* 2. 2x2 그리드 레이아웃 (기존 Results.tsx 스타일 적용) */}
         {draft?.result_data && (
           <div className="grid grid-cols-2 gap-3">
             {Object.keys(platformIcons).map((key) => {
               const meta = platformIcons[key as keyof typeof platformIcons];
               const Icon = meta.icon;
               const content = getContent(key);
-              const isInstagram = key === "reels";
-              const preview = isInstagram ? getInstagramPreview(content || "") : content || "";
 
               return (
                 <button
                   key={key}
-                  onClick={() => handlePlatformClick(key)}
-                  // ✅ [디자인 복구] #F8F8F8 배경, 그림자 없음, hover시 진해짐
-                  className="bg-[#F8F8F8] rounded-2xl p-5 text-left hover:bg-[#F0F0F0] transition-colors flex flex-col h-52 relative overflow-hidden group"
+                  onClick={() => handleCardClick(key)}
+                  // ✅ 기존 코드의 스타일링(색상, 패딩, 호버 등) 100% 적용
+                  className="bg-[#F8F8F8] rounded-2xl p-4 hover:bg-[#F0F0F0] transition-all text-left space-y-2"
                 >
-                  <div className="flex items-center gap-2 mb-4">
-                    {/* 아이콘 배경 스타일 유지 */}
-                    <div
-                      className={`w-10 h-10 rounded-xl flex items-center justify-center ${isInstagram ? "bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af]" : "bg-white"}`}
-                    >
-                      <Icon
-                        className={`w-5 h-5 ${isInstagram ? "text-white" : "text-foreground"}`}
-                        style={{ color: isInstagram ? undefined : meta.color }}
-                      />
-                    </div>
+                  <div
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center ${key === "reels" ? "bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af]" : ""}`}
+                    style={{ backgroundColor: key === "reels" ? undefined : meta.color }}
+                  >
+                    <Icon className="w-4 h-4 text-white" />
                   </div>
-                  {/* 폰트 스타일 복구 */}
-                  <h3 className="text-sm font-bold text-foreground mb-2 line-clamp-1">{meta.label}</h3>
-                  <p className="text-xs text-muted-foreground line-clamp-4 leading-relaxed">{preview}</p>
+                  <div>
+                    <h3 className="font-medium text-foreground text-xs mb-1">{meta.title}</h3>
+                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed font-normal">
+                      {getSummary(content)}
+                    </p>
+                  </div>
                 </button>
               );
             })}
           </div>
         )}
 
-        {/* 3. 하단 버튼 (고정 아님, 스크롤 최하단 배치 - 예전 스타일) */}
-        <div className="pt-4 pb-10 space-y-3">
+        {/* 3. 하단 버튼 (기존 스타일 유지하되 게스트 로직 추가) */}
+        <div className="pt-2 space-y-2">
           {!user ? (
-            // 게스트용 버튼
             <Button
-              onClick={handleLoginToSave}
-              className="w-full h-14 rounded-2xl text-base font-bold bg-foreground text-background hover:bg-foreground/90 shadow-none"
+              onClick={(e) => triggerLoginAlert(e)}
+              className="w-full h-11 rounded-xl bg-foreground text-background hover:bg-foreground/90 text-sm"
             >
               로그인하고 텍스트 복사/수정하기
             </Button>
           ) : (
-            // 로그인 유저용 버튼
+            // 로그인 후에는 기존처럼
             <>
               <Button
                 onClick={() => navigate("/input")}
-                className="w-full h-14 rounded-2xl text-base font-bold bg-foreground text-background hover:bg-foreground/90 shadow-none"
+                className="w-full h-11 rounded-xl bg-foreground text-background hover:bg-foreground/90 text-sm"
               >
                 새로운 기록 만들기
               </Button>
-              <Button
-                variant="ghost"
-                onClick={() => navigate("/")}
-                className="w-full text-muted-foreground text-sm hover:bg-transparent hover:text-foreground"
-              >
+              <Button variant="outline" onClick={() => navigate("/")} className="w-full h-11 rounded-xl text-sm">
                 홈으로 돌아가기
               </Button>
             </>
@@ -309,7 +315,30 @@ const DraftResult = () => {
         </div>
       </div>
 
-      {/* 4. 상세 모달 (로직 분리 적용) */}
+      {/* 4. 로그인 유도 팝업 */}
+      <AlertDialog open={showLoginAlert} onOpenChange={setShowLoginAlert}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>로그인이 필요한 기능입니다</AlertDialogTitle>
+            <AlertDialogDescription>
+              결과를 저장하거나 복사하려면 로그인이 필요해요.
+              <br />
+              3초 만에 로그인하고 안전하게 보관하세요!
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl border-0">취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={performLogin}
+              className="rounded-xl bg-[#FEE500] text-black hover:bg-[#FEE500]/90"
+            >
+              카카오로 로그인하기
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 5. 상세 모달 (기존 컴포넌트 재사용 + 이벤트 제어) */}
       {selectedPlatform && (
         <ResultDetailModal
           isOpen={isModalOpen}
@@ -320,8 +349,7 @@ const DraftResult = () => {
           platform={selectedPlatform}
           content={getContent(selectedPlatform) || ""}
           outputId={draftId || ""}
-          // ✅ [핵심] 로그인 여부에 따라 다른 동작 수행
-          onSave={() => handleLoginToSave()}
+          onSave={() => triggerLoginAlert()}
           onCopy={(content) => handleCopyAction(content)}
           onContentUpdate={() => {}}
         />
