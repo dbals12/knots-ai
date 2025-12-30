@@ -1,140 +1,51 @@
-import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2 } from "lucide-react";
 
-/**
- * /auth/callback
- * 
- * This route handles OAuth redirects and ensures users are sent to the correct
- * destination after login:
- * 
- * 1. If ?next= query param exists → go there
- * 2. Else if localStorage.pending_draft_id exists → go to /result/:draftId
- * 3. Else → go to /input (default logged-in home)
- */
 const AuthCallback = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const [status, setStatus] = useState<"loading" | "error">("loading");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const location = useLocation();
 
   useEffect(() => {
-    const handleCallback = async () => {
-      try {
-        // Wait for Supabase to process the OAuth callback
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    // 1. URL의 next 파라미터 확인 (우리가 로그인 시킨 경우)
+    const searchParams = new URLSearchParams(location.search);
+    const next = searchParams.get("next");
 
-        if (sessionError) {
-          console.error("[auth/callback] Session error:", sessionError);
-          setStatus("error");
-          setErrorMessage(sessionError.message);
-          return;
-        }
+    // 2. 로컬 스토리지 확인 (백업용)
+    const pendingDraftId = localStorage.getItem("pending_draft_id");
 
-        // Also listen for auth state change in case session isn't ready yet
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          async (event, session) => {
-            if (event === "SIGNED_IN" && session) {
-              console.log("[auth/callback] SIGNED_IN event received");
-              await processRedirect(session.user.id);
-              subscription.unsubscribe();
-            }
-          }
-        );
+    const handleRedirect = async () => {
+      // 세션 확정 대기
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-        // If session already exists, process immediately
-        if (session) {
-          console.log("[auth/callback] Session already exists");
-          await processRedirect(session.user.id);
-          subscription.unsubscribe();
-        }
-      } catch (err) {
-        console.error("[auth/callback] Error:", err);
-        setStatus("error");
-        setErrorMessage(err instanceof Error ? err.message : "Unknown error");
-      }
-    };
-
-    const processRedirect = async (userId: string) => {
-      // Ensure user exists in users table
-      try {
-        const { data: userData } = await supabase
-          .from("users")
-          .select("id")
-          .eq("id", userId)
-          .maybeSingle();
-
-        if (!userData) {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            await supabase.from("users").upsert({
-              id: user.id,
-              email: user.email,
-            }, { onConflict: "id" });
-          }
-        }
-      } catch (err) {
-        console.warn("[auth/callback] Failed to ensure user row:", err);
+      if (!session) {
+        // 로그인 실패 시 로그인 페이지로
+        navigate("/login");
+        return;
       }
 
-      // Determine redirect target
-      let target = "/input"; // Default destination
+      console.log("[AuthCallback] Logged in.", { next, pendingDraftId });
 
-      // Priority 1: ?next= query param
-      const nextParam = searchParams.get("next");
-      if (nextParam) {
-        target = nextParam;
-        console.log("[auth/callback] Using ?next= param:", target);
+      if (next) {
+        // 3-A. 명시된 next 경로가 있으면 거기로 이동 (Result Page)
+        navigate(next, { replace: true });
+      } else if (pendingDraftId) {
+        // 3-B. next가 끊겼지만 로컬에 draft ID가 있으면 거기로 이동
+        navigate(`/result/${pendingDraftId}`, { replace: true });
       } else {
-        // Priority 2: pending_draft_id in localStorage
-        try {
-          const pendingDraftId = localStorage.getItem("pending_draft_id");
-          if (pendingDraftId) {
-            target = `/result/${pendingDraftId}`;
-            console.log("[auth/callback] Using pending_draft_id:", target);
-          }
-        } catch {}
+        // 3-C. 아무것도 없으면 홈으로 (일반 로그인)
+        navigate("/", { replace: true });
       }
-
-      // Clear any old guest submission data
-      try {
-        localStorage.removeItem("guest_pending_submission");
-      } catch {}
-
-      console.log("[auth/callback] Navigating to:", target);
-      navigate(target, { replace: true });
     };
 
-    handleCallback();
-  }, [navigate, searchParams]);
-
-  if (status === "error") {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center space-y-4 max-w-md px-6">
-          <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
-            <span className="text-2xl">❌</span>
-          </div>
-          <h2 className="text-xl font-semibold text-foreground">로그인에 실패했습니다</h2>
-          <p className="text-muted-foreground">{errorMessage || "알 수 없는 오류가 발생했습니다."}</p>
-          <button
-            onClick={() => navigate("/login")}
-            className="text-primary hover:underline"
-          >
-            다시 시도하기
-          </button>
-        </div>
-      </div>
-    );
-  }
+    handleRedirect();
+  }, [navigate, location]);
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="text-center space-y-4">
-        <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
-        <p className="text-muted-foreground">로그인 처리 중...</p>
-      </div>
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <p className="text-muted-foreground">로그인 완료! 페이지 이동 중...</p>
     </div>
   );
 };
