@@ -19,7 +19,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-// 결과 데이터 타입 정의
 interface Draft {
   id: string;
   user_id: string | null;
@@ -34,7 +33,6 @@ interface Draft {
   error_message?: string;
 }
 
-// 기존 Results.tsx의 아이콘 설정 그대로 사용
 const platformIcons = {
   blog: { icon: SiNaver, color: "#03C75A", title: "블로그 (회고형)" },
   linkedin: { icon: SiLinkedin, color: "#0077B5", title: "LinkedIn (인사이트형)" },
@@ -58,9 +56,7 @@ const getSummary = (content: string | null) => {
         ) + "..."
       );
     }
-  } catch {
-    // 일반 텍스트
-  }
+  } catch {}
   return content.length > 100 ? content.substring(0, 100) + "..." : content;
 };
 
@@ -78,7 +74,6 @@ const DraftResult = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showLoginAlert, setShowLoginAlert] = useState(false);
 
-  // 1. Draft Fetching
   useEffect(() => {
     if (!draftId) return;
     const fetchDraft = async () => {
@@ -109,7 +104,6 @@ const DraftResult = () => {
     };
   }, [draftId, navigate, toast]);
 
-  // 2. AI Generation
   useEffect(() => {
     if (!draft || draft.status !== "idle" || isProcessing) return;
     const runAI = async () => {
@@ -164,7 +158,6 @@ const DraftResult = () => {
     runAI();
   }, [draft, isProcessing]);
 
-  // 3. Claim Logic
   useEffect(() => {
     const claimDraft = async () => {
       if (user && draft && draft.user_id === null) {
@@ -178,7 +171,6 @@ const DraftResult = () => {
     claimDraft();
   }, [user, draft, toast]);
 
-  // 팝업 트리거
   const triggerLoginAlert = (e?: React.MouseEvent) => {
     if (e) {
       e.preventDefault();
@@ -188,9 +180,7 @@ const DraftResult = () => {
     setShowLoginAlert(true);
   };
 
-  // ✅ [수정] 로그인 페이지로 이동 (선택창 띄우기 위해)
   const performLogin = () => {
-    // next 파라미터로 현재 결과 페이지 URL을 넘겨줍니다.
     navigate(`/login?next=/result/${draftId}`);
   };
 
@@ -202,6 +192,20 @@ const DraftResult = () => {
     navigator.clipboard.writeText(content).then(() => {
       toast({ title: "복사 완료", description: "클립보드에 복사되었습니다." });
     });
+  };
+
+  // ✅ [추가] 모달에서 수정한 내용 DB에 반영
+  const handleContentUpdate = async (newContent: string) => {
+    if (!selectedPlatform || !draft?.result_data) return;
+
+    const platformKey = selectedPlatform === "reels" ? "reels_content" : `${selectedPlatform}_content`;
+    const updatedResult = { ...draft.result_data, [platformKey]: newContent };
+
+    // 로컬 업데이트 (즉시 반영)
+    setDraft((prev) => (prev ? { ...prev, result_data: updatedResult } : null));
+
+    // DB 업데이트
+    await supabase.from("drafts").update({ result_data: updatedResult }).eq("id", draftId);
   };
 
   const handleCardClick = (platformKey: string) => {
@@ -235,7 +239,6 @@ const DraftResult = () => {
       <div className="flex-1 px-6 py-6 space-y-5 overflow-y-auto">
         <h2 className="text-xl font-semibold text-foreground">오늘의 결과</h2>
 
-        {/* 1. 입력 내용 요약 카드 (기존 디자인) */}
         <div className="bg-[#F8F8F8] rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-medium text-foreground">오늘 내가 기록한 내용</h3>
@@ -253,44 +256,40 @@ const DraftResult = () => {
           </p>
         </div>
 
-        {/* 2. 2x2 그리드 레이아웃 (기존 디자인) */}
-        {draft?.result_data && (
-          <div className="grid grid-cols-2 gap-3">
-            {Object.keys(platformIcons).map((key) => {
-              const meta = platformIcons[key as keyof typeof platformIcons];
-              const Icon = meta.icon;
-              const content = getContent(key);
+        <div className="grid grid-cols-2 gap-3">
+          {Object.keys(platformIcons).map((key) => {
+            const meta = platformIcons[key as keyof typeof platformIcons];
+            const Icon = meta.icon;
+            const content = getContent(key);
 
-              return (
-                <button
-                  key={key}
-                  onClick={() => handleCardClick(key)}
-                  className="bg-[#F8F8F8] rounded-2xl p-4 hover:bg-[#F0F0F0] transition-all text-left space-y-2"
+            return (
+              <button
+                key={key}
+                onClick={() => handleCardClick(key)}
+                className="bg-[#F8F8F8] rounded-2xl p-4 hover:bg-[#F0F0F0] transition-all text-left space-y-2"
+              >
+                <div
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center ${key === "reels" ? "bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af]" : ""}`}
+                  style={{ backgroundColor: key === "reels" ? undefined : meta.color }}
                 >
-                  <div
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center ${key === "reels" ? "bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af]" : ""}`}
-                    style={{ backgroundColor: key === "reels" ? undefined : meta.color }}
-                  >
-                    <Icon className="w-4 h-4 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="font-medium text-foreground text-xs mb-1">{meta.title}</h3>
-                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed font-normal">
-                      {getSummary(content)}
-                    </p>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
+                  <Icon className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-medium text-foreground text-xs mb-1">{meta.title}</h3>
+                  <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed font-normal">
+                    {getSummary(content)}
+                  </p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
 
-        {/* 3. 하단 버튼 (게스트만 보임) */}
         <div className="pt-2 space-y-2">
           {!user ? (
             <Button
               onClick={() => performLogin()}
-              className="w-full h-12 rounded-xl text-base font-bold bg-[#FEE500] text-black hover:bg-[#FEE500]/90 shadow-sm"
+              className="w-full h-11 rounded-xl bg-foreground text-background hover:bg-foreground/90 text-sm font-bold"
             >
               3초 만에 로그인하고 결과 복사/저장하기
             </Button>
@@ -310,7 +309,6 @@ const DraftResult = () => {
         </div>
       </div>
 
-      {/* 4. 로그인 유도 팝업 */}
       <AlertDialog open={showLoginAlert} onOpenChange={setShowLoginAlert}>
         <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
@@ -333,7 +331,6 @@ const DraftResult = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* 5. 상세 모달 (isGuest 전달) */}
       {selectedPlatform && (
         <ResultDetailModal
           isOpen={isModalOpen}
@@ -344,11 +341,12 @@ const DraftResult = () => {
           platform={selectedPlatform}
           content={getContent(selectedPlatform) || ""}
           outputId={draftId || ""}
-          // ✅ 게스트 여부 전달
           isGuest={!user}
+          // ✅ 핵심: isDraftMode를 true로 전달
+          isDraftMode={true}
           onSave={() => triggerLoginAlert()}
           onCopy={(content) => handleCopyAction(content)}
-          onContentUpdate={() => {}}
+          onContentUpdate={handleContentUpdate}
         />
       )}
     </AppShell>

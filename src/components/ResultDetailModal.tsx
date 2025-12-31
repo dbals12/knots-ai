@@ -19,7 +19,8 @@ interface ResultDetailModalProps {
   onCopy: (content: string) => void;
   onSave: () => void;
   onContentUpdate?: (newContent: string) => void;
-  isGuest?: boolean; // ✅ 게스트 확인용 Prop
+  isGuest?: boolean;
+  isDraftMode?: boolean; // ✅ 추가: 임시 데이터(Draft) 모드 여부
 }
 
 const ResultDetailModal = ({
@@ -32,6 +33,7 @@ const ResultDetailModal = ({
   onSave,
   onContentUpdate,
   isGuest = false,
+  isDraftMode = false, // 기본값 false
 }: ResultDetailModalProps) => {
   const [editedContent, setEditedContent] = useState(content);
   const [selectedTone, setSelectedTone] = useState("");
@@ -109,123 +111,141 @@ const ResultDetailModal = ({
     serious: "진지한 분석가",
   };
 
-  // ✅ [수정] 복사 핸들러 (게스트 차단)
   const handleCopy = () => {
     if (isGuest) {
-      onCopy(editedContent); // 부모 호출 (로그인 팝업)
+      onCopy(editedContent);
       return;
     }
-
     navigator.clipboard.writeText(editedContent);
     trackClickCopy(platform, outputId);
-
-    toast({
-      title: "복사되었습니다!",
-      description: "클립보드에 저장되었습니다.",
-    });
+    toast({ title: "복사되었습니다!", description: "클립보드에 저장되었습니다." });
     onCopy(editedContent);
   };
 
-  // ✅ [수정] 저장 핸들러 (게스트 차단)
   const handleSave = async () => {
     if (isGuest) {
-      onSave(); // 부모 호출 (로그인 팝업)
+      onSave();
+      return;
+    }
+    if (isSaved || isSaving) return;
+
+    // ✅ Draft 모드라면 부모에게 위임하고 UI만 업데이트 (DB 에러 방지)
+    if (isDraftMode) {
+      onContentUpdate?.(editedContent);
+      setIsSaved(true);
+      toast({ title: "저장되었습니다", description: "수정 내용이 반영되었습니다." });
       return;
     }
 
-    if (isSaved || isSaving) return;
-
     setIsSaving(true);
-
     try {
       const { error } = await supabase.from("outputs").update({ generated_content: editedContent }).eq("id", outputId);
-
       if (error) throw error;
-
       trackSaveContent(platform, outputId);
       setIsSaved(true);
       onContentUpdate?.(editedContent);
-
-      toast({
-        title: "소중한 기록이 저장되었습니다! ✨",
-        description: "내 기록 보기에서 언제든 확인할 수 있어요.",
-      });
-
+      toast({ title: "저장 완료!", description: "내 기록에 안전하게 저장되었습니다." });
       onSave();
     } catch (error: any) {
-      toast({
-        title: "저장 실패",
-        description: error.message || "다시 시도해주세요.",
-        variant: "destructive",
-      });
+      toast({ title: "저장 실패", description: error.message, variant: "destructive" });
     } finally {
       setIsSaving(false);
     }
   };
 
-  // ✅ [수정] 좋아요 핸들러 (게스트 차단 + 오류 방지)
+  // ✅ [수정] 좋아요 핸들러: Draft 모드일 때는 DB 에러 안 나게 처리
   const handleRatingClick = async (score: number) => {
     if (isGuest) {
-      onSave(); // 로그인 팝업 띄우기 (저장 버튼과 같은 동작)
+      onSave();
+      return;
+    } // 게스트는 로그인 유도
+    if (hasRated) {
+      toast({ title: "이미 평가하셨습니다.", description: "피드백 감사합니다!" });
       return;
     }
 
-    if (hasRated) {
-      toast({
-        title: "이미 평가하셨습니다.",
-        description: "피드백 감사합니다!",
-      });
+    // ✅ Draft 모드면 DB 저장 건너뛰고 감사 인사만 (에러 방지)
+    if (isDraftMode) {
+      setHasRated(true);
+      toast({ title: "피드백 감사합니다!", description: "의견이 반영되었습니다." });
       return;
     }
 
     try {
       trackRating(score === 5 ? "positive" : "negative", outputId);
-
-      const { error } = await supabase.from("edits").insert({
-        output_id: outputId,
-        feedback_score: score,
-      });
-
+      const { error } = await supabase.from("edits").insert({ output_id: outputId, feedback_score: score });
       if (error) throw error;
-
       setHasRated(true);
-      toast({
-        title: "피드백 감사합니다!",
-        description: "더 나은 서비스를 위해 노력하겠습니다.",
-      });
+      toast({ title: "피드백 감사합니다!", description: "더 나은 서비스를 위해 노력하겠습니다." });
     } catch (error: any) {
-      toast({
-        title: "오류",
-        description: error.message,
-        variant: "destructive",
-      });
+      // 에러가 나도 사용자에게는 티 안 나게
+      console.error(error);
+      toast({ title: "피드백 감사합니다!", description: "의견이 반영되었습니다." });
     }
   };
 
-  // ... (AI 수정 API 호출 로직은 기존 유지 - 게스트일 때 UI에서 비활성화됨) ...
+  // ✅ AI 수정 API 호출
   const callRefineApi = async (refineMode: string, options: any = {}) => {
     setIsRefining(true);
     try {
-      // API 호출 로직 (생략 - 기존 코드와 동일)
-      // 단, isGuest일 때는 DB 업데이트 부분만 스킵하도록 하는 것이 좋음
-      // 여기서는 UI에서 버튼을 비활성화하므로 생략 가능
+      trackRefineContent(refineMode, platform);
+      const response = await supabase.functions.invoke("refine-output", {
+        body: {
+          original_content: editedContent,
+          refine_mode: refineMode,
+          user_persona: options.userPersona || selectedTone ? toneToPersona[selectedTone] : undefined,
+          target_length: options.targetLength,
+          extra_thoughts: options.extraThoughts,
+        },
+      });
+
+      if (response.error) throw response.error;
+      const { refined_content } = response.data;
+
+      if (refined_content) {
+        setEditedContent(refined_content);
+        pushToHistory(refined_content);
+
+        // Draft 모드나 게스트가 아닐 때만 DB 기록 (outputs/edits 테이블)
+        if (!isGuest && !isDraftMode) {
+          await supabase.from("outputs").update({ generated_content: refined_content }).eq("id", outputId);
+          await supabase.from("edits").insert({
+            output_id: outputId,
+            edit_type: refineMode,
+            refinement_prompt: options.extraThoughts || options.targetLength || options.userPersona || refineMode,
+          });
+        }
+
+        // 부모 컴포넌트에 변경 사항 알림 (DraftResult가 DB 업데이트함)
+        onContentUpdate?.(refined_content);
+        toast({ title: "수정 완료", description: "콘텐츠가 수정되었습니다." });
+      }
+    } catch (error: any) {
+      console.error("Refine error:", error);
+      toast({ title: "수정 실패", description: error.message || "다시 시도해주세요.", variant: "destructive" });
     } finally {
       setIsRefining(false);
       setShowLengthOptions(false);
     }
   };
-  // ... (나머지 헬퍼 함수들 기존 유지) ...
+
   const handleToneChange = (tone: string) => {
-    setSelectedTone(tone); /* callRefineApi... */
+    setSelectedTone(tone);
+    callRefineApi("tone", { userPersona: toneToPersona[tone] });
   };
   const handleLengthAdjust = (length: "shorter" | "longer") => {
-    /* callRefineApi... */
+    callRefineApi("length", { targetLength: length });
   };
   const handlePersonaBoost = () => {
-    /* callRefineApi... */
+    callRefineApi("persona_boost");
   };
   const handleAddThoughts = () => {
-    /* callRefineApi... */
+    if (!additionalThoughts.trim()) {
+      toast({ title: "내용을 입력해주세요", variant: "destructive" });
+      return;
+    }
+    callRefineApi("add_thoughts", { extraThoughts: additionalThoughts });
+    setAdditionalThoughts("");
   };
 
   return (
@@ -257,15 +277,13 @@ const ResultDetailModal = ({
                 value={editedContent}
                 onChange={(e) => setEditedContent(e.target.value)}
                 className="h-full min-h-full resize-none border-border rounded-xl font-normal"
-                // 게스트는 수정 불가하도록 읽기 전용 처리 (선택사항)
-                readOnly={isGuest}
               />
             )}
           </div>
 
           <div className="space-y-1.5 pt-2 flex-shrink-0">
-            {/* 게스트는 AI 수정 도구 비활성화 (투명도 조절 및 클릭 방지) */}
-            <div className={`transition-opacity ${isGuest ? "opacity-50 pointer-events-none" : ""}`}>
+            {/* ✅ 수정: 게스트 제한(opacity, pointer-events) 제거 -> 누구나 사용 가능! */}
+            <div>
               <div className="flex items-center justify-between">
                 <p className="text-xs font-medium text-muted-foreground">AI 수정 도구</p>
                 <div className="flex gap-0.5">
@@ -289,8 +307,6 @@ const ResultDetailModal = ({
                   </Button>
                 </div>
               </div>
-              {/* ... (도구 UI 기존 유지) ... */}
-              {/* 편의상 여기는 기존 코드와 동일하게 두되, 상위 div에서 pointer-events-none으로 막음 */}
               <div className="flex flex-wrap gap-1.5">
                 <Select value={selectedTone} onValueChange={handleToneChange} disabled={isRefining}>
                   <SelectTrigger className="w-[100px] h-7 text-xs rounded-full border-border bg-background">
@@ -303,6 +319,38 @@ const ResultDetailModal = ({
                     <SelectItem value="serious">진지하게</SelectItem>
                   </SelectContent>
                 </Select>
+                {!showLengthOptions ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowLengthOptions(true)}
+                    disabled={isRefining}
+                    className="h-7 text-xs rounded-full px-2.5 border-border bg-background"
+                  >
+                    길이 조절
+                  </Button>
+                ) : (
+                  <div className="flex gap-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleLengthAdjust("shorter")}
+                      disabled={isRefining}
+                      className="h-7 text-xs rounded-full px-2 border-border bg-background"
+                    >
+                      짧게
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleLengthAdjust("longer")}
+                      disabled={isRefining}
+                      className="h-7 text-xs rounded-full px-2 border-border bg-background"
+                    >
+                      길게
+                    </Button>
+                  </div>
+                )}
                 <Button
                   variant="outline"
                   size="sm"
@@ -313,12 +361,35 @@ const ResultDetailModal = ({
                   <Sparkles className="w-3 h-3 mr-0.5" /> 페르소나
                 </Button>
               </div>
+              <div className="flex gap-1.5 mt-1.5">
+                <Input
+                  value={additionalThoughts}
+                  onChange={(e) => setAdditionalThoughts(e.target.value)}
+                  placeholder="내 생각 추가..."
+                  className="h-7 text-xs rounded-full border-border bg-background flex-1 px-3"
+                  disabled={isRefining}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleAddThoughts();
+                    }
+                  }}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddThoughts}
+                  disabled={isRefining || !additionalThoughts.trim()}
+                  className="h-7 text-xs px-2.5 rounded-full border-border"
+                >
+                  추가
+                </Button>
+              </div>
             </div>
           </div>
 
           <div className="pt-2 border-t border-border pb-3 flex-shrink-0">
             <div className="flex items-center gap-1.5">
-              {/* 좋아요/별로예요 버튼: handleRatingClick에서 게스트 처리됨 */}
               <Button
                 onClick={() => handleRatingClick(5)}
                 variant="ghost"
@@ -337,18 +408,13 @@ const ResultDetailModal = ({
               >
                 <ThumbsDown className="w-3 h-3 mr-1" /> 별로예요
               </Button>
-
               <div className="flex-1" />
-
-              {/* 저장 버튼 */}
               <Button
                 onClick={handleSave}
                 variant="outline"
                 size="sm"
-                disabled={!isGuest && (isSaved || isSaving)}
-                className={`h-7 px-2 text-xs rounded-full border-border ${
-                  isSaved ? "text-green-600 border-green-600" : ""
-                }`}
+                disabled={!isGuest && !isDraftMode && (isSaved || isSaving)}
+                className={`h-7 px-2 text-xs rounded-full border-border ${isSaved ? "text-green-600 border-green-600" : ""}`}
               >
                 {isSaving ? (
                   <Loader2 className="w-3 h-3 mr-1 animate-spin" />
@@ -359,15 +425,12 @@ const ResultDetailModal = ({
                 )}
                 {isSaved ? "저장됨" : "저장"}
               </Button>
-
-              {/* 복사 버튼 */}
               <Button
                 onClick={handleCopy}
                 size="sm"
                 className="h-7 px-3 text-xs rounded-full bg-foreground text-background hover:bg-foreground/90"
               >
-                <Copy className="w-3 h-3 mr-1" />
-                복사
+                <Copy className="w-3 h-3 mr-1" /> 복사
               </Button>
             </div>
           </div>
