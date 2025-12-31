@@ -19,7 +19,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-// 결과 데이터 타입 정의
 interface Draft {
   id: string;
   user_id: string | null;
@@ -34,17 +33,15 @@ interface Draft {
   error_message?: string;
 }
 
-// 기존 Results.tsx의 아이콘 설정 그대로 사용
 const platformIcons = {
-  blog: { icon: SiNaver, color: "#03C75A", title: "블로그 (회고형)" },
-  linkedin: { icon: SiLinkedin, color: "#0077B5", title: "LinkedIn (인사이트형)" },
-  reels: { icon: SiInstagram, color: "#E4405F", title: "인스타 (카드뉴스 & 캡션)" },
-  threads: { icon: SiThreads, color: "#000000", title: "Threads (짧은 에세이)" },
+  blog: { icon: SiNaver, color: "#03C75A", label: "블로그 (회고형)" },
+  linkedin: { icon: SiLinkedin, color: "#0077B5", label: "LinkedIn (인사이트형)" },
+  reels: { icon: SiInstagram, color: "#E4405F", label: "인스타 (카드뉴스 & 캡션)" },
+  threads: { icon: SiThreads, color: "#000000", label: "Threads (짧은 에세이)" },
 };
 
-const getSummary = (content: string | null) => {
-  if (!content) return "콘텐츠가 생성되지 않았습니다.";
-  // 인스타그램 JSON 처리 등을 포함한 요약 로직
+const getInstagramPreview = (content: string | null): string => {
+  if (!content) return "생성된 콘텐츠 없음";
   const cleanContent = content
     .replace(/```json\s*/gi, "")
     .replace(/```\s*/gi, "")
@@ -52,18 +49,14 @@ const getSummary = (content: string | null) => {
   try {
     const parsed = JSON.parse(cleanContent);
     if (typeof parsed === "object" && parsed !== null) {
-      // 인스타의 경우 첫 슬라이드나 캡션을 요약으로 사용
-      return (
-        (parsed["Slide 1"] || parsed["slide 1"] || parsed["Caption"] || parsed["caption"] || content).substring(
-          0,
-          100,
-        ) + "..."
-      );
+      const slide1 = parsed["Slide 1"] || parsed["slide 1"];
+      if (slide1) return slide1.replace(/^[:\s"]+|[",\s}]+$/g, "").trim();
     }
   } catch {
-    // 일반 텍스트
+    const match = content.match(/\[Slide 1\]([\s\S]*?)(?=\[Slide|\[Caption|$)/i);
+    if (match?.[1]) return match[1].trim();
   }
-  return content.length > 100 ? content.substring(0, 100) + "..." : content;
+  return content.substring(0, 100) + "...";
 };
 
 const DraftResult = () => {
@@ -180,7 +173,7 @@ const DraftResult = () => {
     claimDraft();
   }, [user, draft, toast]);
 
-  // 로그인 핸들러 & 팝업 트리거
+  // 팝업 트리거 (모달 버튼용)
   const triggerLoginAlert = (e?: React.MouseEvent) => {
     if (e) {
       e.preventDefault();
@@ -190,6 +183,7 @@ const DraftResult = () => {
     setShowLoginAlert(true);
   };
 
+  // 실제 로그인 수행 (하단 버튼용)
   const performLogin = async () => {
     await supabase.auth.signInWithOAuth({
       provider: "kakao",
@@ -207,7 +201,7 @@ const DraftResult = () => {
     });
   };
 
-  const handleCardClick = (platformKey: string) => {
+  const handlePlatformClick = (platformKey: string) => {
     setSelectedPlatform(platformKey);
     setIsModalOpen(true);
   };
@@ -226,94 +220,86 @@ const DraftResult = () => {
   if (loading || (!hasResult && draft && (draft.status === "idle" || draft.status === "generating"))) {
     return (
       <AppShell showHeader={false}>
-        <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+        <div className="flex-1 flex flex-col items-center justify-center gap-6 min-h-[600px]">
+          <Loader2 className="w-12 h-12 text-foreground animate-spin" />
+          <div className="text-center space-y-2">
+            <h2 className="text-xl font-semibold">AI가 기록을 정리하고 있어요</h2>
+            <p className="text-muted-foreground text-sm">약 10~20초 정도 걸립니다. 잠시만 기다려주세요.</p>
+          </div>
         </div>
       </AppShell>
     );
   }
 
   return (
-    <AppShell className="min-h-[700px]">
-      <div className="flex-1 px-6 py-6 space-y-5 overflow-y-auto">
-        <h2 className="text-xl font-semibold text-foreground">오늘의 결과</h2>
+    <AppShell>
+      <div className="flex-1 px-6 py-6 space-y-8 overflow-y-auto pb-32">
+        <h1 className="text-2xl font-bold text-foreground">오늘의 결과</h1>
 
-        {/* 1. 입력 내용 요약 카드 (기존 Results.tsx 스타일 적용) */}
-        <div className="bg-[#F8F8F8] rounded-2xl p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium text-foreground">오늘 내가 기록한 내용</h3>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={(e) => (user ? navigate("/input") : triggerLoginAlert(e))}
-              className="h-8 text-xs"
-            >
-              {user ? "수정하기" : "저장"}
-            </Button>
+        <div className="bg-[#F8F8F8] rounded-2xl p-6 flex justify-between items-start">
+          <div className="flex-1 pr-4">
+            <h3 className="text-sm font-semibold mb-2 text-foreground">오늘 내가 기록한 내용</h3>
+            <p className="text-sm text-gray-600 line-clamp-3 leading-relaxed">
+              {draft?.input_data?.textInput || "음성 기록을 변환 중입니다..."}
+            </p>
           </div>
-          <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap line-clamp-4">
-            {draft?.input_data?.textInput || "음성 기록을 변환 중입니다..."}
-          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={(e) => (user ? navigate("/input") : triggerLoginAlert(e))}
+            className="text-xs h-8 ml-4 shrink-0 rounded-lg border-gray-200"
+          >
+            {user ? "수정하기" : "저장"}
+          </Button>
         </div>
 
-        {/* 2. 2x2 그리드 레이아웃 (기존 Results.tsx 스타일 적용) */}
-        {draft?.result_data && (
-          <div className="grid grid-cols-2 gap-3">
-            {Object.keys(platformIcons).map((key) => {
-              const meta = platformIcons[key as keyof typeof platformIcons];
-              const Icon = meta.icon;
-              const content = getContent(key);
+        <div className="grid grid-cols-2 gap-3">
+          {Object.keys(platformIcons).map((key) => {
+            const meta = platformIcons[key as keyof typeof platformIcons];
+            const Icon = meta.icon;
+            const content = getContent(key);
+            const isInstagram = key === "reels";
+            const preview = isInstagram ? getInstagramPreview(content || "") : content || "";
 
-              return (
-                <button
-                  key={key}
-                  onClick={() => handleCardClick(key)}
-                  // ✅ 기존 코드의 스타일링(색상, 패딩, 호버 등) 100% 적용
-                  className="bg-[#F8F8F8] rounded-2xl p-4 hover:bg-[#F0F0F0] transition-all text-left space-y-2"
-                >
-                  <div
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center ${key === "reels" ? "bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af]" : ""}`}
-                    style={{ backgroundColor: key === "reels" ? undefined : meta.color }}
-                  >
-                    <Icon className="w-4 h-4 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="font-medium text-foreground text-xs mb-1">{meta.title}</h3>
-                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed font-normal">
-                      {getSummary(content)}
-                    </p>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {/* 3. 하단 버튼 (기존 스타일 유지하되 게스트 로직 추가) */}
-        <div className="pt-2 space-y-2">
-          {!user ? (
-            <Button
-              onClick={(e) => triggerLoginAlert(e)}
-              className="w-full h-11 rounded-xl bg-foreground text-background hover:bg-foreground/90 text-sm"
-            >
-              로그인하고 텍스트 복사/수정하기
-            </Button>
-          ) : (
-            // 로그인 후에는 기존처럼
-            <>
-              <Button
-                onClick={() => navigate("/input")}
-                className="w-full h-11 rounded-xl bg-foreground text-background hover:bg-foreground/90 text-sm"
+            return (
+              <button
+                key={key}
+                onClick={() => handlePlatformClick(key)}
+                className="bg-[#F8F8F8] rounded-2xl p-5 text-left hover:bg-[#F0F0F0] transition-colors flex flex-col h-52 relative overflow-hidden group"
               >
-                새로운 기록 만들기
-              </Button>
-              <Button variant="outline" onClick={() => navigate("/")} className="w-full h-11 rounded-xl text-sm">
-                홈으로 돌아가기
-              </Button>
-            </>
-          )}
+                <div className="flex items-center gap-2 mb-4">
+                  <div
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center ${isInstagram ? "bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af]" : "bg-white"}`}
+                  >
+                    <Icon
+                      className={`w-5 h-5 ${isInstagram ? "text-white" : "text-foreground"}`}
+                      style={{ color: isInstagram ? undefined : meta.color }}
+                    />
+                  </div>
+                </div>
+                <h3 className="text-sm font-bold text-foreground mb-2 line-clamp-1">{meta.label}</h3>
+                <p className="text-xs text-muted-foreground line-clamp-4 leading-relaxed">{preview}</p>
+              </button>
+            );
+          })}
         </div>
       </div>
+
+      {/* ✅ 3. 하단 고정 CTA (요청 사항 반영) */}
+      {!user && (
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 z-50 safe-area-bottom">
+          <div className="max-w-md mx-auto">
+            <Button
+              // ✅ 누르면 바로 로그인 수행
+              onClick={() => performLogin()}
+              className="w-full h-12 rounded-xl text-base font-bold bg-[#FEE500] text-black hover:bg-[#FEE500]/90 shadow-sm"
+            >
+              {/* ✅ 문구 변경 */}
+              3초 만에 로그인하고 결과 복사/저장하기
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* 4. 로그인 유도 팝업 */}
       <AlertDialog open={showLoginAlert} onOpenChange={setShowLoginAlert}>
@@ -332,13 +318,13 @@ const DraftResult = () => {
               onClick={performLogin}
               className="rounded-xl bg-[#FEE500] text-black hover:bg-[#FEE500]/90"
             >
-              카카오로 로그인하기
+              {/* ✅ 팝업 버튼 문구 변경 */}
+              카카오/구글로 시작하기
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* 5. 상세 모달 (기존 컴포넌트 재사용 + 이벤트 제어) */}
       {selectedPlatform && (
         <ResultDetailModal
           isOpen={isModalOpen}

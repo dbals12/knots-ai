@@ -1,14 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Copy, Save, Sparkles, ThumbsUp, ThumbsDown, Loader2, Check, Undo2, Redo2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import InstagramCardView from './InstagramCardView';
-import { trackClickCopy, trackSaveContent, trackRefineContent, trackRating } from '@/lib/analytics';
+import { useState, useEffect, useCallback } from "react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Copy, Save, Sparkles, ThumbsUp, ThumbsDown, Loader2, Check, Undo2, Redo2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import InstagramCardView from "./InstagramCardView";
+import { trackClickCopy, trackSaveContent, trackRefineContent, trackRating } from "@/lib/analytics";
 
 interface ResultDetailModalProps {
   isOpen: boolean;
@@ -21,22 +21,31 @@ interface ResultDetailModalProps {
   onContentUpdate?: (newContent: string) => void;
 }
 
-const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCopy, onSave, onContentUpdate }: ResultDetailModalProps) => {
+const ResultDetailModal = ({
+  isOpen,
+  onClose,
+  platform,
+  content,
+  outputId,
+  onCopy,
+  onSave,
+  onContentUpdate,
+}: ResultDetailModalProps) => {
   const [editedContent, setEditedContent] = useState(content);
-  const [selectedTone, setSelectedTone] = useState('');
-  const [additionalThoughts, setAdditionalThoughts] = useState('');
+  const [selectedTone, setSelectedTone] = useState("");
+  const [additionalThoughts, setAdditionalThoughts] = useState("");
   const [hasRated, setHasRated] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
   const [showLengthOptions, setShowLengthOptions] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  
+
   // Undo/Redo history state - use combined state for atomic updates
   const [historyState, setHistoryState] = useState<{
     history: string[];
     index: number;
   }>({ history: [content], index: 0 });
-  
+
   const { toast } = useToast();
 
   // Reset saved state when content changes (e.g., after AI refinement)
@@ -56,13 +65,13 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
 
   // Push new content to history (for AI refinements)
   const pushToHistory = useCallback((newContent: string) => {
-    setHistoryState(prev => {
+    setHistoryState((prev) => {
       // Remove any "future" history when branching
       const newHistory = prev.history.slice(0, prev.index + 1);
       newHistory.push(newContent);
       return {
         history: newHistory,
-        index: newHistory.length - 1
+        index: newHistory.length - 1,
       };
     });
   }, []);
@@ -72,7 +81,7 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
 
   const handleUndo = useCallback(() => {
     if (!canUndo) return;
-    setHistoryState(prev => {
+    setHistoryState((prev) => {
       const newIndex = prev.index - 1;
       setEditedContent(prev.history[newIndex]);
       return { ...prev, index: newIndex };
@@ -81,7 +90,7 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
 
   const handleRedo = useCallback(() => {
     if (!canRedo) return;
-    setHistoryState(prev => {
+    setHistoryState((prev) => {
       const newIndex = prev.index + 1;
       setEditedContent(prev.history[newIndex]);
       return { ...prev, index: newIndex };
@@ -89,46 +98,49 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
   }, [canRedo]);
 
   const platformTitles: Record<string, string> = {
-    blog: '블로그 (회고형)',
-    linkedin: 'LinkedIn (인사이트형)',
-    reels: '인스타 (카드뉴스 & 캡션)',
-    threads: 'Threads (짧은 에세이)',
+    blog: "블로그 (회고형)",
+    linkedin: "LinkedIn (인사이트형)",
+    reels: "인스타 (카드뉴스 & 캡션)",
+    threads: "Threads (짧은 에세이)",
   };
 
-  const isInstagram = platform === 'reels';
+  const isInstagram = platform === "reels";
 
   const toneToPersona: Record<string, string> = {
-    professional: '전문가',
-    friendly: '친근한 동료',
-    witty: '위트있는 크리에이터',
-    serious: '진지한 분석가',
+    professional: "전문가",
+    friendly: "친근한 동료",
+    witty: "위트있는 크리에이터",
+    serious: "진지한 분석가",
   };
 
   const handleCopy = () => {
     navigator.clipboard.writeText(editedContent);
-    
+
     // Track copy event
     trackClickCopy(platform, outputId);
-    
+
     toast({
-      title: '복사되었습니다!',
-      description: '클립보드에 저장되었습니다.',
+      title: "복사되었습니다!",
+      description: "클립보드에 저장되었습니다.",
     });
     onCopy(editedContent);
   };
 
-  const callRefineApi = async (refineMode: string, options: { 
-    targetLength?: string; 
-    extraThoughts?: string;
-    userPersona?: string;
-  } = {}) => {
+  const callRefineApi = async (
+    refineMode: string,
+    options: {
+      targetLength?: string;
+      extraThoughts?: string;
+      userPersona?: string;
+    } = {},
+  ) => {
     setIsRefining(true);
-    
+
     try {
       // Track refinement event
       trackRefineContent(refineMode, platform);
-      
-      const response = await supabase.functions.invoke('refine-output', {
+
+      const response = await supabase.functions.invoke("refine-output", {
         body: {
           original_content: editedContent,
           refine_mode: refineMode,
@@ -141,21 +153,21 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
       if (response.error) throw response.error;
 
       const { refined_content } = response.data;
-      
+
       if (refined_content) {
         setEditedContent(refined_content);
         pushToHistory(refined_content); // Add to undo/redo history
-        
+
         // Update outputs table
         const { error: updateError } = await supabase
-          .from('outputs')
+          .from("outputs")
           .update({ generated_content: refined_content })
-          .eq('id', outputId);
+          .eq("id", outputId);
 
         if (updateError) throw updateError;
 
         // Log to edits table
-        await supabase.from('edits').insert({
+        await supabase.from("edits").insert({
           output_id: outputId,
           edit_type: refineMode,
           refinement_prompt: options.extraThoughts || options.targetLength || options.userPersona || refineMode,
@@ -165,16 +177,16 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
         onContentUpdate?.(refined_content);
 
         toast({
-          title: '수정 완료',
-          description: '콘텐츠가 수정되었습니다.',
+          title: "수정 완료",
+          description: "콘텐츠가 수정되었습니다.",
         });
       }
     } catch (error: any) {
-      console.error('Refine error:', error);
+      console.error("Refine error:", error);
       toast({
-        title: '수정 실패',
-        description: error.message || '다시 시도해주세요.',
-        variant: 'destructive',
+        title: "수정 실패",
+        description: error.message || "다시 시도해주세요.",
+        variant: "destructive",
       });
     } finally {
       setIsRefining(false);
@@ -184,39 +196,36 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
 
   const handleToneChange = (tone: string) => {
     setSelectedTone(tone);
-    callRefineApi('tone', { userPersona: toneToPersona[tone] });
+    callRefineApi("tone", { userPersona: toneToPersona[tone] });
   };
 
-  const handleLengthAdjust = (length: 'shorter' | 'longer') => {
-    callRefineApi('length', { targetLength: length });
+  const handleLengthAdjust = (length: "shorter" | "longer") => {
+    callRefineApi("length", { targetLength: length });
   };
 
   const handlePersonaBoost = () => {
-    callRefineApi('persona_boost');
+    callRefineApi("persona_boost");
   };
 
   const handleAddThoughts = () => {
     if (!additionalThoughts.trim()) {
       toast({
-        title: '내용을 입력해주세요',
-        variant: 'destructive',
+        title: "내용을 입력해주세요",
+        variant: "destructive",
       });
       return;
     }
-    callRefineApi('add_thoughts', { extraThoughts: additionalThoughts });
-    setAdditionalThoughts('');
+    callRefineApi("add_thoughts", { extraThoughts: additionalThoughts });
+    setAdditionalThoughts("");
   };
 
   const handleSave = async () => {
     if (isSaved || isSaving) return;
-    
+
     setIsSaving(true);
-    
+
     try {
-      const { error } = await supabase
-        .from('outputs')
-        .update({ generated_content: editedContent })
-        .eq('id', outputId);
+      const { error } = await supabase.from("outputs").update({ generated_content: editedContent }).eq("id", outputId);
 
       if (error) throw error;
 
@@ -225,21 +234,21 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
 
       // Mark as saved
       setIsSaved(true);
-      
+
       // Notify parent of content update
       onContentUpdate?.(editedContent);
-      
+
       toast({
-        title: '소중한 기록이 저장되었습니다! ✨',
-        description: '내 기록 보기에서 언제든 확인할 수 있어요.',
+        title: "소중한 기록이 저장되었습니다! ✨",
+        description: "내 기록 보기에서 언제든 확인할 수 있어요.",
       });
-      
+
       onSave();
     } catch (error: any) {
       toast({
-        title: '저장 실패',
-        description: error.message || '다시 시도해주세요.',
-        variant: 'destructive',
+        title: "저장 실패",
+        description: error.message || "다시 시도해주세요.",
+        variant: "destructive",
       });
     } finally {
       setIsSaving(false);
@@ -249,17 +258,17 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
   const handleRatingClick = async (score: number) => {
     if (hasRated) {
       toast({
-        title: '이미 평가하셨습니다.',
-        description: '피드백 감사합니다!',
+        title: "이미 평가하셨습니다.",
+        description: "피드백 감사합니다!",
       });
       return;
     }
 
     try {
       // Track rating event
-      trackRating(score === 5 ? 'positive' : 'negative', outputId);
-      
-      const { error } = await supabase.from('edits').insert({
+      trackRating(score === 5 ? "positive" : "negative", outputId);
+
+      const { error } = await supabase.from("edits").insert({
         output_id: outputId,
         feedback_score: score,
       });
@@ -268,29 +277,27 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
 
       setHasRated(true);
       toast({
-        title: '피드백 감사합니다!',
-        description: '더 나은 서비스를 위해 노력하겠습니다.',
+        title: "피드백 감사합니다!",
+        description: "더 나은 서비스를 위해 노력하겠습니다.",
       });
     } catch (error: any) {
       toast({
-        title: '오류',
+        title: "오류",
         description: error.message,
-        variant: 'destructive',
+        variant: "destructive",
       });
     }
   };
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent 
-        side="bottom" 
+      <SheetContent
+        side="bottom"
         className="h-[85vh] max-h-[85vh] rounded-t-3xl flex flex-col overflow-hidden"
         onSwipeClose={onClose}
       >
         <SheetHeader className="pb-3 flex-shrink-0">
-          <SheetTitle className="text-xl font-bold">
-            {platformTitles[platform] || platform}
-          </SheetTitle>
+          <SheetTitle className="text-xl font-bold">{platformTitles[platform] || platform}</SheetTitle>
         </SheetHeader>
 
         {isRefining && (
@@ -320,7 +327,7 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
           <div className="space-y-1.5 pt-2 flex-shrink-0">
             <div className="flex items-center justify-between">
               <p className="text-xs font-medium text-muted-foreground">AI 수정 도구</p>
-              
+
               {/* Undo/Redo Buttons */}
               <div className="flex gap-0.5">
                 <Button
@@ -361,9 +368,9 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
 
               {/* Length Toggle */}
               {!showLengthOptions ? (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => setShowLengthOptions(true)}
                   disabled={isRefining}
                   className="h-7 text-xs rounded-full px-2.5 border-border bg-background"
@@ -372,19 +379,19 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
                 </Button>
               ) : (
                 <div className="flex gap-1">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => handleLengthAdjust('shorter')}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleLengthAdjust("shorter")}
                     disabled={isRefining}
                     className="h-7 text-xs rounded-full px-2 border-border bg-background"
                   >
                     짧게
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => handleLengthAdjust('longer')}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleLengthAdjust("longer")}
                     disabled={isRefining}
                     className="h-7 text-xs rounded-full px-2 border-border bg-background"
                   >
@@ -394,9 +401,9 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
               )}
 
               {/* Persona Enhance */}
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={handlePersonaBoost}
                 disabled={isRefining}
                 className="h-7 text-xs rounded-full px-2.5 border-border bg-background"
@@ -415,7 +422,7 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
                 className="h-7 text-xs rounded-full border-border bg-background flex-1 px-3"
                 disabled={isRefining}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
+                  if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
                     handleAddThoughts();
                   }
@@ -457,9 +464,9 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
                 <ThumbsDown className="w-3 h-3 mr-1" />
                 별로예요
               </Button>
-              
+
               <div className="flex-1" />
-              
+
               {/* Save Button - Icon + Text */}
               <Button
                 onClick={handleSave}
@@ -467,7 +474,7 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
                 size="sm"
                 disabled={isSaved || isSaving}
                 className={`h-7 px-2 text-xs rounded-full border-border ${
-                  isSaved ? 'text-green-600 border-green-600' : ''
+                  isSaved ? "text-green-600 border-green-600" : ""
                 }`}
               >
                 {isSaving ? (
@@ -477,9 +484,9 @@ const ResultDetailModal = ({ isOpen, onClose, platform, content, outputId, onCop
                 ) : (
                   <Save className="w-3 h-3 mr-1" />
                 )}
-                {isSaved ? '저장됨' : '저장'}
+                {isSaved ? "저장됨" : "저장"}
               </Button>
-              
+
               {/* Copy Button - Primary */}
               <Button
                 onClick={handleCopy}
