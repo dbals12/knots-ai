@@ -19,7 +19,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-// ... (인터페이스 및 아이콘 정의 기존 동일)
 interface Draft {
   id: string;
   user_id: string | null;
@@ -75,7 +74,7 @@ const DraftResult = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showLoginAlert, setShowLoginAlert] = useState(false);
 
-  // 1. Draft Fetching & 에러 처리 (무한 루프 방지)
+  // 1. Draft Fetching (무한 로딩 방지 핵심 로직)
   useEffect(() => {
     if (!draftId) return;
     const fetchDraft = async () => {
@@ -83,7 +82,7 @@ const DraftResult = () => {
 
       if (error || !data) {
         console.error("Error fetching draft:", error);
-        // 🚨 중요: 잘못된 ID면 로컬스토리지 비우고 홈으로 보냄 (오류 해결)
+        // 🚨 [중요] 잘못된 ID면 즉시 로컬스토리지 삭제 -> 무한 루프 탈출
         localStorage.removeItem("pending_draft_id");
         toast({ title: "오류", description: "기록을 찾을 수 없어 홈으로 이동합니다.", variant: "destructive" });
         navigate("/");
@@ -187,18 +186,18 @@ const DraftResult = () => {
     setShowLoginAlert(true);
   };
 
-  // ✅ [수정] 로그인 선택창(/login)으로 이동
   const performLogin = () => {
     navigate(`/login?next=/result/${draftId}`);
   };
 
-  // ✅ [수정] 빌드 에러 해결: string 타입을 받도록 명시
   const handleCopyAction = (content: string) => {
     if (!user) {
       setShowLoginAlert(true);
       return;
     }
-    // 로그인 유저는 모달에서 복사 처리
+    navigator.clipboard.writeText(content).then(() => {
+      toast({ title: "복사 완료", description: "클립보드에 복사되었습니다." });
+    });
   };
 
   const handleContentUpdate = async (newContent: string) => {
@@ -240,7 +239,6 @@ const DraftResult = () => {
       <div className="flex-1 px-6 py-6 space-y-5 overflow-y-auto">
         <h2 className="text-xl font-semibold text-foreground">오늘의 결과</h2>
 
-        {/* 요약 카드 */}
         <div className="bg-[#F8F8F8] rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-medium text-foreground">오늘 내가 기록한 내용</h3>
@@ -250,7 +248,7 @@ const DraftResult = () => {
               onClick={(e) => (user ? navigate("/input") : triggerLoginAlert(e))}
               className="h-8 text-xs"
             >
-              {/* ✅ 로그인 유무에 따라 버튼 텍스트 변경 */}
+              {/* 로그인 상태에 따라 버튼 텍스트 변경 */}
               {user ? "수정하기" : "저장"}
             </Button>
           </div>
@@ -259,7 +257,6 @@ const DraftResult = () => {
           </p>
         </div>
 
-        {/* 카드 그리드 */}
         <div className="grid grid-cols-2 gap-3">
           {Object.keys(platformIcons).map((key) => {
             const meta = platformIcons[key as keyof typeof platformIcons];
@@ -289,8 +286,10 @@ const DraftResult = () => {
           })}
         </div>
 
-        {/* ✅ 하단 버튼 디자인 수정 (검정색, 중앙 배치) */}
-        <div className="pt-2 space-y-2">
+        {/* 하단 버튼 디자인 통일 (검정색) */}
+        <div className="pt-2 space-y-2 pb-24">
+          {" "}
+          {/* 하단 여백 확보 */}
           {!user ? (
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 z-50 safe-area-bottom">
               <div className="max-w-md mx-auto">
@@ -306,11 +305,11 @@ const DraftResult = () => {
             <>
               <Button
                 onClick={() => navigate("/input")}
-                className="w-full h-11 rounded-xl bg-foreground text-background hover:bg-foreground/90 text-sm"
+                className="w-full h-12 rounded-xl bg-foreground text-background hover:bg-foreground/90 text-sm"
               >
                 새로운 기록 만들기
               </Button>
-              <Button variant="outline" onClick={() => navigate("/")} className="w-full h-11 rounded-xl text-sm">
+              <Button variant="outline" onClick={() => navigate("/")} className="w-full h-12 rounded-xl text-sm">
                 홈으로 돌아가기
               </Button>
             </>
