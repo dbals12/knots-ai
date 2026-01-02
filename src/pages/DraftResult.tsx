@@ -66,6 +66,7 @@ const DraftResult = () => {
 
   const [data, setData] = useState<ContentData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false); // ✅ AI 처리 상태 부활
 
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -73,14 +74,14 @@ const DraftResult = () => {
 
   const isSessionType = new URLSearchParams(location.search).get("type") === "session";
 
+  // 1. 데이터 불러오기
   useEffect(() => {
     if (!draftId) return;
 
     const fetchData = async () => {
       try {
-        let contentData: ContentData | null = null;
-
         if (isSessionType) {
+          // 회원: sessions + outputs 조회
           const { data: session } = await supabase.from("sessions").select("*").eq("id", draftId).single();
           const { data: outputs } = await supabase.from("outputs").select("*").eq("session_id", draftId);
 
@@ -92,47 +93,33 @@ const DraftResult = () => {
               if (o.platform_type === "reels") result_data.reels_content = o.generated_content;
               if (o.platform_type === "threads") result_data.threads_content = o.generated_content;
             });
-            contentData = { input_text: session.raw_text, input_mode: session.input_type, result_data };
+            setData({ input_text: session.raw_text, input_mode: session.input_type, result_data });
+            setLoading(false);
           }
         } else {
+          // 게스트: drafts 조회
           const { data: draft } = await supabase.from("drafts").select("*").eq("id", draftId).single();
           if (draft) {
             const inputData = draft.input_data as any;
             const resultData = draft.result_data as any;
-            contentData = {
-              input_text: inputData?.textInput || "",
-              input_mode: inputData?.inputMode,
-              result_data: resultData || {},
-            };
-          }
-        }
 
-        if (contentData) {
-          setData(contentData);
-          setLoading(false);
-        } else if (!isSessionType) {
-          const channel = supabase
-            .channel(`draft-${draftId}`)
-            .on(
-              "postgres_changes",
-              { event: "UPDATE", schema: "public", table: "drafts", filter: `id=eq.${draftId}` },
-              (payload: any) => {
-                const newResult = payload.new.result_data as any;
-                const newInput = payload.new.input_data as any;
-                if (newResult) {
-                  setData({
-                    input_text: newInput?.textInput || "",
-                    input_mode: newInput?.inputMode,
-                    result_data: newResult,
-                  });
-                  setLoading(false);
-                }
-              },
-            )
-            .subscribe();
-          return () => {
-            supabase.removeChannel(channel);
-          };
+            // ✅ 아직 AI 처리 전이면(idle) -> 로딩 유지하고 runAI 트리거 대기
+            if (draft.status === "idle" || draft.status === "generating") {
+              // 데이터는 세팅하되 로딩은 안 끔 (runAI가 처리함)
+              setData({
+                input_text: inputData?.textInput || "",
+                input_mode: inputData?.inputMode,
+                result_data: resultData || {},
+              });
+            } else {
+              setData({
+                input_text: inputData?.textInput || "",
+                input_mode: inputData?.inputMode,
+                result_data: resultData || {},
+              });
+              setLoading(false);
+            }
+          }
         }
       } catch (error) {
         console.error("Error loading data:", error);
@@ -142,6 +129,82 @@ const DraftResult = () => {
     fetchData();
   }, [draftId, isSessionType]);
 
+  // ✅ [복구] 게스트용 AI 실행기 (이게 없어서 녹음 변환이 안 됐던 것임)
+  useEffect(() => {
+    if (isSessionType || !data || isProcessing || !draftId) return;
+
+    const runAI = async () => {
+      // DB 상태 확인
+      const { data: draft } = await supabase.from("drafts").select("status, input_data").eq("id", draftId).single();
+      if (!draft || draft.status !== "idle") {
+        if (draft?.status === "completed") setLoading(false);
+        return;
+      }
+
+      setIsProcessing(true);
+      try {
+        await supabase.from("drafts").update({ status: "generating" }).eq("id", draftId);
+
+        const inputData = draft.input_data as any;
+        const formData = new FormData();
+        formData.append("user_persona", inputData.selectedPersona);
+        formData.append("user_mood", inputData.selectedMood);
+        formData.append("session_purpose", inputData.sessionPurpose || "");
+
+        if (inputData.inputMode === "voice" && inputData.audioBase64) {
+          const res = await fetch(inputData.audioBase64);
+          const blob = await res.blob();
+          formData.append("audio", blob, "recording.webm");
+        } else {
+          formData.append("raw_text", inputData.textInput || "");
+        }
+
+        // Edge Function 호출
+        const response = await fetch(`https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/process-audio`, {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) throw new Error("AI Processing Failed");
+        const aiResult = await response.json();
+
+        // 결과 업데이트
+        const updatedInputData = {
+          ...inputData,
+          textInput: aiResult.transcript || inputData.textInput,
+        };
+
+        const { error } = await supabase
+          .from("drafts")
+          .update({
+            status: "completed",
+            result_data: aiResult.content,
+            input_data: updatedInputData,
+          })
+          .eq("id", draftId);
+
+        if (error) throw error;
+
+        // 화면 갱신
+        setData({
+          input_text: updatedInputData.textInput,
+          input_mode: inputData.inputMode,
+          result_data: aiResult.content,
+        });
+      } catch (error) {
+        console.error("AI Error:", error);
+        await supabase.from("drafts").update({ status: "failed", error_message: "생성 실패" }).eq("id", draftId);
+        toast({ title: "오류", description: "AI 변환 중 문제가 발생했습니다.", variant: "destructive" });
+      } finally {
+        setIsProcessing(false);
+        setLoading(false);
+      }
+    };
+
+    runAI();
+  }, [draftId, isSessionType, data, isProcessing, toast]); // 의존성 배열에 data 추가
+
+  // ... (마이그레이션 로직 등 나머지는 기존과 동일) ...
   useEffect(() => {
     const migrateData = async () => {
       const pendingId = localStorage.getItem("pending_draft_id");
@@ -217,7 +280,6 @@ const DraftResult = () => {
   const performLogin = () => {
     navigate(`/login?next=/result/${draftId}?type=draft`);
   };
-
   const handleEditInput = () => {
     if (!user) {
       setShowLoginAlert(true);
@@ -225,7 +287,6 @@ const DraftResult = () => {
     }
     navigate("/input", { state: { initialText: data?.input_text } });
   };
-
   const handleCopyAction = (content: string) => {
     if (!user) {
       setShowLoginAlert(true);
@@ -235,7 +296,6 @@ const DraftResult = () => {
       toast({ title: "복사 완료", description: "클립보드에 복사되었습니다." });
     });
   };
-
   const handleContentUpdate = async (newContent: string) => {
     if (!selectedPlatform || !data) return;
     const updatedResult = { ...data.result_data };
@@ -243,9 +303,7 @@ const DraftResult = () => {
     else if (selectedPlatform === "linkedin") updatedResult.linkedin_content = newContent;
     else if (selectedPlatform === "reels") updatedResult.reels_content = newContent;
     else if (selectedPlatform === "threads") updatedResult.threads_content = newContent;
-
     setData({ ...data, result_data: updatedResult });
-
     if (isSessionType && user) {
       await supabase
         .from("outputs")
@@ -254,12 +312,10 @@ const DraftResult = () => {
         .eq("platform_type", selectedPlatform);
     }
   };
-
   const handleCardClick = (platformKey: string) => {
     setSelectedPlatform(platformKey);
     setIsModalOpen(true);
   };
-
   const getContent = (key: string) => {
     if (!data?.result_data) return "";
     const rd = data.result_data;
@@ -270,26 +326,26 @@ const DraftResult = () => {
     return "";
   };
 
-  if (loading || !data) {
+  // ✅ [수정] 텍스트가 없으면(음성 변환 중) 무조건 로딩 화면 표시
+  const isGenerating = loading || !data || (data.input_mode === "voice" && !data.input_text);
+
+  if (isGenerating) {
     return (
       <AppShell showHeader={false}>
-        <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+        <div className="flex-1 flex flex-col items-center justify-center gap-4">
+          <Loader2 className="w-10 h-10 animate-spin text-foreground" />
+          <div className="text-center space-y-1">
+            <p className="text-lg font-medium text-foreground">AI가 변환 중입니다...</p>
+            <p className="text-sm text-muted-foreground">음성을 텍스트로 바꾸고 있어요.</p>
+          </div>
         </div>
       </AppShell>
     );
   }
 
-  // ✅ 음성 모드일 때 텍스트가 비어있으면 안내 문구 표시
-  const displayText =
-    data.input_mode === "voice" && !data.input_text
-      ? "음성 내용을 텍스트로 변환하고 있습니다..."
-      : data.input_text || "기록된 내용이 없습니다.";
-
   return (
-    <AppShell className="min-h-[700px] flex flex-col">
-      {" "}
-      {/* ✅ flex-col 추가 */}
+    // ✅ [수정] flex-col h-full로 전체 레이아웃 잡기
+    <AppShell className="flex flex-col h-screen">
       <div className="flex-1 px-6 py-6 space-y-5 overflow-y-auto">
         <h2 className="text-xl font-semibold text-foreground">오늘의 결과</h2>
 
@@ -301,11 +357,11 @@ const DraftResult = () => {
             </Button>
           </div>
           <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap line-clamp-4">
-            {displayText}
+            {data.input_text}
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 mb-6">
           {Object.keys(platformIcons).map((key) => {
             const meta = platformIcons[key as keyof typeof platformIcons];
             const Icon = meta.icon;
@@ -334,8 +390,9 @@ const DraftResult = () => {
           })}
         </div>
       </div>
-      {/* ✅ 버튼을 AppShell 내부 플로우에 배치 (Sticky X, Fixed X) */}
-      <div className="p-4 bg-white border-t border-gray-100">
+
+      {/* ✅ [수정] AppShell 안쪽 하단에 버튼 배치 (흰색 배경은 유지하되 위치 고정 X) */}
+      <div className="p-4 bg-white border-t border-gray-100 flex-shrink-0">
         <div className="max-w-md mx-auto">
           {!user ? (
             <Button
@@ -359,6 +416,7 @@ const DraftResult = () => {
           )}
         </div>
       </div>
+
       <AlertDialog open={showLoginAlert} onOpenChange={setShowLoginAlert}>
         <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
@@ -380,6 +438,7 @@ const DraftResult = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
       {selectedPlatform && (
         <ResultDetailModal
           isOpen={isModalOpen}
