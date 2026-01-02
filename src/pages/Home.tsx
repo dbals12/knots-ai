@@ -133,10 +133,14 @@ const Home = ({ isGuest = false }: HomeProps) => {
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) audioChunksRef.current.push(event.data);
       };
+
+      // ✅ [중요] 녹음 종료 시 Blob 생성 로직 보완
       mediaRecorder.onstop = () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
         setRecordedBlob(audioBlob);
+        setShowConfirmation(true); // Blob 생성 후 확인창 띄우기
       };
+
       mediaRecorder.start(1000);
       setIsRecording(true);
     } catch (error) {
@@ -150,7 +154,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
       mediaRecorderRef.current.stop();
       if (audioStreamRef.current) audioStreamRef.current.getTracks().forEach((track) => track.stop());
       setIsRecording(false);
-      setShowConfirmation(true);
+      // setShowConfirmation(true); -> onstop 이벤트로 이동
     }
   };
 
@@ -173,19 +177,23 @@ const Home = ({ isGuest = false }: HomeProps) => {
     setIsSubmitting(true);
     try {
       let audioBase64 = null;
-      // 음성 모드일 때만 blob 체크
+      let finalTextInput = textInput;
+
+      // ✅ [중요] 녹음 파일 확인
       if (mode === "voice") {
-        if (!recordedBlob) throw new Error("녹음된 파일이 없습니다.");
+        if (!recordedBlob) {
+          toast({ title: "오류", description: "녹음된 파일이 없습니다. 다시 시도해주세요.", variant: "destructive" });
+          setIsSubmitting(false);
+          return;
+        }
         audioBase64 = await blobToBase64(recordedBlob);
+        finalTextInput = ""; // 음성 모드면 텍스트는 일단 공란 (AI가 채워줌)
       } else {
-        if (!textInput.trim()) throw new Error("입력된 텍스트가 없습니다.");
+        if (!textInput.trim()) throw new Error("No text input");
       }
 
-      const finalTextInput = mode === "text" ? textInput : ""; // 음성은 초기에 빈 값
-
-      // 1. 로그인 유저 -> sessions
+      // 1. 로그인 유저
       if (user) {
-        // 세션 생성
         const { data: sessionData, error: sessionError } = await supabase
           .from("sessions")
           .insert({
@@ -203,7 +211,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
         if (sessionError) throw sessionError;
 
-        // Edge Function 호출
         const formData = new FormData();
         formData.append("session_id", sessionData.id);
         formData.append("user_persona", selectedPersona);
@@ -216,7 +223,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
           formData.append("raw_text", finalTextInput);
         }
 
-        // 백그라운드 처리 (기다리지 않고 이동)
+        // AI 호출 (비동기)
         fetch("https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/process-audio", {
           method: "POST",
           body: formData,
@@ -224,18 +231,17 @@ const Home = ({ isGuest = false }: HomeProps) => {
           .then()
           .catch(console.error);
 
-        // 결과창 이동
-        setTimeout(() => {
-          navigate(`/result/${sessionData.id}?type=session`);
-        }, 1000); // 1초 정도 로딩 보여줌
-
         supabase
           .from("users")
           .update({ usage_purpose: sessionPurpose || undefined })
           .eq("id", user.id)
           .then();
+
+        setTimeout(() => {
+          navigate(`/result/${sessionData.id}?type=session`);
+        }, 500);
       }
-      // 2. 게스트 -> drafts
+      // 2. 게스트
       else {
         const inputData = {
           inputMode: mode,
@@ -243,7 +249,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
           selectedPersona,
           sessionPurpose,
           keyword,
-          audioBase64, // 음성 파일 저장
+          audioBase64, // ✅ Base64 오디오 저장 확인
           textInput: finalTextInput,
         };
 
@@ -261,7 +267,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
         localStorage.setItem("pending_draft_id", draftData.id);
         setTimeout(() => {
           navigate(`/result/${draftData.id}?type=draft`);
-        }, 1000);
+        }, 500);
       }
     } catch (error: any) {
       console.error("Submission failed:", error);
@@ -284,11 +290,11 @@ const Home = ({ isGuest = false }: HomeProps) => {
   };
 
   return (
-    <AppShell className="min-h-[700px]" isGuest={isGuest}>
-      <div className="flex-1 px-6 py-6 space-y-6 overflow-y-auto pb-32">
-        {/* ... (Purpose, Mood, Persona Selector 부분은 기존과 동일) ... */}
-        {/* 코드 길이상 생략하지 않고 모두 포함하려면 이전 Home.tsx 코드의 return 부분 참조, 
-            핵심은 handleVoiceSubmit 함수가 수정된 것입니다. */}
+    <AppShell className="min-h-[700px] flex flex-col" isGuest={isGuest}>
+      {" "}
+      {/* flex-col 추가 */}
+      <div className="flex-1 px-6 py-6 space-y-6 overflow-y-auto">
+        {/* ... (Purpose, Mood, Persona Selector UI 부분은 기존과 동일) ... */}
 
         {!isLoadingUserStatus && isReturningUser && (
           <div className="space-y-3">
@@ -441,7 +447,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
           </div>
         )}
       </div>
-
       <Sheet open={showConfirmation} onOpenChange={setShowConfirmation}>
         <SheetContent side="bottom" className="h-auto rounded-t-3xl">
           <SheetHeader className="pb-6">
@@ -461,7 +466,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
           </div>
         </SheetContent>
       </Sheet>
-
       {isSubmitting && (
         <div className="fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center">
           <div className="flex flex-col items-center gap-6">

@@ -21,7 +21,7 @@ import {
 
 interface ContentData {
   input_text: string;
-  input_mode?: string; // 음성/텍스트 확인용
+  input_mode?: string;
   result_data: {
     blog_content?: string;
     linkedin_content?: string;
@@ -142,7 +142,6 @@ const DraftResult = () => {
     fetchData();
   }, [draftId, isSessionType]);
 
-  // 마이그레이션 로직 (이전과 동일)
   useEffect(() => {
     const migrateData = async () => {
       const pendingId = localStorage.getItem("pending_draft_id");
@@ -281,15 +280,17 @@ const DraftResult = () => {
     );
   }
 
-  // ✅ 음성 모드인데 텍스트가 비어있을 경우 표시할 문구
+  // ✅ 음성 모드일 때 텍스트가 비어있으면 안내 문구 표시
   const displayText =
     data.input_mode === "voice" && !data.input_text
       ? "음성 내용을 텍스트로 변환하고 있습니다..."
       : data.input_text || "기록된 내용이 없습니다.";
 
   return (
-    <AppShell className="min-h-[700px]">
-      <div className="flex-1 px-6 py-6 space-y-5 overflow-y-auto pb-32">
+    <AppShell className="min-h-[700px] flex flex-col">
+      {" "}
+      {/* ✅ flex-col 추가 */}
+      <div className="flex-1 px-6 py-6 space-y-5 overflow-y-auto">
         <h2 className="text-xl font-semibold text-foreground">오늘의 결과</h2>
 
         <div className="bg-[#F8F8F8] rounded-2xl p-4">
@@ -333,9 +334,8 @@ const DraftResult = () => {
           })}
         </div>
       </div>
-
-      {/* ✅ 하단 버튼 통합 (로그인 유저 버튼도 여기에 포함) */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 pb-8 z-50">
+      {/* ✅ 버튼을 AppShell 내부 플로우에 배치 (Sticky X, Fixed X) */}
+      <div className="p-4 bg-white border-t border-gray-100">
         <div className="max-w-md mx-auto">
           {!user ? (
             <Button
@@ -359,7 +359,6 @@ const DraftResult = () => {
           )}
         </div>
       </div>
-
       <AlertDialog open={showLoginAlert} onOpenChange={setShowLoginAlert}>
         <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
@@ -381,7 +380,6 @@ const DraftResult = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
       {selectedPlatform && (
         <ResultDetailModal
           isOpen={isModalOpen}
