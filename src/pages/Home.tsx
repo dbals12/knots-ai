@@ -218,7 +218,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
           formData.append("raw_text", finalTextInput);
         }
 
-        // ✅ [핵심 수정] await 제거! AI 기다리지 않고 바로 이동 -> 로딩 창 중복 제거 & 속도 향상
+        // ✅ [수정] await 제거! AI 기다리지 않고 바로 이동 -> 로딩 속도 획기적 개선
         fetch("https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/process-audio", {
           method: "POST",
           body: formData,
@@ -230,7 +230,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
           .eq("id", user.id)
           .then();
 
-        // 바로 이동
+        // 바로 결과창으로 이동
         navigate(`/result/${sessionData.id}?type=session`);
       } else {
         // 2. 게스트: Drafts 저장 -> 바로 이동
@@ -257,7 +257,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
         localStorage.setItem("pending_draft_id", draftData.id);
 
-        // 바로 이동
+        // 바로 결과창으로 이동
         navigate(`/result/${draftData.id}?type=draft`);
       }
     } catch (error: any) {
@@ -281,9 +281,10 @@ const Home = ({ isGuest = false }: HomeProps) => {
   };
 
   return (
-    // ✅ AppShell에 flex-col 추가 (하단 버튼 위치 잡기용)
+    // ✅ AppShell에 flex-col 추가하여 하단 버튼이 삐져나가지 않게 처리
     <AppShell className="min-h-[700px] flex flex-col" isGuest={isGuest}>
       <div className="flex-1 px-6 py-6 space-y-6 overflow-y-auto">
+        {/* ... (UI 구성요소들 - 기존과 동일) ... */}
         {!isLoadingUserStatus && isReturningUser && (
           <div className="space-y-3">
             <h2 className="text-base font-semibold text-foreground">오늘의 목적은 무엇인가요?</h2>
@@ -456,7 +457,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
         </SheetContent>
       </Sheet>
 
-      {/* 로딩 창: 아주 잠깐 보여주고 사라짐 (Result 페이지에서 진짜 로딩 시작) */}
+      {/* 로딩 창: 이동 전 아주 잠깐만 표시됨 */}
       {isSubmitting && (
         <div className="fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center">
           <div className="flex flex-col items-center gap-6">

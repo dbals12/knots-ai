@@ -66,7 +66,7 @@ const DraftResult = () => {
 
   const [data, setData] = useState<ContentData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isProcessing, setIsProcessing] = useState(false); // 게스트 AI 실행용
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -74,45 +74,14 @@ const DraftResult = () => {
 
   const isSessionType = new URLSearchParams(location.search).get("type") === "session";
 
-  // 데이터 불러오기 + Realtime 구독
+  // 데이터 로딩 & Realtime 구독
   useEffect(() => {
     if (!draftId) return;
 
     const fetchData = async () => {
       try {
-        // 1. 회원 (Session)
         if (isSessionType) {
-          // 회원 데이터는 이미 Home에서 AI가 실행 중이거나 완료된 상태
-          // 아직 완료가 안 됐을 수 있으므로 Realtime 구독을 통해 기다립니다.
-          const channel = supabase
-            .channel(`session-${draftId}`)
-            .on(
-              "postgres_changes",
-              { event: "UPDATE", schema: "public", table: "sessions", filter: `id=eq.${draftId}` },
-              async (payload: any) => {
-                // 세션 데이터가 업데이트되거나, outputs가 추가되면 갱신
-                // (여기서는 간단히 outputs 테이블 변화 감지로 처리 가능하나, 일단 폴링/구독으로 처리)
-                // 간편하게 outputs 조회 재시도
-                const { data: outputs } = await supabase.from("outputs").select("*").eq("session_id", draftId);
-                if (outputs && outputs.length > 0) {
-                  const { data: session } = await supabase.from("sessions").select("*").eq("id", draftId).single();
-                  if (session) {
-                    const result_data: any = {};
-                    outputs.forEach((o: any) => {
-                      if (o.platform_type === "blog") result_data.blog_content = o.generated_content;
-                      if (o.platform_type === "linkedin") result_data.linkedin_content = o.generated_content;
-                      if (o.platform_type === "reels") result_data.reels_content = o.generated_content;
-                      if (o.platform_type === "threads") result_data.threads_content = o.generated_content;
-                    });
-                    setData({ input_text: session.raw_text, input_mode: session.input_type, result_data });
-                    setLoading(false);
-                  }
-                }
-              },
-            )
-            .subscribe();
-
-          // 초기 조회 (이미 완료된 경우)
+          // 1. 회원: 초기 데이터 확인
           const { data: session } = await supabase.from("sessions").select("*").eq("id", draftId).single();
           const { data: outputs } = await supabase.from("outputs").select("*").eq("session_id", draftId);
 
@@ -125,21 +94,45 @@ const DraftResult = () => {
               if (o.platform_type === "threads") result_data.threads_content = o.generated_content;
             });
             setData({ input_text: session.raw_text, input_mode: session.input_type, result_data });
-            setLoading(false);
+            setLoading(false); // 데이터 있으면 로딩 끝
+          } else {
+            // 데이터 없으면 Realtime 구독 시작 (AI 대기)
+            const channel = supabase
+              .channel(`session-${draftId}`)
+              .on(
+                "postgres_changes",
+                { event: "INSERT", schema: "public", table: "outputs", filter: `session_id=eq.${draftId}` },
+                async () => {
+                  // outputs 테이블에 데이터가 들어오면 다시 조회
+                  const { data: newOutputs } = await supabase.from("outputs").select("*").eq("session_id", draftId);
+                  const { data: newSession } = await supabase.from("sessions").select("*").eq("id", draftId).single();
+
+                  if (newSession && newOutputs && newOutputs.length > 0) {
+                    const result_data: any = {};
+                    newOutputs.forEach((o: any) => {
+                      if (o.platform_type === "blog") result_data.blog_content = o.generated_content;
+                      if (o.platform_type === "linkedin") result_data.linkedin_content = o.generated_content;
+                      if (o.platform_type === "reels") result_data.reels_content = o.generated_content;
+                      if (o.platform_type === "threads") result_data.threads_content = o.generated_content;
+                    });
+                    setData({ input_text: newSession.raw_text, input_mode: newSession.input_type, result_data });
+                    setLoading(false); // 로딩 끝
+                  }
+                },
+              )
+              .subscribe();
+            return () => {
+              supabase.removeChannel(channel);
+            };
           }
-          // 아직 없으면 로딩 유지 (Realtime이 처리해줌)
-          return () => {
-            supabase.removeChannel(channel);
-          };
-        }
-        // 2. 게스트 (Draft)
-        else {
+        } else {
+          // 2. 게스트: drafts 조회
           const { data: draft } = await supabase.from("drafts").select("*").eq("id", draftId).single();
           if (draft) {
             const inputData = draft.input_data as any;
             const resultData = draft.result_data as any;
-            // AI 처리 완료 여부 확인
-            if (draft.status === "completed" && resultData) {
+
+            if (draft.status === "completed") {
               setData({
                 input_text: inputData?.textInput || "",
                 input_mode: inputData?.inputMode,
@@ -147,7 +140,7 @@ const DraftResult = () => {
               });
               setLoading(false);
             } else {
-              // 아직이면 데이터만 세팅하고 로딩 유지 (AI 실행 및 구독 대기)
+              // 아직 완료 안 됐으면 기본 정보만 세팅하고 로딩 유지 (runAI 대기)
               setData({
                 input_text: inputData?.textInput || "",
                 input_mode: inputData?.inputMode,
@@ -155,17 +148,16 @@ const DraftResult = () => {
               });
             }
           }
-
-          // 게스트 Realtime 구독
+          // 게스트용 구독
           const channel = supabase
             .channel(`draft-${draftId}`)
             .on(
               "postgres_changes",
               { event: "UPDATE", schema: "public", table: "drafts", filter: `id=eq.${draftId}` },
               (payload: any) => {
-                const newResult = payload.new.result_data as any;
-                const newInput = payload.new.input_data as any;
-                if (newResult && payload.new.status === "completed") {
+                if (payload.new.status === "completed") {
+                  const newResult = payload.new.result_data as any;
+                  const newInput = payload.new.input_data as any;
                   setData({
                     input_text: newInput?.textInput || "",
                     input_mode: newInput?.inputMode,
@@ -188,14 +180,13 @@ const DraftResult = () => {
     fetchData();
   }, [draftId, isSessionType]);
 
-  // 게스트일 경우 여기서 AI 실행 (회원은 Home에서 이미 실행됨)
+  // 게스트 AI 실행기
   useEffect(() => {
     if (isSessionType || !draftId || isProcessing) return;
 
     const runAI = async () => {
       const { data: draft } = await supabase.from("drafts").select("status, input_data").eq("id", draftId).single();
-      // 이미 완료되었거나 진행중이면 스킵
-      if (!draft || draft.status === "completed" || draft.status === "generating") return;
+      if (!draft || draft.status !== "idle") return;
 
       setIsProcessing(true);
       try {
@@ -238,23 +229,21 @@ const DraftResult = () => {
           .eq("id", draftId);
       } catch (error) {
         console.error("AI Error:", error);
-        await supabase.from("drafts").update({ status: "failed", error_message: "생성 실패" }).eq("id", draftId);
-        toast({ title: "오류", description: "AI 변환 실패. 다시 시도해주세요.", variant: "destructive" });
-        setLoading(false); // 에러나면 로딩 끔
+        await supabase.from("drafts").update({ status: "failed" }).eq("id", draftId);
+        setLoading(false);
       } finally {
         setIsProcessing(false);
       }
     };
 
     runAI();
-  }, [draftId, isSessionType, isProcessing, toast]);
+  }, [draftId, isSessionType, isProcessing]);
 
-  // 마이그레이션 (이전과 동일)
+  // 마이그레이션 (동일)
   useEffect(() => {
     const migrateData = async () => {
       const pendingId = localStorage.getItem("pending_draft_id");
       if (user && pendingId && pendingId === draftId && !isSessionType) {
-        // 마이그레이션 중에는 로딩 표시
         setLoading(true);
         try {
           const { data: draft } = await supabase.from("drafts").select("*").eq("id", pendingId).single();
@@ -306,9 +295,7 @@ const DraftResult = () => {
                 generated_content: rd.threads_content,
               });
 
-            if (outputsToInsert.length > 0) {
-              await supabase.from("outputs").insert(outputsToInsert);
-            }
+            if (outputsToInsert.length > 0) await supabase.from("outputs").insert(outputsToInsert);
 
             await supabase.from("drafts").delete().eq("id", pendingId);
             localStorage.removeItem("pending_draft_id");
@@ -372,9 +359,8 @@ const DraftResult = () => {
     return "";
   };
 
-  // ✅ 통합 로딩 화면 (조건 강화)
-  // 데이터가 없거나, 아직 로딩중이거나, 텍스트가 비어있으면(음성 변환 중) 로딩 표시
-  const isGenerating = loading || !data || !data.input_text;
+  // ✅ 통합 로딩 조건: 로딩중이거나, 데이터가 없거나, 텍스트가 비어있으면(음성 변환 중)
+  const isGenerating = loading || !data || (data.input_mode === "voice" && !data.input_text);
 
   if (isGenerating) {
     return (
@@ -394,14 +380,12 @@ const DraftResult = () => {
     );
   }
 
-  // ✅ 레이아웃 구조 변경 (Image 5 스타일)
   return (
+    // ✅ [레이아웃] flex-col, h-[100dvh]
     <AppShell className="h-[100dvh] flex flex-col overflow-hidden">
-      {/* 1. 스크롤 영역 */}
       <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5 bg-white">
-        {" "}
-        {/* 배경색 흰색 확인 */}
         <h2 className="text-xl font-semibold text-foreground">오늘의 결과</h2>
+
         <div className="bg-[#F8F8F8] rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-medium text-foreground">오늘 내가 기록한 내용</h3>
@@ -413,6 +397,7 @@ const DraftResult = () => {
             {data.input_text}
           </p>
         </div>
+
         <div className="grid grid-cols-2 gap-3 mb-4">
           {Object.keys(platformIcons).map((key) => {
             const meta = platformIcons[key as keyof typeof platformIcons];
@@ -443,7 +428,6 @@ const DraftResult = () => {
         </div>
       </div>
 
-      {/* 2. 하단 고정 영역 (버튼) */}
       <div className="mt-auto p-4 bg-white border-t border-gray-100 flex-shrink-0">
         <div className="max-w-md mx-auto">
           {!user ? (
@@ -474,12 +458,29 @@ const DraftResult = () => {
       </div>
 
       <AlertDialog open={showLoginAlert} onOpenChange={setShowLoginAlert}>
-        {/* ... (기존과 동일) ... */}
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>로그인이 필요한 기능입니다</AlertDialogTitle>
+            <AlertDialogDescription>
+              결과를 저장하거나 복사하려면 로그인이 필요해요.
+              <br />
+              3초 만에 로그인하고 안전하게 보관하세요!
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl border-0">취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={performLogin}
+              className="rounded-xl bg-[#FEE500] text-black hover:bg-[#FEE500]/90"
+            >
+              카카오/구글로 시작하기
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
       </AlertDialog>
 
       {selectedPlatform && (
         <ResultDetailModal
-          // ... (기존과 동일) ...
           isOpen={isModalOpen}
           onClose={() => {
             setIsModalOpen(false);
