@@ -67,7 +67,7 @@ const DraftResult = () => {
   const [data, setData] = useState<ContentData | null>(null);
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
-  const pollingInterval = useRef<NodeJS.Timeout | null>(null); // ✅ 폴링용 Ref
+  const pollingRef = useRef<NodeJS.Timeout | null>(null); // 폴링 제어용
 
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -75,7 +75,7 @@ const DraftResult = () => {
 
   const isSessionType = new URLSearchParams(location.search).get("type") === "session";
 
-  // ✅ 데이터 로딩 (초기 조회 + 실시간 구독 + 3초마다 확인)
+  // ✅ 데이터 감지 로직 (강력한 폴링 적용)
   useEffect(() => {
     if (!draftId) return;
 
@@ -84,15 +84,11 @@ const DraftResult = () => {
         // 1. 회원 (Session)
         if (isSessionType) {
           const { data: session } = await supabase.from("sessions").select("*").eq("id", draftId).single();
+          // outputs 확인
           const { data: outputs } = await supabase.from("outputs").select("*").eq("session_id", draftId);
 
-          // 데이터가 완성되었는지 확인
           if (session && outputs && outputs.length > 0) {
-            // 음성 모드일 경우 텍스트 변환까지 확인
-            if (session.input_type === "voice" && !session.raw_text) {
-              return false; // 아직 텍스트 변환 안됨 -> 로딩 유지
-            }
-
+            // 데이터가 완성되었다고 판단
             const result_data: any = {};
             outputs.forEach((o: any) => {
               if (o.platform_type === "blog") result_data.blog_content = o.generated_content;
@@ -113,8 +109,8 @@ const DraftResult = () => {
             const inputData = draft.input_data as any;
             const resultData = draft.result_data as any;
 
-            // 완료 조건: status가 completed이고 결과 데이터가 있어야 함
-            if (draft.status === "completed" && resultData) {
+            // 완료 조건: status가 completed 이거나 result_data가 존재할 때
+            if (draft.status === "completed" && resultData && Object.keys(resultData).length > 0) {
               setData({
                 input_text: inputData?.textInput || "",
                 input_mode: inputData?.inputMode,
@@ -122,57 +118,50 @@ const DraftResult = () => {
               });
               setLoading(false);
               return true; // 완료됨
-            } else {
-              // 아직 미완성이면 기본 정보만 세팅 (화면엔 안보이고 로딩 유지)
-              setData({
-                input_text: inputData?.textInput || "",
-                input_mode: inputData?.inputMode,
-                result_data: resultData || {},
-              });
             }
           }
         }
-        return false; // 아직 완료 안됨
+        return false; // 아직 데이터 없음
       } catch (error) {
-        console.error("Check Data Error:", error);
+        console.error("Data Check Error:", error);
         return false;
       }
     };
 
-    // 1. 즉시 실행
-    checkData().then((isDone) => {
-      if (!isDone) {
-        // 2. 안 끝났으면 3초마다 반복 확인 (Polling)
-        pollingInterval.current = setInterval(async () => {
-          const done = await checkData();
-          if (done && pollingInterval.current) {
-            clearInterval(pollingInterval.current); // 다 됐으면 멈춤
-          }
-        }, 3000);
-      }
+    // ① 들어오자마자 한 번 체크
+    checkData().then((done) => {
+      if (done) return; // 이미 있으면 끝
+
+      // ② 없으면 1초마다 계속 체크 (Polling)
+      pollingRef.current = setInterval(async () => {
+        const isDone = await checkData();
+        if (isDone) {
+          if (pollingRef.current) clearInterval(pollingRef.current); // 찾았으면 멈춤
+        }
+      }, 1000); // 3초 -> 1초로 단축 (반응 속도 향상)
     });
 
-    // 3. Realtime 구독 (보조 수단)
+    // ③ Realtime 구독 (보조)
     const channel = supabase
-      .channel(`realtime-${draftId}`)
+      .channel(`any-${draftId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: isSessionType ? "outputs" : "drafts" }, () => {
-        checkData(); // 변경 감지되면 즉시 확인
+        checkData(); // 변화 감지 시 즉시 체크
       })
       .subscribe();
 
     return () => {
-      if (pollingInterval.current) clearInterval(pollingInterval.current);
+      if (pollingRef.current) clearInterval(pollingRef.current);
       supabase.removeChannel(channel);
     };
   }, [draftId, isSessionType]);
 
-  // 게스트 AI 실행기 (혹시 실행 안됐을까봐 안전장치)
+  // 게스트용 AI 실행기 (안전장치)
   useEffect(() => {
     if (isSessionType || !draftId || isProcessing) return;
 
     const runAI = async () => {
       const { data: draft } = await supabase.from("drafts").select("status, input_data").eq("id", draftId).single();
-      // idle 상태일 때만 실행 (generating이나 completed면 건드리지 않음)
+      // 이미 완료됐거나 진행 중이면 패스
       if (!draft || draft.status !== "idle") return;
 
       setIsProcessing(true);
@@ -225,7 +214,7 @@ const DraftResult = () => {
     runAI();
   }, [draftId, isSessionType, isProcessing]);
 
-  // 마이그레이션 (이전과 동일)
+  // 마이그레이션 로직
   useEffect(() => {
     const migrateData = async () => {
       const pendingId = localStorage.getItem("pending_draft_id");
@@ -299,6 +288,7 @@ const DraftResult = () => {
   const performLogin = () => {
     navigate(`/login?next=/result/${draftId}?type=draft`);
   };
+
   const handleEditInput = () => {
     if (!user) {
       setShowLoginAlert(true);
@@ -306,6 +296,7 @@ const DraftResult = () => {
     }
     navigate("/input", { state: { initialText: data?.input_text } });
   };
+
   const handleCopyAction = (content: string) => {
     if (!user) {
       setShowLoginAlert(true);
@@ -315,6 +306,7 @@ const DraftResult = () => {
       toast({ title: "복사 완료", description: "클립보드에 복사되었습니다." });
     });
   };
+
   const handleContentUpdate = async (newContent: string) => {
     if (!selectedPlatform || !data) return;
     const updatedResult = { ...data.result_data };
@@ -331,10 +323,12 @@ const DraftResult = () => {
         .eq("platform_type", selectedPlatform);
     }
   };
+
   const handleCardClick = (platformKey: string) => {
     setSelectedPlatform(platformKey);
     setIsModalOpen(true);
   };
+
   const getContent = (key: string) => {
     if (!data?.result_data) return "";
     const rd = data.result_data;
@@ -345,8 +339,8 @@ const DraftResult = () => {
     return "";
   };
 
-  // ✅ 로딩 조건: 로딩중이거나, 데이터가 없거나, 텍스트가 비어있으면(음성 변환 중) 로딩 표시
-  const isGenerating = loading || !data || (data.input_mode === "voice" && !data.input_text);
+  // ✅ 로딩 조건: 로딩중이거나 데이터가 아예 없을 때 (음성 텍스트 변환은 checkData에서 이미 처리됨)
+  const isGenerating = loading || !data;
 
   if (isGenerating) {
     return (
@@ -379,7 +373,7 @@ const DraftResult = () => {
             </Button>
           </div>
           <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap line-clamp-4">
-            {data.input_text}
+            {data.input_text || "내용을 불러오는 중입니다..."}
           </p>
         </div>
 
@@ -413,7 +407,6 @@ const DraftResult = () => {
         </div>
       </div>
 
-      {/* ✅ 버튼 세로 배치 및 하단 고정 */}
       <div className="mt-auto p-4 bg-white border-t border-gray-100 flex-shrink-0">
         <div className="max-w-md mx-auto">
           {!user ? (
