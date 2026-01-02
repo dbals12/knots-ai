@@ -19,21 +19,19 @@ const sessionPurposes = [
   { value: "emotion", label: "감정 정리" },
   { value: "idea", label: "아이디어 저장" },
 ];
-
 const moods = [
-  { value: "energetic", label: "🔥 불타는 하루", icon: null },
-  { value: "tired", label: "😞 좀 힘들고 지쳤다", icon: null },
-  { value: "proud", label: "😊 뿌듯했다", icon: null },
-  { value: "neutral", label: "😐 그냥 그런 날", icon: null },
-  { value: "chaotic", label: "🤯 정신 없었다", icon: null },
+  { value: "energetic", label: "🔥 불타는 하루" },
+  { value: "tired", label: "😞 좀 힘들고 지쳤다" },
+  { value: "proud", label: "😊 뿌듯했다" },
+  { value: "neutral", label: "😐 그냥 그런 날" },
+  { value: "chaotic", label: "🤯 정신 없었다" },
 ];
-
 const personas = [
-  { value: "growth", label: "🌱 성장한 나", desc: "배운 점, 성장 포인트 중심", icon: null },
-  { value: "achiever", label: "💼 일잘러 나", desc: "성과, 문제 해결, 인사이트 중심", icon: null },
-  { value: "collaborator", label: "🤝 협업한 나", desc: "사람, 팀워크, 관계 중심", icon: null },
-  { value: "challenger", label: "⚡ 갈등한 나", desc: "어려움, 스트레스, 고민을 솔직히", icon: null },
-  { value: "authentic", label: "💬 날것의 나", desc: "포장 없이 있는 그대로", icon: null },
+  { value: "growth", label: "🌱 성장한 나", desc: "배운 점, 성장 포인트 중심" },
+  { value: "achiever", label: "💼 일잘러 나", desc: "성과, 문제 해결, 인사이트 중심" },
+  { value: "collaborator", label: "🤝 협업한 나", desc: "사람, 팀워크, 관계 중심" },
+  { value: "challenger", label: "⚡ 갈등한 나", desc: "어려움, 스트레스, 고민을 솔직히" },
+  { value: "authentic", label: "💬 날것의 나", desc: "포장 없이 있는 그대로" },
 ];
 
 interface HomeProps {
@@ -69,17 +67,14 @@ const Home = ({ isGuest = false }: HomeProps) => {
   const personaScrollRef = useRef<HTMLDivElement>(null);
   const purposeScrollRef = useRef<HTMLDivElement>(null);
 
-  // 수정하기로 돌아왔을 때 데이터 복구
   useEffect(() => {
     if (location.state?.initialText) {
       setInputMode("text");
       setTextInput(location.state.initialText);
-      // 상태 초기화
       window.history.replaceState({}, document.title);
     }
   }, [location]);
 
-  // 유저 상태 체크 (온보딩 효과)
   useEffect(() => {
     const checkUserStatus = async () => {
       if (!user) {
@@ -113,7 +108,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
     checkUserStatus();
   }, [user]);
 
-  // 마이크 스트림 정리
   useEffect(() => {
     return () => {
       if (audioStreamRef.current) {
@@ -141,11 +135,10 @@ const Home = ({ isGuest = false }: HomeProps) => {
         if (event.data.size > 0) audioChunksRef.current.push(event.data);
       };
 
-      // ✅ [중요] 녹음 종료 시 Blob 생성 보장
       mediaRecorder.onstop = () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
         setRecordedBlob(audioBlob);
-        setShowConfirmation(true); // Blob 생성 후 확인창
+        setShowConfirmation(true);
       };
 
       mediaRecorder.start(1000);
@@ -161,7 +154,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
       mediaRecorderRef.current.stop();
       if (audioStreamRef.current) audioStreamRef.current.getTracks().forEach((track) => track.stop());
       setIsRecording(false);
-      // onstop 이벤트에서 setShowConfirmation 실행
     }
   };
 
@@ -180,31 +172,26 @@ const Home = ({ isGuest = false }: HomeProps) => {
     setIsRecording(false);
   };
 
-  // ✅ 제출 로직 (이원화 적용 + 녹음 체크 강화)
   const handleSubmit = async (mode: "voice" | "text") => {
-    setIsSubmitting(true);
+    setIsSubmitting(true); // 로딩 시작 (잠깐 보여주고 바로 이동)
     try {
       let audioBase64 = null;
       let finalTextInput = textInput;
 
       if (mode === "voice") {
         if (!recordedBlob) {
-          toast({
-            title: "오류",
-            description: "녹음 파일이 생성되지 않았습니다. 다시 시도해주세요.",
-            variant: "destructive",
-          });
+          toast({ title: "오류", description: "녹음 파일이 없습니다.", variant: "destructive" });
           setIsSubmitting(false);
           return;
         }
         audioBase64 = await blobToBase64(recordedBlob);
-        finalTextInput = ""; // 음성은 초기에 빈 값
+        finalTextInput = "";
       } else {
         if (!textInput.trim()) throw new Error("입력된 텍스트가 없습니다.");
       }
 
-      // 1. 로그인 유저 (sessions 저장 -> AI 실행 -> 결과창 이동)
       if (user) {
+        // 1. 회원: 세션 생성 (DB 저장)
         const { data: sessionData, error: sessionError } = await supabase
           .from("sessions")
           .insert({
@@ -234,25 +221,23 @@ const Home = ({ isGuest = false }: HomeProps) => {
           formData.append("raw_text", finalTextInput);
         }
 
-        // ✅ 회원은 AI 처리가 끝날 때까지 기다림 (결과창 오류 방지)
-        const response = await fetch("https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/process-audio", {
+        // ✅ [수정] AI 처리를 기다리지 않고(await 제거) 바로 이동! -> 로딩 시간 단축, 중복 로딩 제거
+        fetch("https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/process-audio", {
           method: "POST",
           body: formData,
-        });
+        }).catch(console.error);
 
-        if (!response.ok) throw new Error("AI 처리 실패");
-
-        navigate(`/result/${sessionData.id}?type=session`);
-
-        // 프로필 업데이트 (백그라운드)
+        // 사용자 취향 업데이트 (백그라운드)
         supabase
           .from("users")
           .update({ usage_purpose: sessionPurpose || undefined })
           .eq("id", user.id)
           .then();
-      }
-      // 2. 게스트 (drafts 저장 -> 결과창 이동 -> DraftResult에서 AI 실행)
-      else {
+
+        // 즉시 이동 (결과창에서 로딩 애니메이션 보여줌)
+        navigate(`/result/${sessionData.id}?type=session`);
+      } else {
+        // 2. 게스트: Drafts 저장
         const inputData = {
           inputMode: mode,
           selectedMood,
@@ -276,10 +261,8 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
         localStorage.setItem("pending_draft_id", draftData.id);
 
-        // 게스트는 AI를 기다리지 않고 바로 이동 (Result 페이지가 처리)
-        setTimeout(() => {
-          navigate(`/result/${draftData.id}?type=draft`);
-        }, 500);
+        // 즉시 이동
+        navigate(`/result/${draftData.id}?type=draft`);
       }
     } catch (error: any) {
       console.error("Submission failed:", error);
@@ -302,10 +285,8 @@ const Home = ({ isGuest = false }: HomeProps) => {
   };
 
   return (
-    // ✅ [수정] flex-col 적용, 하단 여백 제거
     <AppShell className="min-h-[700px] flex flex-col" isGuest={isGuest}>
       <div className="flex-1 px-6 py-6 space-y-6 overflow-y-auto">
-        {/* Purpose Selector (재방문 유저 전용) */}
         {!isLoadingUserStatus && isReturningUser && (
           <div className="space-y-3">
             <h2 className="text-base font-semibold text-foreground">오늘의 목적은 무엇인가요?</h2>
@@ -340,7 +321,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
           </div>
         )}
 
-        {/* Mood Selector */}
         <div className="space-y-3">
           <h2 className="text-base font-semibold text-foreground">오늘 하루 어땠나요?</h2>
           <div className="relative group">
@@ -370,9 +350,8 @@ const Home = ({ isGuest = false }: HomeProps) => {
           </div>
         </div>
 
-        {/* Persona Selector */}
         <div className="space-y-3">
-          <h2 className="text-base font-semibold text-foreground">어떤 나로 기록할까요?</h2>
+          <h2 className="text-base font-semibold text-foreground">오늘은 어떤 나로 정리할까요?</h2>
           <div className="relative group">
             <button
               onClick={() => scrollContainer(personaScrollRef, "left")}
@@ -404,18 +383,16 @@ const Home = ({ isGuest = false }: HomeProps) => {
           </div>
         </div>
 
-        {/* Keyword Input */}
         <div className="space-y-2">
-          <label className="text-sm text-muted-foreground">키워드가 있다면? (선택)</label>
+          <label className="text-sm text-muted-foreground">오늘의 키워드 (한두 단어로 정리해볼까요?)</label>
           <Input
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
-            placeholder="예: 프로젝트 마감, 팀 미팅, 성과 발표"
+            placeholder="예: 클라이언트 미팅, 런칭, 실수"
             className="h-11 rounded-xl border-border bg-background"
           />
         </div>
 
-        {/* Input Mode Toggle */}
         <div className="flex items-center justify-center gap-2 py-2">
           <button
             onClick={() => setInputMode("voice")}
@@ -431,7 +408,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
           </button>
         </div>
 
-        {/* Input Areas */}
         {inputMode === "voice" ? (
           <div className="flex flex-col items-center space-y-4 py-6">
             <button
@@ -463,7 +439,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
         )}
       </div>
 
-      {/* Voice Confirmation Sheet */}
       <Sheet open={showConfirmation} onOpenChange={setShowConfirmation}>
         <SheetContent side="bottom" className="h-auto rounded-t-3xl">
           <SheetHeader className="pb-6">
@@ -484,7 +459,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
         </SheetContent>
       </Sheet>
 
-      {/* Loading Overlay */}
+      {/* 로딩 화면: 곧바로 이동하므로 아주 잠깐만 보입니다. */}
       {isSubmitting && (
         <div className="fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center">
           <div className="flex flex-col items-center gap-6">
