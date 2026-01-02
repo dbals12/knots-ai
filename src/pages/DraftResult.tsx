@@ -101,14 +101,16 @@ const DraftResult = () => {
         else {
           const { data: draft } = await supabase.from("drafts").select("*").eq("id", draftId).single();
           if (draft) {
-            // 아직 AI 처리 중일 수 있음 (status 확인)
+            // ✅ [수정] as any 캐스팅 추가
+            const inputData = draft.input_data as any;
+            const resultData = draft.result_data as any;
+
             if (draft.status === "generating" || draft.status === "idle") {
-              // AI 처리 완료 대기 (Realtime 구독은 별도 처리)
-              // 여기서는 간단히 표시만
+              // AI 처리 대기
             }
             contentData = {
-              input_text: draft.input_data?.textInput || "",
-              result_data: draft.result_data || {},
+              input_text: inputData?.textInput || "",
+              result_data: resultData || {},
             };
           }
         }
@@ -124,10 +126,14 @@ const DraftResult = () => {
               "postgres_changes",
               { event: "UPDATE", schema: "public", table: "drafts", filter: `id=eq.${draftId}` },
               (payload: any) => {
-                if (payload.new.result_data) {
+                // ✅ [수정] Payload 데이터 캐스팅
+                const newResult = payload.new.result_data as any;
+                const newInput = payload.new.input_data as any;
+
+                if (newResult) {
                   setData({
-                    input_text: payload.new.input_data?.textInput || "",
-                    result_data: payload.new.result_data,
+                    input_text: newInput?.textInput || "",
+                    result_data: newResult,
                   });
                   setLoading(false);
                 }
@@ -159,18 +165,22 @@ const DraftResult = () => {
           const { data: draft } = await supabase.from("drafts").select("*").eq("id", pendingId).single();
 
           if (draft) {
+            // ✅ [수정] JSON 타입 에러 방지를 위해 as any 사용
+            const inputData = draft.input_data as any;
+            const resultData = draft.result_data as any;
+
             // (2) sessions로 이사
             const { data: session, error: sErr } = await supabase
               .from("sessions")
               .insert({
                 user_id: user.id,
-                raw_text: draft.input_data.textInput,
-                session_purpose: draft.input_data.sessionPurpose,
-                selected_mood: draft.input_data.selectedMood,
-                selected_persona: draft.input_data.selectedPersona,
-                keyword: draft.input_data.keyword,
+                raw_text: inputData.textInput,
+                session_purpose: inputData.sessionPurpose,
+                selected_mood: inputData.selectedMood,
+                selected_persona: inputData.selectedPersona,
+                keyword: inputData.keyword,
                 entry_source: "web",
-                input_type: draft.input_data.inputMode,
+                input_type: inputData.inputMode,
               })
               .select()
               .single();
@@ -179,7 +189,8 @@ const DraftResult = () => {
 
             // (3) outputs로 이사
             const outputsToInsert = [];
-            const rd = draft.result_data || {};
+            const rd = resultData || {}; // ✅ resultData 사용
+
             if (rd.blog_content)
               outputsToInsert.push({
                 session_id: session.id,
@@ -269,7 +280,10 @@ const DraftResult = () => {
     }
     // 게스트인 경우 drafts 업데이트
     else {
-      // ... (게스트는 보통 수정 저장을 막거나 drafts를 업데이트함. 여기선 생략 또는 로컬만)
+      await supabase
+        .from("drafts")
+        .update({ result_data: updatedResult }) // ✅ 타입 에러 없이 업데이트
+        .eq("id", draftId);
     }
   };
 
@@ -280,10 +294,11 @@ const DraftResult = () => {
 
   const getContent = (key: string) => {
     if (!data?.result_data) return "";
-    if (key === "blog") return data.result_data.blog_content;
-    if (key === "linkedin") return data.result_data.linkedin_content;
-    if (key === "reels") return data.result_data.reels_content;
-    if (key === "threads") return data.result_data.threads_content;
+    const rd = data.result_data;
+    if (key === "blog") return rd.blog_content;
+    if (key === "linkedin") return rd.linkedin_content;
+    if (key === "reels") return rd.reels_content;
+    if (key === "threads") return rd.threads_content;
     return "";
   };
 
@@ -402,7 +417,7 @@ const DraftResult = () => {
           content={getContent(selectedPlatform) || ""}
           outputId={draftId || ""}
           isGuest={!user}
-          isDraftMode={!isSessionType} // 게스트면 true, 회원이면 false
+          isDraftMode={!isSessionType}
           onSave={() => (user ? null : setShowLoginAlert(true))}
           onCopy={(content) => handleCopyAction(content)}
           onContentUpdate={handleContentUpdate}
