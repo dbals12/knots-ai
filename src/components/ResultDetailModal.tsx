@@ -111,7 +111,7 @@ const ResultDetailModal = ({
     serious: "진지한 분석가",
   };
 
-  // ✅ [수정] 복사 핸들러 (게스트 차단)
+  // ✅ 복사 핸들러: 게스트면 부모(로그인 팝업) 호출, 회원이면 복사 실행
   const handleCopy = () => {
     if (isGuest) {
       onCopy(editedContent);
@@ -123,14 +123,15 @@ const ResultDetailModal = ({
     onCopy(editedContent);
   };
 
-  // ✅ [수정] 저장 핸들러 (게스트 차단)
+  // ✅ 저장 핸들러: 게스트(로그인유도) / Draft모드(로컬저장) / 회원(DB저장) 분기
   const handleSave = async () => {
     if (isGuest) {
       onSave();
       return;
-    }
+    } // 게스트 -> 로그인 팝업
     if (isSaved || isSaving) return;
 
+    // Draft 모드(게스트)면 DB 저장 건너뛰고 로컬 상태만 업데이트
     if (isDraftMode) {
       onContentUpdate?.(editedContent);
       setIsSaved(true);
@@ -138,15 +139,18 @@ const ResultDetailModal = ({
       return;
     }
 
+    // 회원 모드면 실제 DB 저장
     setIsSaving(true);
     try {
+      // outputs 테이블 업데이트 (DraftResult가 처리하도록 위임하거나 직접 수행)
+      // 여기서는 UI 일관성을 위해 직접 업데이트
       const { error } = await supabase.from("outputs").update({ generated_content: editedContent }).eq("id", outputId);
       if (error) throw error;
+
       trackSaveContent(platform, outputId);
       setIsSaved(true);
-      onContentUpdate?.(editedContent);
+      onContentUpdate?.(editedContent); // 부모에게 알림
       toast({ title: "저장 완료!", description: "내 기록에 안전하게 저장되었습니다." });
-      onSave();
     } catch (error: any) {
       toast({ title: "저장 실패", description: error.message, variant: "destructive" });
     } finally {
@@ -154,7 +158,7 @@ const ResultDetailModal = ({
     }
   };
 
-  // ✅ [수정] 좋아요 핸들러 (게스트 차단)
+  // ✅ 좋아요 핸들러: Draft 모드일 때 오류 방지 (DB 저장 스킵)
   const handleRatingClick = async (score: number) => {
     if (isGuest) {
       onSave();
@@ -183,6 +187,7 @@ const ResultDetailModal = ({
     }
   };
 
+  // ✅ AI 수정 API 호출
   const callRefineApi = async (refineMode: string, options: any = {}) => {
     setIsRefining(true);
     try {
@@ -204,6 +209,7 @@ const ResultDetailModal = ({
         setEditedContent(refined_content);
         pushToHistory(refined_content);
 
+        // 정식 회원일 때만 edits/outputs 테이블에 기록
         if (!isGuest && !isDraftMode) {
           await supabase.from("outputs").update({ generated_content: refined_content }).eq("id", outputId);
           await supabase.from("edits").insert({
@@ -278,6 +284,7 @@ const ResultDetailModal = ({
           </div>
 
           <div className="space-y-1.5 pt-2 flex-shrink-0">
+            {/* ✅ 게스트도 AI 수정 도구 사용 가능 (제한 없음) */}
             <div>
               <div className="flex items-center justify-between">
                 <p className="text-xs font-medium text-muted-foreground">AI 수정 도구</p>

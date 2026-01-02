@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import AppShell from "@/components/AppShell";
 import { blobToBase64 } from "@/lib/guestPendingSubmission";
 import { getEntrySource } from "@/lib/analytics";
 
+// 선택지 데이터 (기존 유지)
 const sessionPurposes = [
   { value: "record", label: "기록" },
   { value: "career", label: "커리어 브랜딩" },
@@ -41,7 +42,6 @@ interface HomeProps {
 }
 
 const Home = ({ isGuest = false }: HomeProps) => {
-  // ✅ 1. 기본 모드를 무조건 'voice'로 통일
   const [inputMode, setInputMode] = useState<"voice" | "text">("voice");
   const [isRecording, setIsRecording] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -62,6 +62,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
 
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -69,6 +70,17 @@ const Home = ({ isGuest = false }: HomeProps) => {
   const personaScrollRef = useRef<HTMLDivElement>(null);
   const purposeScrollRef = useRef<HTMLDivElement>(null);
 
+  // 수정하기로 돌아왔을 때 데이터 복구
+  useEffect(() => {
+    if (location.state?.initialText) {
+      setInputMode("text");
+      setTextInput(location.state.initialText);
+      // 상태 초기화
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
+
+  // 유저 상태 체크
   useEffect(() => {
     const checkUserStatus = async () => {
       if (!user) {
@@ -76,25 +88,24 @@ const Home = ({ isGuest = false }: HomeProps) => {
         return;
       }
       try {
-        const [sessionsResult, draftsResult] = await Promise.all([
-          supabase.from("sessions").select("id", { count: "exact", head: true }).eq("user_id", user.id),
-          supabase.from("drafts").select("id", { count: "exact", head: true }).eq("user_id", user.id),
-        ]);
-        const hasHistory = (sessionsResult.count || 0) > 0 || (draftsResult.count || 0) > 0;
-        setIsReturningUser(hasHistory);
+        const { count } = await supabase
+          .from("sessions")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id);
+        setIsReturningUser((count || 0) > 0);
 
-        if (!hasHistory) {
-          const { data: userData } = await supabase.from("users").select("usage_purpose").eq("id", user.id).single();
-          if (userData?.usage_purpose) {
-            const purposeMap: Record<string, string> = {
-              "빠르게 하루를 정리하고 싶어요": "record",
-              "커리어 브랜딩을 시작하고 싶어요": "career",
-              "업무 성과를 정리하는 게 어려워요": "review",
-              "마음·감정을 정리하고 싶어요": "emotion",
-              "콘텐츠 아이디어가 필요해요": "idea",
-            };
-            setSessionPurpose(purposeMap[userData.usage_purpose] || "");
-          }
+        // 기존 설정 불러오기 (온보딩 효과)
+        const { data: userData } = await supabase.from("users").select("usage_purpose").eq("id", user.id).single();
+        if (userData?.usage_purpose) {
+          const purposeMap: Record<string, string> = {
+            "빠르게 하루를 정리하고 싶어요": "record",
+            "커리어 브랜딩을 시작하고 싶어요": "career",
+            "업무 성과를 정리하는 게 어려워요": "review",
+            "마음·감정을 정리하고 싶어요": "emotion",
+            "콘텐츠 아이디어가 필요해요": "idea",
+          };
+          // 이미 선택된 값이 없으면 기본값으로 설정
+          if (!sessionPurpose) setSessionPurpose(purposeMap[userData.usage_purpose] || "");
         }
       } catch (error) {
         console.error("Error checking user status:", error);
@@ -105,6 +116,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
     checkUserStatus();
   }, [user]);
 
+  // 마이크 스트림 정리
   useEffect(() => {
     return () => {
       if (audioStreamRef.current) {
@@ -166,53 +178,103 @@ const Home = ({ isGuest = false }: HomeProps) => {
     setIsRecording(false);
   };
 
-  const createDraftAndRedirect = async (mode: "voice" | "text") => {
+  // ✅ [핵심] 제출 로직 분기 (회원 vs 비회원)
+  const handleSubmit = async (mode: "voice" | "text") => {
     setIsSubmitting(true);
     try {
-      const inputData: any = {
-        inputMode: mode,
-        selectedMood,
-        selectedPersona,
-        sessionPurpose,
-        keyword,
-        entrySource: getEntrySource(),
-      };
+      let audioBase64 = null;
+      let finalTextInput = textInput;
 
       if (mode === "voice") {
         if (!recordedBlob) throw new Error("No audio recorded");
-        const audioBase64 = await blobToBase64(recordedBlob);
-        inputData.audioBase64 = audioBase64;
+        audioBase64 = await blobToBase64(recordedBlob);
       } else {
         if (!textInput.trim()) throw new Error("No text input");
-        inputData.textInput = textInput;
       }
 
-      // ✅ 2. 무한 로딩 해결 (모두 drafts에 저장)
-      const { data, error } = await supabase
-        .from("drafts")
-        .insert({
-          user_id: user?.id || null,
-          status: "idle",
-          input_data: inputData,
-        })
-        .select("id")
-        .single();
+      // 1. 로그인 유저 -> sessions 테이블 저장 (정석)
+      if (user) {
+        // (1) 세션 생성
+        const { data: sessionData, error: sessionError } = await supabase
+          .from("sessions")
+          .insert({
+            user_id: user.id,
+            session_purpose: sessionPurpose,
+            selected_mood: selectedMood,
+            selected_persona: selectedPersona,
+            keyword: keyword,
+            raw_text: mode === "text" ? finalTextInput : "",
+            entry_source: getEntrySource(),
+            input_type: mode,
+          })
+          .select("id")
+          .single();
 
-      if (error) throw error;
+        if (sessionError) throw sessionError;
 
-      if (!user) localStorage.setItem("pending_draft_id", data.id);
+        // (2) Edge Function 호출 (AI 생성)
+        const formData = new FormData();
+        formData.append("session_id", sessionData.id);
+        formData.append("user_persona", selectedPersona);
+        formData.append("user_mood", selectedMood);
+        formData.append("session_purpose", sessionPurpose);
+        if (mode === "voice" && recordedBlob) {
+          formData.append("audio", recordedBlob, "recording.webm");
+        } else {
+          formData.append("raw_text", finalTextInput);
+        }
 
-      setTimeout(() => {
-        navigate(`/result/${data.id}`);
-      }, 500);
+        const response = await fetch("https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/process-audio", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) throw new Error("AI Processing Failed");
+
+        // (3) 결과창 이동 (session 타입 명시)
+        navigate(`/result/${sessionData.id}?type=session`);
+
+        // (4) 유저 취향 업데이트 (온보딩 효과)
+        supabase
+          .from("users")
+          .update({ usage_purpose: sessionPurpose || undefined })
+          .eq("id", user.id)
+          .then();
+      }
+      // 2. 게스트 -> drafts 테이블 저장 (간편)
+      else {
+        const inputData = {
+          inputMode: mode,
+          selectedMood,
+          selectedPersona,
+          sessionPurpose,
+          keyword,
+          audioBase64,
+          textInput: finalTextInput,
+        };
+
+        const { data: draftData, error: draftError } = await supabase
+          .from("drafts")
+          .insert({
+            status: "idle", // DraftResult에서 AI 호출
+            input_data: inputData,
+          })
+          .select("id")
+          .single();
+
+        if (draftError) throw draftError;
+
+        localStorage.setItem("pending_draft_id", draftData.id);
+        navigate(`/result/${draftData.id}?type=draft`);
+      }
     } catch (error: any) {
-      console.error("Draft creation failed:", error);
+      console.error("Submission failed:", error);
       toast({ title: "저장 실패", description: error.message, variant: "destructive" });
       setIsSubmitting(false);
     }
   };
 
-  const handleVoiceSubmit = () => createDraftAndRedirect("voice");
+  const handleVoiceSubmit = () => handleSubmit("voice");
   const handleTextSubmit = () => {
     if (!selectedMood || !selectedPersona) {
       toast({ title: "선택 필요", description: "기분과 모드를 선택해주세요.", variant: "destructive" });
@@ -222,7 +284,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
       toast({ title: "입력 필요", description: "내용을 입력해주세요.", variant: "destructive" });
       return;
     }
-    createDraftAndRedirect("text");
+    handleSubmit("text");
   };
 
   return (
@@ -400,7 +462,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
         </SheetContent>
       </Sheet>
 
-      {/* ✅ 3. 로딩 문구 가시성 확보 */}
       {isSubmitting && (
         <div className="fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center">
           <div className="flex flex-col items-center gap-6">
