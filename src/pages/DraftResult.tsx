@@ -21,6 +21,7 @@ import {
 
 interface ContentData {
   input_text: string;
+  input_mode?: string; // 음성/텍스트 확인용
   result_data: {
     blog_content?: string;
     linkedin_content?: string;
@@ -70,10 +71,8 @@ const DraftResult = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showLoginAlert, setShowLoginAlert] = useState(false);
 
-  // URL에서 타입 확인 (기본값은 draft)
   const isSessionType = new URLSearchParams(location.search).get("type") === "session";
 
-  // 1. 데이터 불러오기 (이원화 전략)
   useEffect(() => {
     if (!draftId) return;
 
@@ -81,35 +80,28 @@ const DraftResult = () => {
       try {
         let contentData: ContentData | null = null;
 
-        // A. 회원 모드 (sessions + outputs)
         if (isSessionType) {
           const { data: session } = await supabase.from("sessions").select("*").eq("id", draftId).single();
           const { data: outputs } = await supabase.from("outputs").select("*").eq("session_id", draftId);
 
-          if (session && outputs) {
+          if (session) {
             const result_data: any = {};
-            outputs.forEach((o: any) => {
+            outputs?.forEach((o: any) => {
               if (o.platform_type === "blog") result_data.blog_content = o.generated_content;
               if (o.platform_type === "linkedin") result_data.linkedin_content = o.generated_content;
               if (o.platform_type === "reels") result_data.reels_content = o.generated_content;
               if (o.platform_type === "threads") result_data.threads_content = o.generated_content;
             });
-            contentData = { input_text: session.raw_text, result_data };
+            contentData = { input_text: session.raw_text, input_mode: session.input_type, result_data };
           }
-        }
-        // B. 게스트 모드 (drafts)
-        else {
+        } else {
           const { data: draft } = await supabase.from("drafts").select("*").eq("id", draftId).single();
           if (draft) {
-            // ✅ [수정] as any 캐스팅 추가
             const inputData = draft.input_data as any;
             const resultData = draft.result_data as any;
-
-            if (draft.status === "generating" || draft.status === "idle") {
-              // AI 처리 대기
-            }
             contentData = {
               input_text: inputData?.textInput || "",
+              input_mode: inputData?.inputMode,
               result_data: resultData || {},
             };
           }
@@ -119,20 +111,18 @@ const DraftResult = () => {
           setData(contentData);
           setLoading(false);
         } else if (!isSessionType) {
-          // Realtime 구독으로 대기 (게스트 AI 생성 중일 때)
           const channel = supabase
             .channel(`draft-${draftId}`)
             .on(
               "postgres_changes",
               { event: "UPDATE", schema: "public", table: "drafts", filter: `id=eq.${draftId}` },
               (payload: any) => {
-                // ✅ [수정] Payload 데이터 캐스팅
                 const newResult = payload.new.result_data as any;
                 const newInput = payload.new.input_data as any;
-
                 if (newResult) {
                   setData({
                     input_text: newInput?.textInput || "",
+                    input_mode: newInput?.inputMode,
                     result_data: newResult,
                   });
                   setLoading(false);
@@ -152,24 +142,18 @@ const DraftResult = () => {
     fetchData();
   }, [draftId, isSessionType]);
 
-  // 2. 데이터 이사 (Migration) 로직 - 로그인 직후 실행
+  // 마이그레이션 로직 (이전과 동일)
   useEffect(() => {
     const migrateData = async () => {
       const pendingId = localStorage.getItem("pending_draft_id");
-
-      // 로그인했고, 로컬스토리지에 임시 ID가 있고, 현재 그 ID 페이지라면
       if (user && pendingId && pendingId === draftId && !isSessionType) {
         setLoading(true);
         try {
-          // (1) drafts에서 데이터 꺼내기
           const { data: draft } = await supabase.from("drafts").select("*").eq("id", pendingId).single();
-
           if (draft) {
-            // ✅ [수정] JSON 타입 에러 방지를 위해 as any 사용
             const inputData = draft.input_data as any;
             const resultData = draft.result_data as any;
 
-            // (2) sessions로 이사
             const { data: session, error: sErr } = await supabase
               .from("sessions")
               .insert({
@@ -187,10 +171,8 @@ const DraftResult = () => {
 
             if (sErr) throw sErr;
 
-            // (3) outputs로 이사
             const outputsToInsert = [];
-            const rd = resultData || {}; // ✅ resultData 사용
-
+            const rd = resultData || {};
             if (rd.blog_content)
               outputsToInsert.push({
                 session_id: session.id,
@@ -220,11 +202,8 @@ const DraftResult = () => {
               await supabase.from("outputs").insert(outputsToInsert);
             }
 
-            // (4) drafts 삭제 & 스토리지 비우기
             await supabase.from("drafts").delete().eq("id", pendingId);
             localStorage.removeItem("pending_draft_id");
-
-            // (5) 세션 모드로 리다이렉트 (새로고침 효과)
             navigate(`/result/${session.id}?type=session`, { replace: true });
           }
         } catch (e) {
@@ -260,8 +239,6 @@ const DraftResult = () => {
 
   const handleContentUpdate = async (newContent: string) => {
     if (!selectedPlatform || !data) return;
-
-    // 로컬 상태 업데이트
     const updatedResult = { ...data.result_data };
     if (selectedPlatform === "blog") updatedResult.blog_content = newContent;
     else if (selectedPlatform === "linkedin") updatedResult.linkedin_content = newContent;
@@ -270,20 +247,12 @@ const DraftResult = () => {
 
     setData({ ...data, result_data: updatedResult });
 
-    // DB 업데이트 (회원인 경우만 outputs/edits에 저장)
     if (isSessionType && user) {
       await supabase
         .from("outputs")
         .update({ generated_content: newContent })
         .eq("session_id", draftId)
         .eq("platform_type", selectedPlatform);
-    }
-    // 게스트인 경우 drafts 업데이트
-    else {
-      await supabase
-        .from("drafts")
-        .update({ result_data: updatedResult }) // ✅ 타입 에러 없이 업데이트
-        .eq("id", draftId);
     }
   };
 
@@ -312,6 +281,12 @@ const DraftResult = () => {
     );
   }
 
+  // ✅ 음성 모드인데 텍스트가 비어있을 경우 표시할 문구
+  const displayText =
+    data.input_mode === "voice" && !data.input_text
+      ? "음성 내용을 텍스트로 변환하고 있습니다..."
+      : data.input_text || "기록된 내용이 없습니다.";
+
   return (
     <AppShell className="min-h-[700px]">
       <div className="flex-1 px-6 py-6 space-y-5 overflow-y-auto pb-32">
@@ -325,7 +300,7 @@ const DraftResult = () => {
             </Button>
           </div>
           <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap line-clamp-4">
-            {data.input_text}
+            {displayText}
           </p>
         </div>
 
@@ -359,6 +334,7 @@ const DraftResult = () => {
         </div>
       </div>
 
+      {/* ✅ 하단 버튼 통합 (로그인 유저 버튼도 여기에 포함) */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 pb-8 z-50">
         <div className="max-w-md mx-auto">
           {!user ? (
@@ -372,11 +348,11 @@ const DraftResult = () => {
             <div className="flex gap-2">
               <Button
                 onClick={() => navigate("/input")}
-                className="flex-1 h-12 rounded-xl bg-foreground text-background hover:bg-foreground/90"
+                className="flex-1 h-12 rounded-xl bg-foreground text-background hover:bg-foreground/90 font-bold"
               >
                 새로운 기록 만들기
               </Button>
-              <Button variant="outline" onClick={() => navigate("/")} className="flex-1 h-12 rounded-xl">
+              <Button variant="outline" onClick={() => navigate("/")} className="flex-1 h-12 rounded-xl font-bold">
                 홈으로 돌아가기
               </Button>
             </div>

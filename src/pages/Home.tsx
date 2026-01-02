@@ -12,7 +12,6 @@ import AppShell from "@/components/AppShell";
 import { blobToBase64 } from "@/lib/guestPendingSubmission";
 import { getEntrySource } from "@/lib/analytics";
 
-// 선택지 데이터 (기존 유지)
 const sessionPurposes = [
   { value: "record", label: "기록" },
   { value: "career", label: "커리어 브랜딩" },
@@ -20,21 +19,19 @@ const sessionPurposes = [
   { value: "emotion", label: "감정 정리" },
   { value: "idea", label: "아이디어 저장" },
 ];
-
 const moods = [
-  { value: "energetic", label: "🔥 불타는 하루", icon: null },
-  { value: "tired", label: "😞 좀 힘들고 지쳤다", icon: null },
-  { value: "proud", label: "😊 뿌듯했다", icon: null },
-  { value: "neutral", label: "😐 그냥 그런 날", icon: null },
-  { value: "chaotic", label: "🤯 정신 없었다", icon: null },
+  { value: "energetic", label: "🔥 불타는 하루" },
+  { value: "tired", label: "😞 좀 힘들고 지쳤다" },
+  { value: "proud", label: "😊 뿌듯했다" },
+  { value: "neutral", label: "😐 그냥 그런 날" },
+  { value: "chaotic", label: "🤯 정신 없었다" },
 ];
-
 const personas = [
-  { value: "growth", label: "🌱 성장한 나", desc: "배운 점, 성장 포인트 중심", icon: null },
-  { value: "achiever", label: "💼 일잘러 나", desc: "성과, 문제 해결, 인사이트 중심", icon: null },
-  { value: "collaborator", label: "🤝 협업한 나", desc: "사람, 팀워크, 관계 중심", icon: null },
-  { value: "challenger", label: "⚡ 갈등한 나", desc: "어려움, 스트레스, 고민을 솔직히", icon: null },
-  { value: "authentic", label: "💬 날것의 나", desc: "포장 없이 있는 그대로", icon: null },
+  { value: "growth", label: "🌱 성장한 나", desc: "배운 점, 성장 포인트 중심" },
+  { value: "achiever", label: "💼 일잘러 나", desc: "성과, 문제 해결, 인사이트 중심" },
+  { value: "collaborator", label: "🤝 협업한 나", desc: "사람, 팀워크, 관계 중심" },
+  { value: "challenger", label: "⚡ 갈등한 나", desc: "어려움, 스트레스, 고민을 솔직히" },
+  { value: "authentic", label: "💬 날것의 나", desc: "포장 없이 있는 그대로" },
 ];
 
 interface HomeProps {
@@ -70,17 +67,14 @@ const Home = ({ isGuest = false }: HomeProps) => {
   const personaScrollRef = useRef<HTMLDivElement>(null);
   const purposeScrollRef = useRef<HTMLDivElement>(null);
 
-  // 수정하기로 돌아왔을 때 데이터 복구
   useEffect(() => {
     if (location.state?.initialText) {
       setInputMode("text");
       setTextInput(location.state.initialText);
-      // 상태 초기화
       window.history.replaceState({}, document.title);
     }
   }, [location]);
 
-  // 유저 상태 체크
   useEffect(() => {
     const checkUserStatus = async () => {
       if (!user) {
@@ -94,7 +88,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
           .eq("user_id", user.id);
         setIsReturningUser((count || 0) > 0);
 
-        // 기존 설정 불러오기 (온보딩 효과)
         const { data: userData } = await supabase.from("users").select("usage_purpose").eq("id", user.id).single();
         if (userData?.usage_purpose) {
           const purposeMap: Record<string, string> = {
@@ -104,7 +97,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
             "마음·감정을 정리하고 싶어요": "emotion",
             "콘텐츠 아이디어가 필요해요": "idea",
           };
-          // 이미 선택된 값이 없으면 기본값으로 설정
           if (!sessionPurpose) setSessionPurpose(purposeMap[userData.usage_purpose] || "");
         }
       } catch (error) {
@@ -116,7 +108,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
     checkUserStatus();
   }, [user]);
 
-  // 마이크 스트림 정리
   useEffect(() => {
     return () => {
       if (audioStreamRef.current) {
@@ -178,23 +169,23 @@ const Home = ({ isGuest = false }: HomeProps) => {
     setIsRecording(false);
   };
 
-  // ✅ [핵심] 제출 로직 분기 (회원 vs 비회원)
   const handleSubmit = async (mode: "voice" | "text") => {
     setIsSubmitting(true);
     try {
       let audioBase64 = null;
-      let finalTextInput = textInput;
-
+      // 음성 모드일 때만 blob 체크
       if (mode === "voice") {
-        if (!recordedBlob) throw new Error("No audio recorded");
+        if (!recordedBlob) throw new Error("녹음된 파일이 없습니다.");
         audioBase64 = await blobToBase64(recordedBlob);
       } else {
-        if (!textInput.trim()) throw new Error("No text input");
+        if (!textInput.trim()) throw new Error("입력된 텍스트가 없습니다.");
       }
 
-      // 1. 로그인 유저 -> sessions 테이블 저장 (정석)
+      const finalTextInput = mode === "text" ? textInput : ""; // 음성은 초기에 빈 값
+
+      // 1. 로그인 유저 -> sessions
       if (user) {
-        // (1) 세션 생성
+        // 세션 생성
         const { data: sessionData, error: sessionError } = await supabase
           .from("sessions")
           .insert({
@@ -203,7 +194,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
             selected_mood: selectedMood,
             selected_persona: selectedPersona,
             keyword: keyword,
-            raw_text: mode === "text" ? finalTextInput : "",
+            raw_text: finalTextInput,
             entry_source: getEntrySource(),
             input_type: mode,
           })
@@ -212,36 +203,39 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
         if (sessionError) throw sessionError;
 
-        // (2) Edge Function 호출 (AI 생성)
+        // Edge Function 호출
         const formData = new FormData();
         formData.append("session_id", sessionData.id);
         formData.append("user_persona", selectedPersona);
         formData.append("user_mood", selectedMood);
         formData.append("session_purpose", sessionPurpose);
+
         if (mode === "voice" && recordedBlob) {
           formData.append("audio", recordedBlob, "recording.webm");
         } else {
           formData.append("raw_text", finalTextInput);
         }
 
-        const response = await fetch("https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/process-audio", {
+        // 백그라운드 처리 (기다리지 않고 이동)
+        fetch("https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/process-audio", {
           method: "POST",
           body: formData,
-        });
+        })
+          .then()
+          .catch(console.error);
 
-        if (!response.ok) throw new Error("AI Processing Failed");
+        // 결과창 이동
+        setTimeout(() => {
+          navigate(`/result/${sessionData.id}?type=session`);
+        }, 1000); // 1초 정도 로딩 보여줌
 
-        // (3) 결과창 이동 (session 타입 명시)
-        navigate(`/result/${sessionData.id}?type=session`);
-
-        // (4) 유저 취향 업데이트 (온보딩 효과)
         supabase
           .from("users")
           .update({ usage_purpose: sessionPurpose || undefined })
           .eq("id", user.id)
           .then();
       }
-      // 2. 게스트 -> drafts 테이블 저장 (간편)
+      // 2. 게스트 -> drafts
       else {
         const inputData = {
           inputMode: mode,
@@ -249,14 +243,14 @@ const Home = ({ isGuest = false }: HomeProps) => {
           selectedPersona,
           sessionPurpose,
           keyword,
-          audioBase64,
+          audioBase64, // 음성 파일 저장
           textInput: finalTextInput,
         };
 
         const { data: draftData, error: draftError } = await supabase
           .from("drafts")
           .insert({
-            status: "idle", // DraftResult에서 AI 호출
+            status: "idle",
             input_data: inputData,
           })
           .select("id")
@@ -265,7 +259,9 @@ const Home = ({ isGuest = false }: HomeProps) => {
         if (draftError) throw draftError;
 
         localStorage.setItem("pending_draft_id", draftData.id);
-        navigate(`/result/${draftData.id}?type=draft`);
+        setTimeout(() => {
+          navigate(`/result/${draftData.id}?type=draft`);
+        }, 1000);
       }
     } catch (error: any) {
       console.error("Submission failed:", error);
@@ -289,7 +285,11 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
   return (
     <AppShell className="min-h-[700px]" isGuest={isGuest}>
-      <div className="flex-1 px-6 py-6 space-y-6 overflow-y-auto">
+      <div className="flex-1 px-6 py-6 space-y-6 overflow-y-auto pb-32">
+        {/* ... (Purpose, Mood, Persona Selector 부분은 기존과 동일) ... */}
+        {/* 코드 길이상 생략하지 않고 모두 포함하려면 이전 Home.tsx 코드의 return 부분 참조, 
+            핵심은 handleVoiceSubmit 함수가 수정된 것입니다. */}
+
         {!isLoadingUserStatus && isReturningUser && (
           <div className="space-y-3">
             <h2 className="text-base font-semibold text-foreground">오늘의 목적은 무엇인가요?</h2>
