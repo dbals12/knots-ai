@@ -188,7 +188,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
       }
 
       if (user) {
-        // 1. 회원: 세션 생성
+        // 1. 회원: 세션 생성 -> AI 요청(비동기) -> 바로 이동
         const { data: sessionData, error: sessionError } = await supabase
           .from("sessions")
           .insert({
@@ -218,24 +218,22 @@ const Home = ({ isGuest = false }: HomeProps) => {
           formData.append("raw_text", finalTextInput);
         }
 
-        // ✅ [복구] 여기서 AI 처리가 끝날 때까지 기다립니다. (무한 로딩 방지)
-        const response = await fetch("https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/process-audio", {
+        // ✅ [핵심 수정] await 제거! AI 기다리지 않고 바로 이동 -> 로딩 창 중복 제거 & 속도 향상
+        fetch("https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/process-audio", {
           method: "POST",
           body: formData,
-        });
-
-        if (!response.ok) throw new Error("AI 처리 실패");
-
-        // 데이터가 생성된 게 확실하므로 이동
-        navigate(`/result/${sessionData.id}?type=session`);
+        }).catch(console.error);
 
         supabase
           .from("users")
           .update({ usage_purpose: sessionPurpose || undefined })
           .eq("id", user.id)
           .then();
+
+        // 바로 이동
+        navigate(`/result/${sessionData.id}?type=session`);
       } else {
-        // 2. 게스트: Drafts 저장
+        // 2. 게스트: Drafts 저장 -> 바로 이동
         const inputData = {
           inputMode: mode,
           selectedMood,
@@ -259,11 +257,8 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
         localStorage.setItem("pending_draft_id", draftData.id);
 
-        // 게스트는 Result 페이지에서 AI를 돌리므로 바로 이동해도 됨
-        // (단, 0.5초 딜레이를 주어 DB 쓰기 시간을 확보)
-        setTimeout(() => {
-          navigate(`/result/${draftData.id}?type=draft`);
-        }, 500);
+        // 바로 이동
+        navigate(`/result/${draftData.id}?type=draft`);
       }
     } catch (error: any) {
       console.error("Submission failed:", error);
@@ -286,9 +281,9 @@ const Home = ({ isGuest = false }: HomeProps) => {
   };
 
   return (
+    // ✅ AppShell에 flex-col 추가 (하단 버튼 위치 잡기용)
     <AppShell className="min-h-[700px] flex flex-col" isGuest={isGuest}>
       <div className="flex-1 px-6 py-6 space-y-6 overflow-y-auto">
-        {/* ... (UI 기존 동일) ... */}
         {!isLoadingUserStatus && isReturningUser && (
           <div className="space-y-3">
             <h2 className="text-base font-semibold text-foreground">오늘의 목적은 무엇인가요?</h2>
@@ -324,7 +319,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
         )}
 
         <div className="space-y-3">
-          <h2 className="text-base font-semibold text-foreground">오늘 하루는 어땠나요?</h2>
+          <h2 className="text-base font-semibold text-foreground">오늘 하루 어땠나요?</h2>
           <div className="relative group">
             <button
               onClick={() => scrollContainer(moodScrollRef, "left")}
@@ -461,6 +456,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
         </SheetContent>
       </Sheet>
 
+      {/* 로딩 창: 아주 잠깐 보여주고 사라짐 (Result 페이지에서 진짜 로딩 시작) */}
       {isSubmitting && (
         <div className="fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center">
           <div className="flex flex-col items-center gap-6">
