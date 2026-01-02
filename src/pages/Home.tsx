@@ -130,17 +130,14 @@ const Home = ({ isGuest = false }: HomeProps) => {
       audioChunksRef.current = [];
       const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
       mediaRecorderRef.current = mediaRecorder;
-
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) audioChunksRef.current.push(event.data);
       };
-
       mediaRecorder.onstop = () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
         setRecordedBlob(audioBlob);
         setShowConfirmation(true);
       };
-
       mediaRecorder.start(1000);
       setIsRecording(true);
     } catch (error) {
@@ -173,7 +170,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
   };
 
   const handleSubmit = async (mode: "voice" | "text") => {
-    setIsSubmitting(true); // 로딩 시작 (잠깐 보여주고 바로 이동)
+    setIsSubmitting(true);
     try {
       let audioBase64 = null;
       let finalTextInput = textInput;
@@ -191,7 +188,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
       }
 
       if (user) {
-        // 1. 회원: 세션 생성 (DB 저장)
+        // 1. 회원: 세션 생성
         const { data: sessionData, error: sessionError } = await supabase
           .from("sessions")
           .insert({
@@ -221,21 +218,22 @@ const Home = ({ isGuest = false }: HomeProps) => {
           formData.append("raw_text", finalTextInput);
         }
 
-        // ✅ [수정] AI 처리를 기다리지 않고(await 제거) 바로 이동! -> 로딩 시간 단축, 중복 로딩 제거
-        fetch("https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/process-audio", {
+        // ✅ [복구] 여기서 AI 처리가 끝날 때까지 기다립니다. (무한 로딩 방지)
+        const response = await fetch("https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/process-audio", {
           method: "POST",
           body: formData,
-        }).catch(console.error);
+        });
 
-        // 사용자 취향 업데이트 (백그라운드)
+        if (!response.ok) throw new Error("AI 처리 실패");
+
+        // 데이터가 생성된 게 확실하므로 이동
+        navigate(`/result/${sessionData.id}?type=session`);
+
         supabase
           .from("users")
           .update({ usage_purpose: sessionPurpose || undefined })
           .eq("id", user.id)
           .then();
-
-        // 즉시 이동 (결과창에서 로딩 애니메이션 보여줌)
-        navigate(`/result/${sessionData.id}?type=session`);
       } else {
         // 2. 게스트: Drafts 저장
         const inputData = {
@@ -261,8 +259,11 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
         localStorage.setItem("pending_draft_id", draftData.id);
 
-        // 즉시 이동
-        navigate(`/result/${draftData.id}?type=draft`);
+        // 게스트는 Result 페이지에서 AI를 돌리므로 바로 이동해도 됨
+        // (단, 0.5초 딜레이를 주어 DB 쓰기 시간을 확보)
+        setTimeout(() => {
+          navigate(`/result/${draftData.id}?type=draft`);
+        }, 500);
       }
     } catch (error: any) {
       console.error("Submission failed:", error);
@@ -287,6 +288,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
   return (
     <AppShell className="min-h-[700px] flex flex-col" isGuest={isGuest}>
       <div className="flex-1 px-6 py-6 space-y-6 overflow-y-auto">
+        {/* ... (UI 기존 동일) ... */}
         {!isLoadingUserStatus && isReturningUser && (
           <div className="space-y-3">
             <h2 className="text-base font-semibold text-foreground">오늘의 목적은 무엇인가요?</h2>
@@ -322,7 +324,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
         )}
 
         <div className="space-y-3">
-          <h2 className="text-base font-semibold text-foreground">오늘 하루 어땠나요?</h2>
+          <h2 className="text-base font-semibold text-foreground">오늘 하루는 어땠나요?</h2>
           <div className="relative group">
             <button
               onClick={() => scrollContainer(moodScrollRef, "left")}
@@ -459,7 +461,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
         </SheetContent>
       </Sheet>
 
-      {/* 로딩 화면: 곧바로 이동하므로 아주 잠깐만 보입니다. */}
       {isSubmitting && (
         <div className="fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center">
           <div className="flex flex-col items-center gap-6">

@@ -111,7 +111,6 @@ const DraftResult = () => {
           setData(contentData);
           setLoading(false);
         } else if (!isSessionType) {
-          // Realtime 구독 (게스트 AI 생성 대기)
           const channel = supabase
             .channel(`draft-${draftId}`)
             .on(
@@ -143,7 +142,6 @@ const DraftResult = () => {
     fetchData();
   }, [draftId, isSessionType]);
 
-  // 마이그레이션 로직
   useEffect(() => {
     const migrateData = async () => {
       const pendingId = localStorage.getItem("pending_draft_id");
@@ -272,8 +270,6 @@ const DraftResult = () => {
     return "";
   };
 
-  // ✅ [수정] 통합 로딩 화면 (문구 있는 버전 하나로 통일)
-  // 데이터가 없거나, 아직 로딩중이거나, 음성 텍스트 변환이 안 끝났으면 무조건 이 화면 표시
   const isGenerating = loading || !data || (data.input_mode === "voice" && !data.input_text);
 
   if (isGenerating) {
@@ -294,12 +290,10 @@ const DraftResult = () => {
     );
   }
 
-  // ✅ [수정] 레이아웃 구조 변경 (Image 5 스타일)
-  // AppShell -> Flex Column -> (Content Area) + (Fixed Footer Area inside flex)
   return (
-    <AppShell className="h-[100dvh] flex flex-col overflow-hidden">
-      {/* 1. 스크롤 가능한 콘텐츠 영역 */}
-      <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5 bg-gray-50">
+    // ✅ [수정] flex-col, h-[100dvh]로 전체 높이 고정 및 레이아웃 제어
+    <AppShell className="flex flex-col h-[100dvh] overflow-hidden">
+      <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5">
         <h2 className="text-xl font-semibold text-foreground">오늘의 결과</h2>
 
         <div className="bg-[#F8F8F8] rounded-2xl p-4">
@@ -314,7 +308,7 @@ const DraftResult = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="grid grid-cols-2 gap-3 mb-6">
           {Object.keys(platformIcons).map((key) => {
             const meta = platformIcons[key as keyof typeof platformIcons];
             const Icon = meta.icon;
@@ -344,8 +338,8 @@ const DraftResult = () => {
         </div>
       </div>
 
-      {/* 2. 하단 고정 버튼 영역 (Flexbox 하단 배치) */}
-      <div className="flex-none p-4 bg-white border-t border-gray-100 pb-8">
+      {/* ✅ [수정] mt-auto로 하단에 붙이고, 흰색 배경 적용 (고정된 것처럼 보이지만 안전하게 내부 배치) */}
+      <div className="mt-auto p-4 bg-white border-t border-gray-100 pb-8 flex-shrink-0">
         <div className="max-w-md mx-auto">
           {!user ? (
             <Button
