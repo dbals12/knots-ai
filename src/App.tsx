@@ -7,12 +7,12 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import useAnalytics from "@/hooks/useAnalytics";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
-import AuthCallback from "./pages/AuthCallback"; // 이 파일이 필요함
+import AuthCallback from "./pages/AuthCallback";
 import Onboarding from "./pages/Onboarding";
 import Settings from "./pages/Settings";
-import InputPage from "./pages/InputPage"; // 사실 Index가 Input 역할을 겸하므로 안 쓸 수도 있음
-import DraftResult from "./pages/DraftResult"; // 이 파일이 핵심
-import Results from "./pages/Results"; // 구버전 (참고용)
+// import InputPage from "./pages/InputPage"; // ❌ 구버전 파일 연결 끊기
+import Home from "./pages/Home"; // ✅ 신버전 파일로 통일 (로그인 유저도 이거 씀)
+import DraftResult from "./pages/DraftResult";
 import History from "./pages/History";
 
 const queryClient = new QueryClient();
@@ -43,11 +43,12 @@ function App() {
                 <Route path="/login" element={<Auth />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
 
-                {/* Guest & Member accessible Result Page */}
-                <Route path="/result/:draftId" element={<DraftResult />} />
+                {/* ✅ [핵심 수정] 로그인 유저의 '/input' 경로도 'Home' 컴포넌트를 쓰도록 변경 */}
+                {/* 이렇게 하면 재방문 유저도 게스트와 똑같은 UI(검정 녹음 버튼, 음성 기본)를 보게 됩니다. */}
+                <Route path="/input" element={<Home isGuest={false} />} />
 
-                {/* Legacy or Direct Input Route (Optional) */}
-                <Route path="/input" element={<InputPage />} />
+                {/* Result Page */}
+                <Route path="/result/:draftId" element={<DraftResult />} />
 
                 {/* Protected routes */}
                 <Route

@@ -41,23 +41,21 @@ interface HomeProps {
 }
 
 const Home = ({ isGuest = false }: HomeProps) => {
+  // ✅ 1. 기본 모드를 무조건 'voice'로 통일 (게스트/재방문 동일 UI)
   const [inputMode, setInputMode] = useState<"voice" | "text">("voice");
   const [isRecording, setIsRecording] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
 
-  // 입력 상태들
   const [sessionPurpose, setSessionPurpose] = useState("");
   const [selectedMood, setSelectedMood] = useState("");
   const [selectedPersona, setSelectedPersona] = useState("");
   const [keyword, setKeyword] = useState("");
   const [textInput, setTextInput] = useState("");
 
-  // 상태 관리
   const [isReturningUser, setIsReturningUser] = useState(false);
   const [isLoadingUserStatus, setIsLoadingUserStatus] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 오디오 관련 Refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioStreamRef = useRef<MediaStream | null>(null);
@@ -71,26 +69,23 @@ const Home = ({ isGuest = false }: HomeProps) => {
   const personaScrollRef = useRef<HTMLDivElement>(null);
   const purposeScrollRef = useRef<HTMLDivElement>(null);
 
-  // ✅ 재방문 유저 체크 (drafts 테이블 포함)
+  // 재방문 유저 체크 (drafts 테이블까지 확인)
   useEffect(() => {
     const checkUserStatus = async () => {
       if (!user) {
         setIsLoadingUserStatus(false);
         return;
       }
-
       try {
         const [sessionsResult, draftsResult] = await Promise.all([
           supabase.from("sessions").select("id", { count: "exact", head: true }).eq("user_id", user.id),
           supabase.from("drafts").select("id", { count: "exact", head: true }).eq("user_id", user.id),
         ]);
-
         const hasHistory = (sessionsResult.count || 0) > 0 || (draftsResult.count || 0) > 0;
         setIsReturningUser(hasHistory);
 
         if (!hasHistory) {
           const { data: userData } = await supabase.from("users").select("usage_purpose").eq("id", user.id).single();
-
           if (userData?.usage_purpose) {
             const purposeMap: Record<string, string> = {
               "빠르게 하루를 정리하고 싶어요": "record",
@@ -108,11 +103,9 @@ const Home = ({ isGuest = false }: HomeProps) => {
         setIsLoadingUserStatus(false);
       }
     };
-
     checkUserStatus();
   }, [user]);
 
-  // 마이크 스트림 정리
   useEffect(() => {
     return () => {
       if (audioStreamRef.current) {
@@ -124,10 +117,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
   const scrollContainer = (ref: React.RefObject<HTMLDivElement>, direction: "left" | "right") => {
     if (ref.current) {
       const scrollAmount = ref.current.offsetWidth * 0.8;
-      ref.current.scrollBy({
-        left: direction === "left" ? -scrollAmount : scrollAmount,
-        behavior: "smooth",
-      });
+      ref.current.scrollBy({ left: direction === "left" ? -scrollAmount : scrollAmount, behavior: "smooth" });
     }
   };
 
@@ -136,39 +126,27 @@ const Home = ({ isGuest = false }: HomeProps) => {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioStreamRef.current = stream;
       audioChunksRef.current = [];
-
       const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
       mediaRecorderRef.current = mediaRecorder;
-
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
+        if (event.data.size > 0) audioChunksRef.current.push(event.data);
       };
-
       mediaRecorder.onstop = () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
         setRecordedBlob(audioBlob);
       };
-
       mediaRecorder.start(1000);
       setIsRecording(true);
     } catch (error) {
       console.error("Error starting recording:", error);
-      toast({
-        title: "마이크 접근 오류",
-        description: "마이크 권한을 확인해주세요.",
-        variant: "destructive",
-      });
+      toast({ title: "마이크 오류", description: "마이크 권한을 확인해주세요.", variant: "destructive" });
     }
   };
 
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
-      if (audioStreamRef.current) {
-        audioStreamRef.current.getTracks().forEach((track) => track.stop());
-      }
+      if (audioStreamRef.current) audioStreamRef.current.getTracks().forEach((track) => track.stop());
       setIsRecording(false);
       setShowConfirmation(true);
     }
@@ -176,7 +154,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
   const toggleRecording = () => {
     if (!selectedMood || !selectedPersona) {
-      toast({ title: "선택이 필요해요", description: "기분과 모드를 먼저 선택해주세요.", variant: "destructive" });
+      toast({ title: "선택 필요", description: "기분과 모드를 먼저 선택해주세요.", variant: "destructive" });
       return;
     }
     if (!isRecording) startRecording();
@@ -189,7 +167,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
     setIsRecording(false);
   };
 
-  // ✅ [핵심 수정] 로그인 여부와 관계없이 모두 drafts 테이블에 저장 (로직 통일)
+  // ✅ 2. 무한 로딩 해결 로직 (모두 drafts에 저장)
   const createDraftAndRedirect = async (mode: "voice" | "text") => {
     setIsSubmitting(true);
     try {
@@ -211,11 +189,11 @@ const Home = ({ isGuest = false }: HomeProps) => {
         inputData.textInput = textInput;
       }
 
-      // ⚠️ sessions 테이블 대신 drafts 테이블 사용
+      // sessions 테이블 대신 drafts 테이블 사용
       const { data, error } = await supabase
         .from("drafts")
         .insert({
-          user_id: user?.id || null, // 로그인 유저면 ID 저장, 아니면 NULL
+          user_id: user?.id || null, // 로그인 유저면 ID 연결
           status: "idle",
           input_data: inputData,
         })
@@ -224,18 +202,15 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
       if (error) throw error;
 
-      if (!user) {
-        localStorage.setItem("pending_draft_id", data.id);
-      }
+      if (!user) localStorage.setItem("pending_draft_id", data.id);
 
-      navigate(`/result/${data.id}`);
+      // 로딩 화면을 잠시 보여준 후 이동
+      setTimeout(() => {
+        navigate(`/result/${data.id}`);
+      }, 500);
     } catch (error: any) {
       console.error("Draft creation failed:", error);
-      toast({
-        title: "저장 실패",
-        description: error.message || "알 수 없는 오류가 발생했습니다.",
-        variant: "destructive",
-      });
+      toast({ title: "저장 실패", description: error.message, variant: "destructive" });
       setIsSubmitting(false);
     }
   };
@@ -243,11 +218,11 @@ const Home = ({ isGuest = false }: HomeProps) => {
   const handleVoiceSubmit = () => createDraftAndRedirect("voice");
   const handleTextSubmit = () => {
     if (!selectedMood || !selectedPersona) {
-      toast({ title: "선택이 필요해요", description: "기분과 모드를 선택해주세요.", variant: "destructive" });
+      toast({ title: "선택 필요", description: "기분과 모드를 선택해주세요.", variant: "destructive" });
       return;
     }
     if (!textInput.trim()) {
-      toast({ title: "입력이 필요해요", description: "내용을 입력해주세요.", variant: "destructive" });
+      toast({ title: "입력 필요", description: "내용을 입력해주세요.", variant: "destructive" });
       return;
     }
     createDraftAndRedirect("text");
@@ -256,7 +231,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
   return (
     <AppShell className="min-h-[700px]" isGuest={isGuest}>
       <div className="flex-1 px-6 py-6 space-y-6 overflow-y-auto">
-        {/* Purpose Selector (재방문 유저 전용) */}
         {!isLoadingUserStatus && isReturningUser && (
           <div className="space-y-3">
             <h2 className="text-base font-semibold text-foreground">오늘의 목적은 무엇인가요?</h2>
@@ -275,11 +249,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
                   <button
                     key={purpose.value}
                     onClick={() => setSessionPurpose(sessionPurpose === purpose.value ? "" : purpose.value)}
-                    className={`flex-shrink-0 px-4 py-2 rounded-full border-2 text-sm font-medium transition-all whitespace-nowrap snap-start ${
-                      sessionPurpose === purpose.value
-                        ? "border-foreground bg-foreground text-background"
-                        : "border-border bg-background text-foreground hover:border-foreground/30"
-                    }`}
+                    className={`flex-shrink-0 px-4 py-2 rounded-full border-2 text-sm font-medium transition-all whitespace-nowrap snap-start ${sessionPurpose === purpose.value ? "border-foreground bg-foreground text-background" : "border-border bg-background text-foreground hover:border-foreground/30"}`}
                   >
                     {purpose.label}
                   </button>
@@ -295,7 +265,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
           </div>
         )}
 
-        {/* Mood Selector */}
         <div className="space-y-3">
           <h2 className="text-base font-semibold text-foreground">오늘 하루는 어땠나요?</h2>
           <div className="relative group">
@@ -310,11 +279,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
                 <button
                   key={mood.value}
                   onClick={() => setSelectedMood(mood.value)}
-                  className={`flex-shrink-0 px-4 py-2.5 rounded-xl border-2 transition-all whitespace-nowrap snap-start ${
-                    selectedMood === mood.value
-                      ? "border-foreground bg-background shadow-sm"
-                      : "border-border bg-background hover:border-foreground/30"
-                  }`}
+                  className={`flex-shrink-0 px-4 py-2.5 rounded-xl border-2 transition-all whitespace-nowrap snap-start ${selectedMood === mood.value ? "border-foreground bg-background shadow-sm" : "border-border bg-background hover:border-foreground/30"}`}
                 >
                   <span className="text-sm font-medium text-foreground">{mood.label}</span>
                 </button>
@@ -329,7 +294,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
           </div>
         </div>
 
-        {/* Persona Selector */}
         <div className="space-y-3">
           <h2 className="text-base font-semibold text-foreground">오늘은 어떤 나로 정리할까요?</h2>
           <div className="relative group">
@@ -347,11 +311,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
                 <button
                   key={persona.value}
                   onClick={() => setSelectedPersona(persona.value)}
-                  className={`flex-shrink-0 px-4 py-2.5 rounded-xl border-2 transition-all snap-start ${
-                    selectedPersona === persona.value
-                      ? "border-foreground bg-background shadow-sm"
-                      : "border-border bg-background hover:border-foreground/30"
-                  }`}
+                  className={`flex-shrink-0 px-4 py-2.5 rounded-xl border-2 transition-all snap-start ${selectedPersona === persona.value ? "border-foreground bg-background shadow-sm" : "border-border bg-background hover:border-foreground/30"}`}
                 >
                   <div className="text-sm font-medium text-foreground whitespace-nowrap">{persona.label}</div>
                   <div className="text-xs text-muted-foreground mt-0.5 whitespace-nowrap">{persona.desc}</div>
@@ -367,7 +327,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
           </div>
         </div>
 
-        {/* Keyword Input */}
         <div className="space-y-2">
           <label className="text-sm text-muted-foreground">오늘의 키워드 (한두 단어로 정리해볼까요?)</label>
           <Input
@@ -378,38 +337,26 @@ const Home = ({ isGuest = false }: HomeProps) => {
           />
         </div>
 
-        {/* Input Mode Toggle */}
         <div className="flex items-center justify-center gap-2 py-2">
           <button
             onClick={() => setInputMode("voice")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
-              inputMode === "voice"
-                ? "bg-foreground text-background"
-                : "bg-muted text-muted-foreground hover:bg-muted/80"
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${inputMode === "voice" ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
           >
             <Mic className="w-4 h-4" /> 음성
           </button>
           <button
             onClick={() => setInputMode("text")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
-              inputMode === "text"
-                ? "bg-foreground text-background"
-                : "bg-muted text-muted-foreground hover:bg-muted/80"
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${inputMode === "text" ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
           >
             <Type className="w-4 h-4" /> 텍스트
           </button>
         </div>
 
-        {/* Input Areas */}
         {inputMode === "voice" ? (
           <div className="flex flex-col items-center space-y-4 py-6">
             <button
               onClick={toggleRecording}
-              className={`w-28 h-28 rounded-full bg-foreground flex items-center justify-center transition-all shadow-xl ${
-                isRecording ? "animate-pulse scale-95" : "hover:scale-105"
-              }`}
+              className={`w-28 h-28 rounded-full bg-foreground flex items-center justify-center transition-all shadow-xl ${isRecording ? "animate-pulse scale-95" : "hover:scale-105"}`}
             >
               <Mic className="w-12 h-12 text-background" strokeWidth={2.5} />
             </button>
@@ -436,7 +383,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
         )}
       </div>
 
-      {/* Voice Confirmation Sheet */}
       <Sheet open={showConfirmation} onOpenChange={setShowConfirmation}>
         <SheetContent side="bottom" className="h-auto rounded-t-3xl">
           <SheetHeader className="pb-6">
@@ -457,9 +403,9 @@ const Home = ({ isGuest = false }: HomeProps) => {
         </SheetContent>
       </Sheet>
 
-      {/* ✅ [복구] 로딩 화면 (문구 포함) */}
+      {/* ✅ 3. 로딩 화면 문구 복구 */}
       {isSubmitting && (
-        <div className="fixed inset-0 z-50 bg-background flex flex-col items-center justify-center">
+        <div className="fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center">
           <div className="flex flex-col items-center gap-6">
             <Loader2 className="w-12 h-12 text-foreground animate-spin" />
             <div className="text-center space-y-2">

@@ -158,13 +158,12 @@ const DraftResult = () => {
     runAI();
   }, [draft, isProcessing]);
 
-  // ✅ [수정] 토스트 메시지 삭제
+  // ✅ [수정] 토스트 제거
   useEffect(() => {
     const claimDraft = async () => {
       if (user && draft && draft.user_id === null) {
         const { error } = await supabase.from("drafts").update({ user_id: user.id }).eq("id", draft.id);
         if (!error) {
-          // 토스트 삭제됨
           localStorage.removeItem("pending_draft_id");
         }
       }
@@ -236,6 +235,7 @@ const DraftResult = () => {
       <div className="flex-1 px-6 py-6 space-y-5 overflow-y-auto">
         <h2 className="text-xl font-semibold text-foreground">오늘의 결과</h2>
 
+        {/* 1. 입력 내용 요약 카드 */}
         <div className="bg-[#F8F8F8] rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-medium text-foreground">오늘 내가 기록한 내용</h3>
@@ -245,6 +245,7 @@ const DraftResult = () => {
               onClick={(e) => (user ? navigate("/input") : triggerLoginAlert(e))}
               className="h-8 text-xs"
             >
+              {/* ✅ 로그인 유무에 따라 버튼 텍스트 변경 */}
               {user ? "수정하기" : "저장"}
             </Button>
           </div>
@@ -282,14 +283,19 @@ const DraftResult = () => {
           })}
         </div>
 
+        {/* 3. 하단 버튼 (게스트만 보임) & 여백 조정 */}
         <div className="pt-2 space-y-2">
           {!user ? (
-            <Button
-              onClick={() => performLogin()}
-              className="w-full h-11 rounded-xl bg-foreground text-background hover:bg-foreground/90 text-sm font-bold"
-            >
-              3초 만에 로그인하고 결과 복사/저장하기
-            </Button>
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 z-50 safe-area-bottom">
+              <div className="max-w-md mx-auto">
+                <Button
+                  onClick={() => performLogin()}
+                  className="w-full h-12 rounded-xl bg-foreground text-background hover:bg-foreground/90 text-sm font-bold"
+                >
+                  3초 만에 로그인하고 결과 복사/저장하기
+                </Button>
+              </div>
+            </div>
           ) : (
             <>
               <Button
