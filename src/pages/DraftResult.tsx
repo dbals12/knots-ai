@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+// ... (인터페이스 및 아이콘 정의 기존 동일)
 interface Draft {
   id: string;
   user_id: string | null;
@@ -74,12 +75,17 @@ const DraftResult = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showLoginAlert, setShowLoginAlert] = useState(false);
 
+  // 1. Draft Fetching & 에러 처리 (무한 루프 방지)
   useEffect(() => {
     if (!draftId) return;
     const fetchDraft = async () => {
       const { data, error } = await supabase.from("drafts").select("*").eq("id", draftId).single();
-      if (error) {
-        toast({ title: "오류", description: "기록을 찾을 수 없습니다.", variant: "destructive" });
+
+      if (error || !data) {
+        console.error("Error fetching draft:", error);
+        // 🚨 중요: 잘못된 ID면 로컬스토리지 비우고 홈으로 보냄 (오류 해결)
+        localStorage.removeItem("pending_draft_id");
+        toast({ title: "오류", description: "기록을 찾을 수 없어 홈으로 이동합니다.", variant: "destructive" });
         navigate("/");
         return;
       }
@@ -104,6 +110,7 @@ const DraftResult = () => {
     };
   }, [draftId, navigate, toast]);
 
+  // 2. AI Generation
   useEffect(() => {
     if (!draft || draft.status !== "idle" || isProcessing) return;
     const runAI = async () => {
@@ -158,7 +165,7 @@ const DraftResult = () => {
     runAI();
   }, [draft, isProcessing]);
 
-  // ✅ [수정] 토스트 제거
+  // 3. Claim Logic (토스트 제거됨)
   useEffect(() => {
     const claimDraft = async () => {
       if (user && draft && draft.user_id === null) {
@@ -169,7 +176,7 @@ const DraftResult = () => {
       }
     };
     claimDraft();
-  }, [user, draft, toast]);
+  }, [user, draft]);
 
   const triggerLoginAlert = (e?: React.MouseEvent) => {
     if (e) {
@@ -180,26 +187,24 @@ const DraftResult = () => {
     setShowLoginAlert(true);
   };
 
+  // ✅ [수정] 로그인 선택창(/login)으로 이동
   const performLogin = () => {
     navigate(`/login?next=/result/${draftId}`);
   };
 
+  // ✅ [수정] 빌드 에러 해결: string 타입을 받도록 명시
   const handleCopyAction = (content: string) => {
     if (!user) {
       setShowLoginAlert(true);
       return;
     }
-    navigator.clipboard.writeText(content).then(() => {
-      toast({ title: "복사 완료", description: "클립보드에 복사되었습니다." });
-    });
+    // 로그인 유저는 모달에서 복사 처리
   };
 
   const handleContentUpdate = async (newContent: string) => {
     if (!selectedPlatform || !draft?.result_data) return;
-
     const platformKey = selectedPlatform === "reels" ? "reels_content" : `${selectedPlatform}_content`;
     const updatedResult = { ...draft.result_data, [platformKey]: newContent };
-
     setDraft((prev) => (prev ? { ...prev, result_data: updatedResult } : null));
     await supabase.from("drafts").update({ result_data: updatedResult }).eq("id", draftId);
   };
@@ -235,7 +240,7 @@ const DraftResult = () => {
       <div className="flex-1 px-6 py-6 space-y-5 overflow-y-auto">
         <h2 className="text-xl font-semibold text-foreground">오늘의 결과</h2>
 
-        {/* 1. 입력 내용 요약 카드 */}
+        {/* 요약 카드 */}
         <div className="bg-[#F8F8F8] rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-medium text-foreground">오늘 내가 기록한 내용</h3>
@@ -254,6 +259,7 @@ const DraftResult = () => {
           </p>
         </div>
 
+        {/* 카드 그리드 */}
         <div className="grid grid-cols-2 gap-3">
           {Object.keys(platformIcons).map((key) => {
             const meta = platformIcons[key as keyof typeof platformIcons];
@@ -283,7 +289,7 @@ const DraftResult = () => {
           })}
         </div>
 
-        {/* 3. 하단 버튼 (게스트만 보임) & 여백 조정 */}
+        {/* ✅ 하단 버튼 디자인 수정 (검정색, 중앙 배치) */}
         <div className="pt-2 space-y-2">
           {!user ? (
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 z-50 safe-area-bottom">

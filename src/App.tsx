@@ -10,8 +10,8 @@ import Auth from "./pages/Auth";
 import AuthCallback from "./pages/AuthCallback";
 import Onboarding from "./pages/Onboarding";
 import Settings from "./pages/Settings";
-// import InputPage from "./pages/InputPage"; // ❌ 구버전 파일 연결 끊기
-import Home from "./pages/Home"; // ✅ 신버전 파일로 통일 (로그인 유저도 이거 씀)
+// import InputPage from "./pages/InputPage"; // ❌ 구버전 파일 연결 해제
+import Home from "./pages/Home"; // ✅ 신버전 파일로 통일
 import DraftResult from "./pages/DraftResult";
 import History from "./pages/History";
 
@@ -43,8 +43,7 @@ function App() {
                 <Route path="/login" element={<Auth />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
 
-                {/* ✅ [핵심 수정] 로그인 유저의 '/input' 경로도 'Home' 컴포넌트를 쓰도록 변경 */}
-                {/* 이렇게 하면 재방문 유저도 게스트와 똑같은 UI(검정 녹음 버튼, 음성 기본)를 보게 됩니다. */}
+                {/* ✅ [핵심 수정] 로그인 유저의 '/input' 경로도 'Home' 컴포넌트(신규 디자인)를 사용 */}
                 <Route path="/input" element={<Home isGuest={false} />} />
 
                 {/* Result Page */}

@@ -111,6 +111,7 @@ const ResultDetailModal = ({
     serious: "진지한 분석가",
   };
 
+  // ✅ [수정] 복사 핸들러 (게스트 차단)
   const handleCopy = () => {
     if (isGuest) {
       onCopy(editedContent);
@@ -122,6 +123,7 @@ const ResultDetailModal = ({
     onCopy(editedContent);
   };
 
+  // ✅ [수정] 저장 핸들러 (게스트 차단)
   const handleSave = async () => {
     if (isGuest) {
       onSave();
@@ -152,6 +154,7 @@ const ResultDetailModal = ({
     }
   };
 
+  // ✅ [수정] 좋아요 핸들러 (게스트 차단)
   const handleRatingClick = async (score: number) => {
     if (isGuest) {
       onSave();

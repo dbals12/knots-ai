@@ -41,7 +41,7 @@ interface HomeProps {
 }
 
 const Home = ({ isGuest = false }: HomeProps) => {
-  // ✅ 1. 기본 모드를 무조건 'voice'로 통일 (게스트/재방문 동일 UI)
+  // ✅ 1. 기본 모드를 무조건 'voice'로 통일
   const [inputMode, setInputMode] = useState<"voice" | "text">("voice");
   const [isRecording, setIsRecording] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -69,7 +69,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
   const personaScrollRef = useRef<HTMLDivElement>(null);
   const purposeScrollRef = useRef<HTMLDivElement>(null);
 
-  // 재방문 유저 체크 (drafts 테이블까지 확인)
   useEffect(() => {
     const checkUserStatus = async () => {
       if (!user) {
@@ -167,7 +166,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
     setIsRecording(false);
   };
 
-  // ✅ 2. 무한 로딩 해결 로직 (모두 drafts에 저장)
   const createDraftAndRedirect = async (mode: "voice" | "text") => {
     setIsSubmitting(true);
     try {
@@ -189,11 +187,11 @@ const Home = ({ isGuest = false }: HomeProps) => {
         inputData.textInput = textInput;
       }
 
-      // sessions 테이블 대신 drafts 테이블 사용
+      // ✅ 2. 무한 로딩 해결 (모두 drafts에 저장)
       const { data, error } = await supabase
         .from("drafts")
         .insert({
-          user_id: user?.id || null, // 로그인 유저면 ID 연결
+          user_id: user?.id || null,
           status: "idle",
           input_data: inputData,
         })
@@ -204,7 +202,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
       if (!user) localStorage.setItem("pending_draft_id", data.id);
 
-      // 로딩 화면을 잠시 보여준 후 이동
       setTimeout(() => {
         navigate(`/result/${data.id}`);
       }, 500);
@@ -403,14 +400,14 @@ const Home = ({ isGuest = false }: HomeProps) => {
         </SheetContent>
       </Sheet>
 
-      {/* ✅ 3. 로딩 화면 문구 복구 */}
+      {/* ✅ 3. 로딩 문구 가시성 확보 */}
       {isSubmitting && (
         <div className="fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center">
           <div className="flex flex-col items-center gap-6">
             <Loader2 className="w-12 h-12 text-foreground animate-spin" />
             <div className="text-center space-y-2">
-              <p className="text-lg font-medium text-foreground">AI가 당신의 기록을 분석 중입니다...</p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-lg font-medium text-foreground text-black">AI가 당신의 기록을 분석 중입니다...</p>
+              <p className="text-sm text-muted-foreground text-gray-500">
                 {inputMode === "voice" ? "음성을 텍스트로 변환하고" : "텍스트를 분석하고"}
                 <br />
                 4개 채널용 콘텐츠를 생성하는 중이에요.
