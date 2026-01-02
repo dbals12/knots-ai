@@ -20,7 +20,7 @@ interface ResultDetailModalProps {
   onSave: () => void;
   onContentUpdate?: (newContent: string) => void;
   isGuest?: boolean;
-  isDraftMode?: boolean; // ✅ 추가: 임시 데이터(Draft) 모드 여부
+  isDraftMode?: boolean;
 }
 
 const ResultDetailModal = ({
@@ -33,7 +33,7 @@ const ResultDetailModal = ({
   onSave,
   onContentUpdate,
   isGuest = false,
-  isDraftMode = false, // 기본값 false
+  isDraftMode = false,
 }: ResultDetailModalProps) => {
   const [editedContent, setEditedContent] = useState(content);
   const [selectedTone, setSelectedTone] = useState("");
@@ -129,7 +129,6 @@ const ResultDetailModal = ({
     }
     if (isSaved || isSaving) return;
 
-    // ✅ Draft 모드라면 부모에게 위임하고 UI만 업데이트 (DB 에러 방지)
     if (isDraftMode) {
       onContentUpdate?.(editedContent);
       setIsSaved(true);
@@ -153,18 +152,16 @@ const ResultDetailModal = ({
     }
   };
 
-  // ✅ [수정] 좋아요 핸들러: Draft 모드일 때는 DB 에러 안 나게 처리
   const handleRatingClick = async (score: number) => {
     if (isGuest) {
       onSave();
       return;
-    } // 게스트는 로그인 유도
+    }
     if (hasRated) {
       toast({ title: "이미 평가하셨습니다.", description: "피드백 감사합니다!" });
       return;
     }
 
-    // ✅ Draft 모드면 DB 저장 건너뛰고 감사 인사만 (에러 방지)
     if (isDraftMode) {
       setHasRated(true);
       toast({ title: "피드백 감사합니다!", description: "의견이 반영되었습니다." });
@@ -178,13 +175,11 @@ const ResultDetailModal = ({
       setHasRated(true);
       toast({ title: "피드백 감사합니다!", description: "더 나은 서비스를 위해 노력하겠습니다." });
     } catch (error: any) {
-      // 에러가 나도 사용자에게는 티 안 나게
       console.error(error);
       toast({ title: "피드백 감사합니다!", description: "의견이 반영되었습니다." });
     }
   };
 
-  // ✅ AI 수정 API 호출
   const callRefineApi = async (refineMode: string, options: any = {}) => {
     setIsRefining(true);
     try {
@@ -206,7 +201,6 @@ const ResultDetailModal = ({
         setEditedContent(refined_content);
         pushToHistory(refined_content);
 
-        // Draft 모드나 게스트가 아닐 때만 DB 기록 (outputs/edits 테이블)
         if (!isGuest && !isDraftMode) {
           await supabase.from("outputs").update({ generated_content: refined_content }).eq("id", outputId);
           await supabase.from("edits").insert({
@@ -216,7 +210,6 @@ const ResultDetailModal = ({
           });
         }
 
-        // 부모 컴포넌트에 변경 사항 알림 (DraftResult가 DB 업데이트함)
         onContentUpdate?.(refined_content);
         toast({ title: "수정 완료", description: "콘텐츠가 수정되었습니다." });
       }
@@ -282,7 +275,6 @@ const ResultDetailModal = ({
           </div>
 
           <div className="space-y-1.5 pt-2 flex-shrink-0">
-            {/* ✅ 수정: 게스트 제한(opacity, pointer-events) 제거 -> 누구나 사용 가능! */}
             <div>
               <div className="flex items-center justify-between">
                 <p className="text-xs font-medium text-muted-foreground">AI 수정 도구</p>
