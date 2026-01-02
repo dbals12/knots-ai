@@ -187,8 +187,8 @@ const Home = ({ isGuest = false }: HomeProps) => {
         if (!textInput.trim()) throw new Error("입력된 텍스트가 없습니다.");
       }
 
+      // 1. 회원: 세션 생성 -> AI 실행(대기X) -> 이동
       if (user) {
-        // 1. 회원: 세션 생성 -> AI 요청(비동기) -> 바로 이동
         const { data: sessionData, error: sessionError } = await supabase
           .from("sessions")
           .insert({
@@ -218,7 +218,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
           formData.append("raw_text", finalTextInput);
         }
 
-        // ✅ [수정] await 제거! AI 기다리지 않고 바로 이동 -> 로딩 속도 획기적 개선
+        // ✅ [속도 개선 핵심] await 제거! AI가 처리하든 말든 일단 결과창으로 보냄.
         fetch("https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/process-audio", {
           method: "POST",
           body: formData,
@@ -230,10 +230,10 @@ const Home = ({ isGuest = false }: HomeProps) => {
           .eq("id", user.id)
           .then();
 
-        // 바로 결과창으로 이동
+        // 즉시 이동
         navigate(`/result/${sessionData.id}?type=session`);
       } else {
-        // 2. 게스트: Drafts 저장 -> 바로 이동
+        // 2. 게스트: Drafts 저장 -> 이동
         const inputData = {
           inputMode: mode,
           selectedMood,
@@ -257,7 +257,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
         localStorage.setItem("pending_draft_id", draftData.id);
 
-        // 바로 결과창으로 이동
+        // 즉시 이동 (0.5초 딜레이 삭제)
         navigate(`/result/${draftData.id}?type=draft`);
       }
     } catch (error: any) {
@@ -281,10 +281,9 @@ const Home = ({ isGuest = false }: HomeProps) => {
   };
 
   return (
-    // ✅ AppShell에 flex-col 추가하여 하단 버튼이 삐져나가지 않게 처리
     <AppShell className="min-h-[700px] flex flex-col" isGuest={isGuest}>
       <div className="flex-1 px-6 py-6 space-y-6 overflow-y-auto">
-        {/* ... (UI 구성요소들 - 기존과 동일) ... */}
+        {/* ... (기존 UI 유지) ... */}
         {!isLoadingUserStatus && isReturningUser && (
           <div className="space-y-3">
             <h2 className="text-base font-semibold text-foreground">오늘의 목적은 무엇인가요?</h2>
@@ -457,7 +456,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
         </SheetContent>
       </Sheet>
 
-      {/* 로딩 창: 이동 전 아주 잠깐만 표시됨 */}
       {isSubmitting && (
         <div className="fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center">
           <div className="flex flex-col items-center gap-6">

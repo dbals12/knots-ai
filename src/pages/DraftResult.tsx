@@ -74,14 +74,12 @@ const DraftResult = () => {
 
   const isSessionType = new URLSearchParams(location.search).get("type") === "session";
 
-  // 데이터 로딩 & Realtime 구독
   useEffect(() => {
     if (!draftId) return;
 
     const fetchData = async () => {
       try {
         if (isSessionType) {
-          // 1. 회원: 초기 데이터 확인
           const { data: session } = await supabase.from("sessions").select("*").eq("id", draftId).single();
           const { data: outputs } = await supabase.from("outputs").select("*").eq("session_id", draftId);
 
@@ -94,16 +92,15 @@ const DraftResult = () => {
               if (o.platform_type === "threads") result_data.threads_content = o.generated_content;
             });
             setData({ input_text: session.raw_text, input_mode: session.input_type, result_data });
-            setLoading(false); // 데이터 있으면 로딩 끝
+            setLoading(false);
           } else {
-            // 데이터 없으면 Realtime 구독 시작 (AI 대기)
+            // Realtime 구독
             const channel = supabase
               .channel(`session-${draftId}`)
               .on(
                 "postgres_changes",
                 { event: "INSERT", schema: "public", table: "outputs", filter: `session_id=eq.${draftId}` },
                 async () => {
-                  // outputs 테이블에 데이터가 들어오면 다시 조회
                   const { data: newOutputs } = await supabase.from("outputs").select("*").eq("session_id", draftId);
                   const { data: newSession } = await supabase.from("sessions").select("*").eq("id", draftId).single();
 
@@ -116,7 +113,7 @@ const DraftResult = () => {
                       if (o.platform_type === "threads") result_data.threads_content = o.generated_content;
                     });
                     setData({ input_text: newSession.raw_text, input_mode: newSession.input_type, result_data });
-                    setLoading(false); // 로딩 끝
+                    setLoading(false);
                   }
                 },
               )
@@ -126,7 +123,6 @@ const DraftResult = () => {
             };
           }
         } else {
-          // 2. 게스트: drafts 조회
           const { data: draft } = await supabase.from("drafts").select("*").eq("id", draftId).single();
           if (draft) {
             const inputData = draft.input_data as any;
@@ -140,7 +136,6 @@ const DraftResult = () => {
               });
               setLoading(false);
             } else {
-              // 아직 완료 안 됐으면 기본 정보만 세팅하고 로딩 유지 (runAI 대기)
               setData({
                 input_text: inputData?.textInput || "",
                 input_mode: inputData?.inputMode,
@@ -148,7 +143,7 @@ const DraftResult = () => {
               });
             }
           }
-          // 게스트용 구독
+
           const channel = supabase
             .channel(`draft-${draftId}`)
             .on(
@@ -180,7 +175,6 @@ const DraftResult = () => {
     fetchData();
   }, [draftId, isSessionType]);
 
-  // 게스트 AI 실행기
   useEffect(() => {
     if (isSessionType || !draftId || isProcessing) return;
 
@@ -239,7 +233,6 @@ const DraftResult = () => {
     runAI();
   }, [draftId, isSessionType, isProcessing]);
 
-  // 마이그레이션 (동일)
   useEffect(() => {
     const migrateData = async () => {
       const pendingId = localStorage.getItem("pending_draft_id");
@@ -313,6 +306,7 @@ const DraftResult = () => {
   const performLogin = () => {
     navigate(`/login?next=/result/${draftId}?type=draft`);
   };
+
   const handleEditInput = () => {
     if (!user) {
       setShowLoginAlert(true);
@@ -320,6 +314,7 @@ const DraftResult = () => {
     }
     navigate("/input", { state: { initialText: data?.input_text } });
   };
+
   const handleCopyAction = (content: string) => {
     if (!user) {
       setShowLoginAlert(true);
@@ -329,6 +324,7 @@ const DraftResult = () => {
       toast({ title: "복사 완료", description: "클립보드에 복사되었습니다." });
     });
   };
+
   const handleContentUpdate = async (newContent: string) => {
     if (!selectedPlatform || !data) return;
     const updatedResult = { ...data.result_data };
@@ -345,10 +341,12 @@ const DraftResult = () => {
         .eq("platform_type", selectedPlatform);
     }
   };
+
   const handleCardClick = (platformKey: string) => {
     setSelectedPlatform(platformKey);
     setIsModalOpen(true);
   };
+
   const getContent = (key: string) => {
     if (!data?.result_data) return "";
     const rd = data.result_data;
@@ -359,7 +357,6 @@ const DraftResult = () => {
     return "";
   };
 
-  // ✅ 통합 로딩 조건: 로딩중이거나, 데이터가 없거나, 텍스트가 비어있으면(음성 변환 중)
   const isGenerating = loading || !data || (data.input_mode === "voice" && !data.input_text);
 
   if (isGenerating) {
@@ -381,7 +378,6 @@ const DraftResult = () => {
   }
 
   return (
-    // ✅ [레이아웃] flex-col, h-[100dvh]
     <AppShell className="h-[100dvh] flex flex-col overflow-hidden">
       <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5 bg-white">
         <h2 className="text-xl font-semibold text-foreground">오늘의 결과</h2>
@@ -428,6 +424,7 @@ const DraftResult = () => {
         </div>
       </div>
 
+      {/* ✅ [수정] 버튼 위치 및 디자인: 세로 배치 (flex-col) + 맨 아래 고정 */}
       <div className="mt-auto p-4 bg-white border-t border-gray-100 flex-shrink-0">
         <div className="max-w-md mx-auto">
           {!user ? (
@@ -438,17 +435,19 @@ const DraftResult = () => {
               3초 만에 로그인하고 결과 복사/저장하기
             </Button>
           ) : (
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-3">
+              {" "}
+              {/* ✅ 세로 배치로 변경 */}
               <Button
                 onClick={() => navigate("/input")}
-                className="flex-1 h-14 rounded-xl bg-black text-white hover:bg-black/90 font-bold text-base"
+                className="w-full h-14 rounded-xl bg-black text-white hover:bg-black/90 font-bold text-base"
               >
                 새로운 기록 만들기
               </Button>
               <Button
                 variant="outline"
                 onClick={() => navigate("/")}
-                className="flex-1 h-14 rounded-xl font-bold text-base bg-white border-gray-200 text-black hover:bg-gray-50"
+                className="w-full h-14 rounded-xl font-bold text-base bg-white border-gray-200 text-black hover:bg-gray-50"
               >
                 홈으로 돌아가기
               </Button>
