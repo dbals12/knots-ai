@@ -9,7 +9,7 @@ import { Mic, ChevronLeft, ChevronRight, Loader2, Type } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import AppShell from "@/components/AppShell";
-import { blobToBase64 } from "@/lib/guestPendingSubmission"; // base64 변환용 유틸만 사용
+import { blobToBase64 } from "@/lib/guestPendingSubmission";
 import { getEntrySource } from "@/lib/analytics";
 
 const sessionPurposes = [
@@ -55,7 +55,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
   // 상태 관리
   const [isReturningUser, setIsReturningUser] = useState(false);
   const [isLoadingUserStatus, setIsLoadingUserStatus] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false); // 저장 중 로딩
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 오디오 관련 Refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -67,12 +67,11 @@ const Home = ({ isGuest = false }: HomeProps) => {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // 스크롤 Refs
   const moodScrollRef = useRef<HTMLDivElement>(null);
   const personaScrollRef = useRef<HTMLDivElement>(null);
   const purposeScrollRef = useRef<HTMLDivElement>(null);
 
-  // ✅ [중요] 기존 유저 설정 불러오기 (UI 커스텀용)
+  // ✅ 재방문 유저 체크 (drafts 테이블 포함)
   useEffect(() => {
     const checkUserStatus = async () => {
       if (!user) {
@@ -81,24 +80,27 @@ const Home = ({ isGuest = false }: HomeProps) => {
       }
 
       try {
-        // sessions 테이블 확인은 '기록 모아보기' 버튼 노출 여부 등을 위해 유지 (선택사항)
-        const { data: sessions, error } = await supabase.from("sessions").select("id").eq("user_id", user.id).limit(1);
-        if (!error) {
-          setIsReturningUser(sessions && sessions.length > 0);
-        }
+        const [sessionsResult, draftsResult] = await Promise.all([
+          supabase.from("sessions").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+          supabase.from("drafts").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+        ]);
 
-        // 유저 선호 설정 불러오기
-        const { data: userData } = await supabase.from("users").select("usage_purpose").eq("id", user.id).single();
+        const hasHistory = (sessionsResult.count || 0) > 0 || (draftsResult.count || 0) > 0;
+        setIsReturningUser(hasHistory);
 
-        if (userData?.usage_purpose) {
-          const purposeMap: Record<string, string> = {
-            "빠르게 하루를 정리하고 싶어요": "record",
-            "커리어 브랜딩을 시작하고 싶어요": "career",
-            "업무 성과를 정리하는 게 어려워요": "review",
-            "마음·감정을 정리하고 싶어요": "emotion",
-            "콘텐츠 아이디어가 필요해요": "idea",
-          };
-          setSessionPurpose(purposeMap[userData.usage_purpose] || "");
+        if (!hasHistory) {
+          const { data: userData } = await supabase.from("users").select("usage_purpose").eq("id", user.id).single();
+
+          if (userData?.usage_purpose) {
+            const purposeMap: Record<string, string> = {
+              "빠르게 하루를 정리하고 싶어요": "record",
+              "커리어 브랜딩을 시작하고 싶어요": "career",
+              "업무 성과를 정리하는 게 어려워요": "review",
+              "마음·감정을 정리하고 싶어요": "emotion",
+              "콘텐츠 아이디어가 필요해요": "idea",
+            };
+            setSessionPurpose(purposeMap[userData.usage_purpose] || "");
+          }
         }
       } catch (error) {
         console.error("Error checking user status:", error);
@@ -129,7 +131,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
     }
   };
 
-  // --- 녹음 관련 로직 (기존 유지) ---
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -188,11 +189,10 @@ const Home = ({ isGuest = false }: HomeProps) => {
     setIsRecording(false);
   };
 
-  // --- ✅ 핵심 로직: Draft 생성 및 리다이렉트 (공통) ---
+  // ✅ [핵심 수정] 로그인 여부와 관계없이 모두 drafts 테이블에 저장 (로직 통일)
   const createDraftAndRedirect = async (mode: "voice" | "text") => {
     setIsSubmitting(true);
     try {
-      // 1. 입력 데이터 준비 (JSONB에 넣을 객체)
       const inputData: any = {
         inputMode: mode,
         selectedMood,
@@ -202,10 +202,8 @@ const Home = ({ isGuest = false }: HomeProps) => {
         entrySource: getEntrySource(),
       };
 
-      // 2. 텍스트 vs 음성 데이터 처리
       if (mode === "voice") {
         if (!recordedBlob) throw new Error("No audio recorded");
-        // 오디오를 Base64로 변환하여 저장 (MVP용)
         const audioBase64 = await blobToBase64(recordedBlob);
         inputData.audioBase64 = audioBase64;
       } else {
@@ -213,13 +211,12 @@ const Home = ({ isGuest = false }: HomeProps) => {
         inputData.textInput = textInput;
       }
 
-      // 3. Drafts 테이블에 INSERT (sessions가 아님!)
-      // user_id는 로그인 상태면 넣고, 아니면 null (Guest)
+      // ⚠️ sessions 테이블 대신 drafts 테이블 사용
       const { data, error } = await supabase
         .from("drafts")
         .insert({
-          user_id: user?.id || null, // Guest 허용
-          status: "idle", // 아직 AI 안 돌림 -> Result 페이지가 돌릴 것임
+          user_id: user?.id || null, // 로그인 유저면 ID 저장, 아니면 NULL
+          status: "idle",
           input_data: inputData,
         })
         .select("id")
@@ -227,11 +224,10 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
       if (error) throw error;
 
-      // 4. 안전장치: LocalStorage에 ID 저장 (로그인 튕김 방지용)
-      localStorage.setItem("pending_draft_id", data.id);
+      if (!user) {
+        localStorage.setItem("pending_draft_id", data.id);
+      }
 
-      // 5. Result 페이지로 납치 (여기서 AI 로딩 시작)
-      console.log("Draft created:", data.id, "Redirecting to result...");
       navigate(`/result/${data.id}`);
     } catch (error: any) {
       console.error("Draft creation failed:", error);
@@ -244,7 +240,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
     }
   };
 
-  // 핸들러 연결
   const handleVoiceSubmit = () => createDraftAndRedirect("voice");
   const handleTextSubmit = () => {
     if (!selectedMood || !selectedPersona) {
@@ -260,9 +255,8 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
   return (
     <AppShell className="min-h-[700px]" isGuest={isGuest}>
-      {/* Main Content */}
       <div className="flex-1 px-6 py-6 space-y-6 overflow-y-auto">
-        {/* Session Purpose Selector - Only for returning users */}
+        {/* Purpose Selector (재방문 유저 전용) */}
         {!isLoadingUserStatus && isReturningUser && (
           <div className="space-y-3">
             <h2 className="text-base font-semibold text-foreground">오늘의 목적은 무엇인가요?</h2>
@@ -408,7 +402,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
           </button>
         </div>
 
-        {/* Conditional Input Area */}
+        {/* Input Areas */}
         {inputMode === "voice" ? (
           <div className="flex flex-col items-center space-y-4 py-6">
             <button
@@ -420,7 +414,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
               <Mic className="w-12 h-12 text-background" strokeWidth={2.5} />
             </button>
             <p className="text-sm text-muted-foreground text-center">
-              {isRecording ? "녹음 중..." : "버튼을 누르고 자유롭게 이야기해주세요"}
+              {isRecording ? "녹음 중... 탭하여 중지" : "버튼을 누르고 자유롭게 이야기해주세요"}
             </p>
           </div>
         ) : (
@@ -446,28 +440,37 @@ const Home = ({ isGuest = false }: HomeProps) => {
       <Sheet open={showConfirmation} onOpenChange={setShowConfirmation}>
         <SheetContent side="bottom" className="h-auto rounded-t-3xl">
           <SheetHeader className="pb-6">
-            <SheetTitle className="text-xl font-bold text-center">녹음을 마쳤어요. 어떻게 할까요?</SheetTitle>
+            <SheetTitle className="text-xl font-bold text-center">녹음을 완료할까요?</SheetTitle>
           </SheetHeader>
           <div className="flex flex-col gap-3 pb-6">
             <Button onClick={handleRetry} variant="outline" className="w-full h-12 rounded-xl border-border">
-              다시 녹음하기
+              다시 녹음
             </Button>
             <Button
               onClick={handleVoiceSubmit}
               disabled={isSubmitting}
               className="w-full h-12 rounded-xl bg-foreground text-background hover:bg-foreground/90"
             >
-              {isSubmitting ? "저장 중..." : "제출하기"}
+              {isSubmitting ? "저장 중..." : "콘텐츠 생성하기"}
             </Button>
           </div>
         </SheetContent>
       </Sheet>
 
-      {/* Full-screen Loading Overlay (Submission) */}
+      {/* ✅ [복구] 로딩 화면 (문구 포함) */}
       {isSubmitting && (
-        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center">
-          <Loader2 className="w-12 h-12 text-foreground animate-spin" />
-          <p className="mt-4 text-lg font-medium text-foreground">기록을 저장하고 있어요...</p>
+        <div className="fixed inset-0 z-50 bg-background flex flex-col items-center justify-center">
+          <div className="flex flex-col items-center gap-6">
+            <Loader2 className="w-12 h-12 text-foreground animate-spin" />
+            <div className="text-center space-y-2">
+              <p className="text-lg font-medium text-foreground">AI가 당신의 기록을 분석 중입니다...</p>
+              <p className="text-sm text-muted-foreground">
+                {inputMode === "voice" ? "음성을 텍스트로 변환하고" : "텍스트를 분석하고"}
+                <br />
+                4개 채널용 콘텐츠를 생성하는 중이에요.
+              </p>
+            </div>
+          </div>
         </div>
       )}
     </AppShell>

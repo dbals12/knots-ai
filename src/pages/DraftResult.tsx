@@ -158,12 +158,13 @@ const DraftResult = () => {
     runAI();
   }, [draft, isProcessing]);
 
+  // ✅ [수정] 토스트 메시지 삭제
   useEffect(() => {
     const claimDraft = async () => {
       if (user && draft && draft.user_id === null) {
         const { error } = await supabase.from("drafts").update({ user_id: user.id }).eq("id", draft.id);
         if (!error) {
-          toast({ title: "저장 완료", description: "내 기록함에 안전하게 저장되었습니다." });
+          // 토스트 삭제됨
           localStorage.removeItem("pending_draft_id");
         }
       }
@@ -194,17 +195,13 @@ const DraftResult = () => {
     });
   };
 
-  // ✅ [추가] 모달에서 수정한 내용 DB에 반영
   const handleContentUpdate = async (newContent: string) => {
     if (!selectedPlatform || !draft?.result_data) return;
 
     const platformKey = selectedPlatform === "reels" ? "reels_content" : `${selectedPlatform}_content`;
     const updatedResult = { ...draft.result_data, [platformKey]: newContent };
 
-    // 로컬 업데이트 (즉시 반영)
     setDraft((prev) => (prev ? { ...prev, result_data: updatedResult } : null));
-
-    // DB 업데이트
     await supabase.from("drafts").update({ result_data: updatedResult }).eq("id", draftId);
   };
 
@@ -342,7 +339,6 @@ const DraftResult = () => {
           content={getContent(selectedPlatform) || ""}
           outputId={draftId || ""}
           isGuest={!user}
-          // ✅ 핵심: isDraftMode를 true로 전달
           isDraftMode={true}
           onSave={() => triggerLoginAlert()}
           onCopy={(content) => handleCopyAction(content)}
