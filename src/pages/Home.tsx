@@ -49,8 +49,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
   const [keyword, setKeyword] = useState("");
   const [textInput, setTextInput] = useState("");
 
-  const [isReturningUser, setIsReturningUser] = useState(false);
-  const [isLoadingUserStatus, setIsLoadingUserStatus] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -75,19 +73,11 @@ const Home = ({ isGuest = false }: HomeProps) => {
     }
   }, [location]);
 
+  // 유저의 기존 사용 목적을 불러오지만, 섹션 노출 여부와는 무관하게 설정만 함
   useEffect(() => {
     const checkUserStatus = async () => {
-      if (!user) {
-        setIsLoadingUserStatus(false);
-        return;
-      }
+      if (!user) return;
       try {
-        const { count } = await supabase
-          .from("sessions")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", user.id);
-        setIsReturningUser((count || 0) > 0);
-
         const { data: userData } = await supabase.from("users").select("usage_purpose").eq("id", user.id).single();
         if (userData?.usage_purpose) {
           const purposeMap: Record<string, string> = {
@@ -101,8 +91,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
         }
       } catch (error) {
         console.error("Error checking user status:", error);
-      } finally {
-        setIsLoadingUserStatus(false);
       }
     };
     checkUserStatus();
@@ -218,7 +206,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
           formData.append("raw_text", finalTextInput);
         }
 
-        // ✅ [속도 개선 핵심] await 제거! AI가 처리하든 말든 일단 결과창으로 보냄.
+        // ✅ AI 처리는 백그라운드에서 실행
         fetch("https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/process-audio", {
           method: "POST",
           body: formData,
@@ -230,7 +218,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
           .eq("id", user.id)
           .then();
 
-        // 즉시 이동
+        // 즉시 이동 (결과 페이지에서 Polling으로 데이터 대기)
         navigate(`/result/${sessionData.id}?type=session`);
       } else {
         // 2. 게스트: Drafts 저장 -> 이동
@@ -257,7 +245,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
         localStorage.setItem("pending_draft_id", draftData.id);
 
-        // 즉시 이동 (0.5초 딜레이 삭제)
         navigate(`/result/${draftData.id}?type=draft`);
       }
     } catch (error: any) {
@@ -283,40 +270,38 @@ const Home = ({ isGuest = false }: HomeProps) => {
   return (
     <AppShell className="min-h-[700px] flex flex-col" isGuest={isGuest}>
       <div className="flex-1 px-6 py-6 space-y-6 overflow-y-auto">
-        {/* ... (기존 UI 유지) ... */}
-        {!isLoadingUserStatus && isReturningUser && (
-          <div className="space-y-3">
-            <h2 className="text-base font-semibold text-foreground">오늘의 목적은 무엇인가요?</h2>
-            <div className="relative group">
-              <button
-                onClick={() => scrollContainer(purposeScrollRef, "left")}
-                className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 items-center justify-center bg-background border border-border rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-muted"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <div
-                ref={purposeScrollRef}
-                className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory"
-              >
-                {sessionPurposes.map((purpose) => (
-                  <button
-                    key={purpose.value}
-                    onClick={() => setSessionPurpose(sessionPurpose === purpose.value ? "" : purpose.value)}
-                    className={`flex-shrink-0 px-4 py-2 rounded-full border-2 text-sm font-medium transition-all whitespace-nowrap snap-start ${sessionPurpose === purpose.value ? "border-foreground bg-foreground text-background" : "border-border bg-background text-foreground hover:border-foreground/30"}`}
-                  >
-                    {purpose.label}
-                  </button>
-                ))}
-              </div>
-              <button
-                onClick={() => scrollContainer(purposeScrollRef, "right")}
-                className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 items-center justify-center bg-background border border-border rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-muted"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
+        {/* ✅ [질문 5 해결] 게스트/유저 상관없이 목적 선택창 노출 */}
+        <div className="space-y-3">
+          <h2 className="text-base font-semibold text-foreground">오늘의 목적은 무엇인가요?</h2>
+          <div className="relative group">
+            <button
+              onClick={() => scrollContainer(purposeScrollRef, "left")}
+              className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 items-center justify-center bg-background border border-border rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-muted"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <div
+              ref={purposeScrollRef}
+              className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory"
+            >
+              {sessionPurposes.map((purpose) => (
+                <button
+                  key={purpose.value}
+                  onClick={() => setSessionPurpose(sessionPurpose === purpose.value ? "" : purpose.value)}
+                  className={`flex-shrink-0 px-4 py-2 rounded-full border-2 text-sm font-medium transition-all whitespace-nowrap snap-start ${sessionPurpose === purpose.value ? "border-foreground bg-foreground text-background" : "border-border bg-background text-foreground hover:border-foreground/30"}`}
+                >
+                  {purpose.label}
+                </button>
+              ))}
             </div>
+            <button
+              onClick={() => scrollContainer(purposeScrollRef, "right")}
+              className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 items-center justify-center bg-background border border-border rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-muted"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
           </div>
-        )}
+        </div>
 
         <div className="space-y-3">
           <h2 className="text-base font-semibold text-foreground">오늘 하루 어땠나요?</h2>
