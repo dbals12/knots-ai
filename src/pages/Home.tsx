@@ -235,7 +235,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
         // 즉시 이동
         navigate(`/result/${sessionData.id}?type=session`);
       } else {
-        // 2. 게스트: Drafts 저장 -> 이동
+        // 2. 게스트: Drafts 저장 -> Edge Function 호출 -> 이동
         const inputData = {
           inputMode: mode,
           selectedMood,
@@ -259,28 +259,27 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
         localStorage.setItem("pending_draft_id", draftData.id);
 
-        // ✅ 게스트도 Edge Function 호출해서 drafts.result_data 채우게 만들기
-        const fd = new FormData();
-        fd.append("draft_id", draftData.id);
-        fd.append("user_persona", selectedPersona);
-        fd.append("user_mood", selectedMood);
-        fd.append("session_purpose", sessionPurpose);
-        fd.append("input_type", mode);
-        fd.append("keyword", keyword || "");
+        // ✅ 여기서 Edge Function 호출 추가 (이게 핵심)
+        const formData = new FormData();
+        formData.append("draft_id", draftData.id);
+        formData.append("user_persona", selectedPersona);
+        formData.append("user_mood", selectedMood);
+        formData.append("session_purpose", sessionPurpose);
 
-        // 음성/텍스트 데이터
         if (mode === "voice" && recordedBlob) {
-          fd.append("audio", recordedBlob, "recording.webm");
+          formData.append("audio", recordedBlob, "recording.webm");
         } else {
-          fd.append("raw_text", finalTextInput);
+          formData.append("raw_text", finalTextInput);
         }
 
-        void supabase.functions
-          .invoke("process-audio", { body: fd })
-          .then(({ error }) => {
-            if (error) console.error("guest process-audio invoke error:", error);
+        // ✅ await 안 걸고 백그라운드로 호출만 던짐
+        supabase.functions
+          .invoke("process-audio", { body: formData })
+          .then(({ data, error }) => {
+            if (error) console.error("process-audio invoke error:", error);
+            else console.log("process-audio invoked:", data);
           })
-          .catch((e) => console.error("guest process-audio invoke failed:", e));
+          .catch(console.error);
 
         // 즉시 이동
         navigate(`/result/${draftData.id}?type=draft`);
