@@ -56,6 +56,7 @@ const DraftResult = () => {
   const [data, setData] = useState<ContentData | null>(null);
   const [loading, setLoading] = useState(true);
   const [showManualRefresh, setShowManualRefresh] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("AI가 기록을 분석하고 있어요...");
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
@@ -64,52 +65,77 @@ const DraftResult = () => {
 
   const isSessionType = new URLSearchParams(location.search).get("type") === "session";
 
-  // 데이터 폴링 로직
+  // 로딩 멘트 순환
+  useEffect(() => {
+    if (!loading) return;
+    const messages = [
+      "AI가 기록을 분석하고 있어요...",
+      "핵심 키워드를 추출하고 있습니다...",
+      "4가지 플랫폼 콘텐츠를 생성하고 있어요...",
+      "거의 다 되었습니다!",
+    ];
+    let i = 0;
+    const interval = setInterval(() => {
+      i = (i + 1) % messages.length;
+      setLoadingMessage(messages[i]);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [loading]);
+
   const checkData = async () => {
     try {
       if (isSessionType) {
-        // [로그인 유저] Sessions, Outputs 테이블 확인
+        // [로그인 유저] Sessions 테이블
         const { data: session } = await supabase.from("sessions").select("*").eq("id", draftId).single();
         const { data: outputs } = await supabase.from("outputs").select("*").eq("session_id", draftId);
 
         if (session) {
           const result_data: any = {};
+          let outputCount = 0;
+
           if (outputs && outputs.length > 0) {
             outputs.forEach((o: any) => {
-              if (o.platform_type === "blog") result_data.blog_content = o.generated_content;
-              if (o.platform_type === "linkedin") result_data.linkedin_content = o.generated_content;
-              if (o.platform_type === "reels") result_data.reels_content = o.generated_content;
-              if (o.platform_type === "threads") result_data.threads_content = o.generated_content;
+              if (o.generated_content) {
+                outputCount++;
+                if (o.platform_type === "blog") result_data.blog_content = o.generated_content;
+                if (o.platform_type === "linkedin") result_data.linkedin_content = o.generated_content;
+                if (o.platform_type === "reels") result_data.reels_content = o.generated_content;
+                if (o.platform_type === "threads") result_data.threads_content = o.generated_content;
+              }
             });
           }
 
-          // 원본 텍스트가 있거나 결과가 하나라도 있으면 로딩 해제 (점진적 노출)
-          if (session.raw_text || (outputs && outputs.length > 0)) {
+          // 4개가 다 생성되어야 로딩 해제 (완성도 있는 화면을 위해)
+          // 단, 15초가 지나면 그냥 있는거라도 보여줌 (showManualRefresh 체크)
+          if (outputCount >= 4 || (showManualRefresh && session.raw_text)) {
             setData({
               input_text: session.raw_text || "음성 변환 중...",
               input_mode: session.input_type,
               result_data,
             });
             setLoading(false);
-            if (Object.keys(result_data).length >= 4) return true;
-            return false;
+            return true;
           }
         }
       } else {
-        // [게스트] Drafts 테이블 확인
+        // [게스트] Drafts 테이블
         const { data: draft } = await supabase.from("drafts").select("*").eq("id", draftId).single();
         if (draft) {
           const inputData = draft.input_data as any;
           const resultData = draft.result_data as any;
 
-          setData({
-            input_text: inputData?.textInput || "변환 중...",
-            input_mode: inputData?.inputMode,
-            result_data: resultData || {},
-          });
-          setLoading(false);
-
-          if (draft.status === "completed" || (resultData && Object.keys(resultData).length > 0)) {
+          if (draft.status === "completed" && resultData && Object.keys(resultData).length > 0) {
+            setData({
+              input_text: inputData?.textInput || "변환 중...",
+              input_mode: inputData?.inputMode,
+              result_data: resultData || {},
+            });
+            setLoading(false);
+            return true;
+          }
+          if (draft.status === "failed") {
+            setLoadingMessage("생성에 실패했습니다. 다시 시도해주세요.");
+            setShowManualRefresh(true);
             return true;
           }
         }
@@ -123,12 +149,17 @@ const DraftResult = () => {
 
   useEffect(() => {
     if (!draftId) return;
+
     checkData();
+
+    // 1초마다 데이터 확인 (Polling)
     pollingRef.current = setInterval(async () => {
       const allDone = await checkData();
       if (allDone && pollingRef.current) clearInterval(pollingRef.current);
-    }, 1500);
-    setTimeout(() => setShowManualRefresh(true), 5000);
+    }, 1000);
+
+    // 15초 타임아웃
+    const timeoutId = setTimeout(() => setShowManualRefresh(true), 15000);
 
     const channel = supabase
       .channel(`any-${draftId}`)
@@ -139,11 +170,13 @@ const DraftResult = () => {
 
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
+      clearTimeout(timeoutId);
       supabase.removeChannel(channel);
     };
   }, [draftId, isSessionType]);
 
   const performLogin = () => {
+    // 기존의 next 파라미터 로직 유지 (이게 되면 제일 좋고, 안되면 Home에서 처리)
     navigate(`/login?next=/result/${draftId}?type=draft`);
   };
 
@@ -180,18 +213,30 @@ const DraftResult = () => {
     return "";
   };
 
+  // ✅ 1. 전체 화면 로딩 (생성 전에는 결과화면 안 보여줌)
   if (loading || !data) {
     return (
       <AppShell showHeader={false}>
-        <div className="flex-1 flex flex-col items-center justify-center gap-6 h-[100dvh] px-6">
-          <Loader2 className="w-12 h-12 animate-spin text-black" />
-          <div className="text-center space-y-2">
-            <p className="text-xl font-bold">AI가 열심히 분석 중입니다...</p>
-            <p className="text-sm text-gray-500">잠시만 기다려주세요.</p>
+        <div className="flex-1 flex flex-col items-center justify-center gap-8 h-[100dvh] px-6 bg-white">
+          <div className="relative">
+            <div className="w-16 h-16 border-4 border-gray-100 border-t-black rounded-full animate-spin"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-2xl">✨</span>
+            </div>
           </div>
+
+          <div className="text-center space-y-3">
+            <p className="text-lg font-bold text-gray-900 animate-pulse">{loadingMessage}</p>
+            <p className="text-sm text-gray-500">잠시만 기다려주세요 (약 10초 소요)</p>
+          </div>
+
           {showManualRefresh && (
-            <Button onClick={() => window.location.reload()} variant="outline" className="gap-2 rounded-full mt-4">
-              <RefreshCw className="w-4 h-4" /> 결과가 안 나오나요?
+            <Button
+              onClick={() => window.location.reload()}
+              variant="outline"
+              className="gap-2 rounded-full mt-4 border-gray-200 text-gray-600"
+            >
+              <RefreshCw className="w-4 h-4" /> 결과가 안 나오나요? 새로고침
             </Button>
           )}
         </div>
@@ -199,70 +244,67 @@ const DraftResult = () => {
     );
   }
 
+  // ✅ 2. 결과 화면 (생성 완료 후)
   return (
-    <AppShell className="h-[100dvh] flex flex-col overflow-hidden">
-      <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5 bg-white pb-32">
-        <h2 className="text-xl font-semibold">오늘의 결과</h2>
+    <AppShell className="h-[100dvh] flex flex-col overflow-hidden bg-white">
+      {/* 하단 패딩(pb)을 줄여서 버튼이 화면 끝에 매달리지 않게 함 */}
+      <div className="flex-1 overflow-y-auto px-5 py-6 space-y-5 pb-6">
+        <h2 className="text-xl font-bold text-gray-900">오늘의 결과</h2>
 
         {/* 원본 카드 */}
-        <div className="bg-[#F8F8F8] rounded-2xl p-4">
+        <div className="bg-[#F9F9F9] rounded-2xl p-5 border border-gray-100">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium">오늘 내가 기록한 내용</h3>
-            {/* 게스트도 '수정하기' 버튼 노출 (기능은 로그인 유도) */}
-            <Button variant="outline" size="sm" onClick={handleEditInput} className="h-8 text-xs">
+            <h3 className="font-bold text-gray-800">오늘 내가 기록한 내용</h3>
+            {/* 게스트도 버튼 '수정하기'로 통일 */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleEditInput}
+              className="h-8 text-xs bg-white border-gray-200"
+            >
               수정하기
             </Button>
           </div>
-          {/* 전체 내용 보기 (스크롤) */}
-          <div className="max-h-[200px] overflow-y-auto text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
-            {data.input_text || "내용을 불러오는 중입니다..."}
+          {/* 전체 내용 스크롤 */}
+          <div className="max-h-[200px] overflow-y-auto text-sm text-gray-600 leading-relaxed whitespace-pre-wrap scrollbar-hide">
+            {data.input_text}
           </div>
         </div>
 
         {/* 결과 카드 */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="grid grid-cols-2 gap-3">
           {Object.keys(platformIcons).map((key) => {
             const meta = platformIcons[key as keyof typeof platformIcons];
             const Icon = meta.icon;
             const content = getContent(key);
-            const hasContent = content && content.length > 0;
 
             return (
               <button
                 key={key}
-                onClick={hasContent ? () => handleCardClick(key) : undefined}
-                disabled={!hasContent}
-                className="bg-[#F8F8F8] rounded-2xl p-4 hover:bg-[#F0F0F0] transition-all text-left space-y-2 relative h-40 flex flex-col"
+                onClick={() => handleCardClick(key)}
+                className="bg-[#F9F9F9] rounded-2xl p-4 border border-gray-100 hover:bg-gray-100 transition-all text-left space-y-3 flex flex-col h-44"
               >
-                {!hasContent && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/60 rounded-2xl z-10 backdrop-blur-[1px]">
-                    <Loader2 className="w-6 h-6 animate-spin text-gray-400 mb-2" />
-                    <span className="text-xs text-gray-400 font-medium">생성 중...</span>
-                  </div>
-                )}
                 <div
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${key === "reels" ? "bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af]" : ""}`}
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm ${key === "reels" ? "bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af]" : ""}`}
                   style={{ backgroundColor: key === "reels" ? undefined : meta.color }}
                 >
-                  <Icon className="w-4 h-4 text-white" />
+                  <Icon className="w-5 h-5 text-white" />
                 </div>
-                <div className="flex-1 overflow-hidden">
-                  <h3 className="font-medium text-black text-xs mb-1">{meta.title}</h3>
-                  <p className="text-xs text-gray-500 line-clamp-3 leading-relaxed font-normal">
-                    {getSummary(content)}
-                  </p>
+                <div className="flex-1 overflow-hidden w-full">
+                  <h3 className="font-bold text-gray-900 text-sm mb-1">{meta.title}</h3>
+                  <p className="text-xs text-gray-500 leading-relaxed line-clamp-3">{getSummary(content)}</p>
                 </div>
               </button>
             );
           })}
         </div>
 
-        {/* 버튼 영역 (여백 제거하고 바로 아래 붙임) */}
-        <div className="flex flex-col gap-3 pt-2">
+        {/* 하단 버튼 (mt-auto 제거 -> 바로 아래 붙음) */}
+        <div className="flex flex-col gap-3 mt-2">
           {!user ? (
             <Button
               onClick={() => performLogin()}
-              className="w-full h-14 rounded-xl bg-black text-white hover:bg-black/90 text-base font-bold shadow-lg"
+              className="w-full h-14 rounded-xl bg-black text-white hover:bg-gray-800 text-base font-bold shadow-lg"
             >
               3초 만에 로그인하고 결과 저장하기
             </Button>
@@ -270,14 +312,14 @@ const DraftResult = () => {
             <>
               <Button
                 onClick={() => navigate("/input")}
-                className="w-full h-14 rounded-xl bg-black text-white hover:bg-black/90 font-bold text-base"
+                className="w-full h-14 rounded-xl bg-black text-white hover:bg-gray-800 font-bold text-base shadow-lg"
               >
                 새로운 기록 만들기
               </Button>
               <Button
                 variant="outline"
                 onClick={() => navigate("/")}
-                className="w-full h-14 rounded-xl font-bold text-base border-gray-200 hover:bg-gray-50"
+                className="w-full h-14 rounded-xl font-bold text-base border-gray-200 hover:bg-gray-50 text-gray-700"
               >
                 홈으로 돌아가기
               </Button>
