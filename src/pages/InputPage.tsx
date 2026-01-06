@@ -117,7 +117,7 @@ const InputPage = () => {
     setIsRecording(false);
   };
 
-  // 🔥 속도 개선 핵심 로직
+  // 🔥 속도 개선 로직
   const handleSubmit = async () => {
     if (!selectedMood || !selectedPersona) {
       toast({ title: "선택 필요", description: "기분과 모드를 선택해주세요.", variant: "destructive" });
@@ -147,7 +147,7 @@ const InputPage = () => {
 
       // [로그인 유저 로직]
       if (user) {
-        // 1. 세션 DB에 일단 저장 (ID 확보를 위해 await 필수)
+        // 1. 세션 DB에 저장 (ID 확보)
         const { data: sessionData, error: sessionError } = await supabase
           .from("sessions")
           .insert({
@@ -166,7 +166,6 @@ const InputPage = () => {
         if (sessionError) throw sessionError;
 
         // 2. AI 요청 (await 없이 던짐 - Fire & Forget)
-        // 사용자가 기다리지 않게 백그라운드에서 실행
         const formData = new FormData();
         formData.append("session_id", sessionData.id);
         formData.append("user_persona", selectedPersona);
@@ -187,7 +186,7 @@ const InputPage = () => {
         // 3. 즉시 결과 페이지로 이동
         navigate(`/result/${sessionData.id}?type=session`);
       } else {
-        // [게스트 로직] Draft 저장
+        // [게스트 로직]
         const inputData = {
           inputMode,
           selectedMood,
@@ -226,7 +225,6 @@ const InputPage = () => {
       </div>
 
       <div className="flex-1 px-6 py-6 space-y-6 overflow-y-auto pb-32">
-        {/* ... (선택지 UI는 변경 없음) ... */}
         {/* 목적 선택 */}
         <div className="space-y-3">
           <h2 className="text-base font-semibold text-foreground">오늘의 목적은 무엇인가요?</h2>

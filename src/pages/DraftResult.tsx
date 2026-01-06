@@ -65,7 +65,7 @@ const DraftResult = () => {
 
   const isSessionType = new URLSearchParams(location.search).get("type") === "session";
 
-  // 로딩 멘트 순환
+  // 로딩 멘트 애니메이션
   useEffect(() => {
     if (!loading) return;
     const messages = [
@@ -85,7 +85,7 @@ const DraftResult = () => {
   const checkData = async () => {
     try {
       if (isSessionType) {
-        // [로그인 유저] Sessions 테이블
+        // [로그인 유저] Sessions, Outputs 테이블 확인
         const { data: session } = await supabase.from("sessions").select("*").eq("id", draftId).single();
         const { data: outputs } = await supabase.from("outputs").select("*").eq("session_id", draftId);
 
@@ -105,8 +105,7 @@ const DraftResult = () => {
             });
           }
 
-          // 4개가 다 생성되어야 로딩 해제 (완성도 있는 화면을 위해)
-          // 단, 15초가 지나면 그냥 있는거라도 보여줌 (showManualRefresh 체크)
+          // 🔥 4개 콘텐츠가 다 만들어졌거나, 15초가 지나서 수동 새로고침이 활성화되었을 때만 보여주기
           if (outputCount >= 4 || (showManualRefresh && session.raw_text)) {
             setData({
               input_text: session.raw_text || "음성 변환 중...",
@@ -118,7 +117,7 @@ const DraftResult = () => {
           }
         }
       } else {
-        // [게스트] Drafts 테이블
+        // [게스트] Drafts 테이블 확인
         const { data: draft } = await supabase.from("drafts").select("*").eq("id", draftId).single();
         if (draft) {
           const inputData = draft.input_data as any;
@@ -158,7 +157,7 @@ const DraftResult = () => {
       if (allDone && pollingRef.current) clearInterval(pollingRef.current);
     }, 1000);
 
-    // 15초 타임아웃
+    // 15초 지나면 수동 새로고침 버튼 띄우기 (무한로딩 방지)
     const timeoutId = setTimeout(() => setShowManualRefresh(true), 15000);
 
     const channel = supabase
@@ -176,7 +175,7 @@ const DraftResult = () => {
   }, [draftId, isSessionType]);
 
   const performLogin = () => {
-    // 기존의 next 파라미터 로직 유지 (이게 되면 제일 좋고, 안되면 Home에서 처리)
+    // 🔥 원래 잘 되던 방식(next 파라미터)으로 복구
     navigate(`/login?next=/result/${draftId}?type=draft`);
   };
 
@@ -213,7 +212,7 @@ const DraftResult = () => {
     return "";
   };
 
-  // ✅ 1. 전체 화면 로딩 (생성 전에는 결과화면 안 보여줌)
+  // ✅ [로딩 화면] 데이터가 준비되기 전에는 무조건 전체 화면 로딩
   if (loading || !data) {
     return (
       <AppShell showHeader={false}>
@@ -244,10 +243,10 @@ const DraftResult = () => {
     );
   }
 
-  // ✅ 2. 결과 화면 (생성 완료 후)
+  // ✅ [결과 화면]
   return (
     <AppShell className="h-[100dvh] flex flex-col overflow-hidden bg-white">
-      {/* 하단 패딩(pb)을 줄여서 버튼이 화면 끝에 매달리지 않게 함 */}
+      {/* 여백 제거 (pb-6) */}
       <div className="flex-1 overflow-y-auto px-5 py-6 space-y-5 pb-6">
         <h2 className="text-xl font-bold text-gray-900">오늘의 결과</h2>
 
@@ -255,7 +254,7 @@ const DraftResult = () => {
         <div className="bg-[#F9F9F9] rounded-2xl p-5 border border-gray-100">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-gray-800">오늘 내가 기록한 내용</h3>
-            {/* 게스트도 버튼 '수정하기'로 통일 */}
+            {/* 게스트도 '수정하기'로 버튼명 통일 */}
             <Button
               variant="outline"
               size="sm"
@@ -265,14 +264,14 @@ const DraftResult = () => {
               수정하기
             </Button>
           </div>
-          {/* 전체 내용 스크롤 */}
+          {/* 내용 전체 보기 (스크롤) */}
           <div className="max-h-[200px] overflow-y-auto text-sm text-gray-600 leading-relaxed whitespace-pre-wrap scrollbar-hide">
             {data.input_text}
           </div>
         </div>
 
         {/* 결과 카드 */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 mb-4">
           {Object.keys(platformIcons).map((key) => {
             const meta = platformIcons[key as keyof typeof platformIcons];
             const Icon = meta.icon;
@@ -282,7 +281,7 @@ const DraftResult = () => {
               <button
                 key={key}
                 onClick={() => handleCardClick(key)}
-                className="bg-[#F9F9F9] rounded-2xl p-4 border border-gray-100 hover:bg-gray-100 transition-all text-left space-y-3 flex flex-col h-44"
+                className="bg-[#F9F9F9] rounded-2xl p-4 border border-gray-100 hover:bg-gray-100 transition-all text-left space-y-3 h-44 flex flex-col"
               >
                 <div
                   className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm ${key === "reels" ? "bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af]" : ""}`}
@@ -299,8 +298,8 @@ const DraftResult = () => {
           })}
         </div>
 
-        {/* 하단 버튼 (mt-auto 제거 -> 바로 아래 붙음) */}
-        <div className="flex flex-col gap-3 mt-2">
+        {/* 하단 버튼 (mt-auto 제거하여 바로 아래 붙음) */}
+        <div className="flex flex-col gap-3 pt-2">
           {!user ? (
             <Button
               onClick={() => performLogin()}
