@@ -38,23 +38,12 @@ const platformIcons = {
 };
 
 const getSummary = (content: string | null) => {
-  if (!content) return "콘텐츠가 생성되지 않았습니다.";
+  if (!content) return "콘텐츠 생성 중...";
   const cleanContent = content
     .replace(/```json\s*/gi, "")
     .replace(/```\s*/gi, "")
     .trim();
-  try {
-    const parsed = JSON.parse(cleanContent);
-    if (typeof parsed === "object" && parsed !== null) {
-      return (
-        (parsed["Slide 1"] || parsed["slide 1"] || parsed["Caption"] || parsed["caption"] || content).substring(
-          0,
-          100,
-        ) + "..."
-      );
-    }
-  } catch {}
-  return content.length > 100 ? content.substring(0, 100) + "..." : content;
+  return cleanContent.length > 80 ? cleanContent.substring(0, 80) + "..." : cleanContent;
 };
 
 const DraftResult = () => {
@@ -66,8 +55,7 @@ const DraftResult = () => {
 
   const [data, setData] = useState<ContentData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [showManualRefresh, setShowManualRefresh] = useState(false); // 수동 새로고침 버튼
+  const [showManualRefresh, setShowManualRefresh] = useState(false);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
@@ -76,11 +64,11 @@ const DraftResult = () => {
 
   const isSessionType = new URLSearchParams(location.search).get("type") === "session";
 
-  // ✅ 데이터 확인 함수 (1초마다 실행될 핵심 로직)
+  // 데이터 폴링 로직
   const checkData = async () => {
     try {
       if (isSessionType) {
-        // 1. 회원 (Session)
+        // [로그인 유저] Sessions, Outputs 테이블 확인
         const { data: session } = await supabase.from("sessions").select("*").eq("id", draftId).single();
         const { data: outputs } = await supabase.from("outputs").select("*").eq("session_id", draftId);
 
@@ -94,67 +82,58 @@ const DraftResult = () => {
               if (o.platform_type === "threads") result_data.threads_content = o.generated_content;
             });
           }
-          // 텍스트가 있거나 결과물이 하나라도 있으면 로딩 종료
-          if (session.raw_text || Object.keys(result_data).length > 0) {
+
+          // 원본 텍스트가 있거나 결과가 하나라도 있으면 로딩 해제 (점진적 노출)
+          if (session.raw_text || (outputs && outputs.length > 0)) {
             setData({
-              input_text: session.raw_text || "변환된 텍스트가 없습니다.",
+              input_text: session.raw_text || "음성 변환 중...",
               input_mode: session.input_type,
               result_data,
             });
             setLoading(false);
-            return true; // 완료 신호
+            if (Object.keys(result_data).length >= 4) return true;
+            return false;
           }
         }
       } else {
-        // 2. 게스트 (Draft)
+        // [게스트] Drafts 테이블 확인
         const { data: draft } = await supabase.from("drafts").select("*").eq("id", draftId).single();
         if (draft) {
           const inputData = draft.input_data as any;
           const resultData = draft.result_data as any;
 
-          // 완료 조건: status가 completed 이거나 result_data가 존재할 때
+          setData({
+            input_text: inputData?.textInput || "변환 중...",
+            input_mode: inputData?.inputMode,
+            result_data: resultData || {},
+          });
+          setLoading(false);
+
           if (draft.status === "completed" || (resultData && Object.keys(resultData).length > 0)) {
-            setData({
-              input_text: inputData?.textInput || "변환된 텍스트가 없습니다.",
-              input_mode: inputData?.inputMode,
-              result_data: resultData || {},
-            });
-            setLoading(false);
-            return true; // 완료 신호
+            return true;
           }
         }
       }
-      return false; // 아직 데이터 없음
+      return false;
     } catch (error) {
-      console.error("Data Check Error:", error);
+      console.error("Check Error:", error);
       return false;
     }
   };
 
   useEffect(() => {
     if (!draftId) return;
+    checkData();
+    pollingRef.current = setInterval(async () => {
+      const allDone = await checkData();
+      if (allDone && pollingRef.current) clearInterval(pollingRef.current);
+    }, 1500);
+    setTimeout(() => setShowManualRefresh(true), 5000);
 
-    // ① 페이지 들어오자마자 확인
-    checkData().then((done) => {
-      if (!done) {
-        // ② 안 끝났으면 1초마다 계속 확인 (Polling)
-        pollingRef.current = setInterval(async () => {
-          const isDone = await checkData();
-          if (isDone && pollingRef.current) clearInterval(pollingRef.current);
-        }, 1000);
-
-        // ③ 5초 지나도 안 나오면 수동 새로고침 버튼 표시 (안전장치)
-        setTimeout(() => setShowManualRefresh(true), 5000);
-      }
-    });
-
-    // ④ Realtime 구독 (보조)
     const channel = supabase
       .channel(`any-${draftId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: isSessionType ? "outputs" : "drafts" },
-        () => checkData(), // 변경 감지 시 즉시 확인
+      .on("postgres_changes", { event: "*", schema: "public", table: isSessionType ? "outputs" : "drafts" }, () =>
+        checkData(),
       )
       .subscribe();
 
@@ -163,134 +142,6 @@ const DraftResult = () => {
       supabase.removeChannel(channel);
     };
   }, [draftId, isSessionType]);
-
-  // 게스트용 AI 실행기 (안전장치)
-  useEffect(() => {
-    if (isSessionType || !draftId || isProcessing) return;
-
-    const runAI = async () => {
-      const { data: draft } = await supabase.from("drafts").select("status, input_data").eq("id", draftId).single();
-      if (!draft || draft.status !== "idle") return;
-
-      setIsProcessing(true);
-      try {
-        await supabase.from("drafts").update({ status: "generating" }).eq("id", draftId);
-
-        const inputData = draft.input_data as any;
-        const formData = new FormData();
-        formData.append("user_persona", inputData.selectedPersona);
-        formData.append("user_mood", inputData.selectedMood);
-        formData.append("session_purpose", inputData.sessionPurpose || "");
-
-        if (inputData.inputMode === "voice" && inputData.audioBase64) {
-          const res = await fetch(inputData.audioBase64);
-          const blob = await res.blob();
-          formData.append("audio", blob, "recording.webm");
-        } else {
-          formData.append("raw_text", inputData.textInput || "");
-        }
-
-        const response = await fetch(`https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/process-audio`, {
-          method: "POST",
-          body: formData,
-        });
-
-        if (!response.ok) throw new Error("AI Processing Failed");
-        const aiResult = await response.json();
-
-        const updatedInputData = {
-          ...inputData,
-          textInput: aiResult.transcript || inputData.textInput,
-        };
-
-        await supabase
-          .from("drafts")
-          .update({
-            status: "completed",
-            result_data: aiResult.content,
-            input_data: updatedInputData,
-          })
-          .eq("id", draftId);
-      } catch (error) {
-        await supabase.from("drafts").update({ status: "failed" }).eq("id", draftId);
-      } finally {
-        setIsProcessing(false);
-      }
-    };
-
-    runAI();
-  }, [draftId, isSessionType, isProcessing]);
-
-  // 마이그레이션 로직
-  useEffect(() => {
-    const migrateData = async () => {
-      const pendingId = localStorage.getItem("pending_draft_id");
-      if (user && pendingId && pendingId === draftId && !isSessionType) {
-        setLoading(true);
-        try {
-          const { data: draft } = await supabase.from("drafts").select("*").eq("id", pendingId).single();
-          if (draft) {
-            const inputData = draft.input_data as any;
-            const resultData = draft.result_data as any;
-
-            const { data: session, error: sErr } = await supabase
-              .from("sessions")
-              .insert({
-                user_id: user.id,
-                raw_text: inputData.textInput,
-                session_purpose: inputData.sessionPurpose,
-                selected_mood: inputData.selectedMood,
-                selected_persona: inputData.selectedPersona,
-                keyword: inputData.keyword,
-                entry_source: "web",
-                input_type: inputData.inputMode,
-              })
-              .select()
-              .single();
-
-            if (sErr) throw sErr;
-
-            const outputsToInsert = [];
-            const rd = resultData || {};
-            if (rd.blog_content)
-              outputsToInsert.push({
-                session_id: session.id,
-                platform_type: "blog",
-                generated_content: rd.blog_content,
-              });
-            if (rd.linkedin_content)
-              outputsToInsert.push({
-                session_id: session.id,
-                platform_type: "linkedin",
-                generated_content: rd.linkedin_content,
-              });
-            if (rd.reels_content)
-              outputsToInsert.push({
-                session_id: session.id,
-                platform_type: "reels",
-                generated_content: rd.reels_content,
-              });
-            if (rd.threads_content)
-              outputsToInsert.push({
-                session_id: session.id,
-                platform_type: "threads",
-                generated_content: rd.threads_content,
-              });
-
-            if (outputsToInsert.length > 0) await supabase.from("outputs").insert(outputsToInsert);
-
-            await supabase.from("drafts").delete().eq("id", pendingId);
-            localStorage.removeItem("pending_draft_id");
-            navigate(`/result/${session.id}?type=session`, { replace: true });
-          }
-        } catch (e) {
-          console.error("Migration failed", e);
-          setLoading(false);
-        }
-      }
-    };
-    migrateData();
-  }, [user, draftId, isSessionType]);
 
   const performLogin = () => {
     navigate(`/login?next=/result/${draftId}?type=draft`);
@@ -314,23 +165,6 @@ const DraftResult = () => {
     });
   };
 
-  const handleContentUpdate = async (newContent: string) => {
-    if (!selectedPlatform || !data) return;
-    const updatedResult = { ...data.result_data };
-    if (selectedPlatform === "blog") updatedResult.blog_content = newContent;
-    else if (selectedPlatform === "linkedin") updatedResult.linkedin_content = newContent;
-    else if (selectedPlatform === "reels") updatedResult.reels_content = newContent;
-    else if (selectedPlatform === "threads") updatedResult.threads_content = newContent;
-    setData({ ...data, result_data: updatedResult });
-    if (isSessionType && user) {
-      await supabase
-        .from("outputs")
-        .update({ generated_content: newContent })
-        .eq("session_id", draftId)
-        .eq("platform_type", selectedPlatform);
-    }
-  };
-
   const handleCardClick = (platformKey: string) => {
     setSelectedPlatform(platformKey);
     setIsModalOpen(true);
@@ -346,39 +180,19 @@ const DraftResult = () => {
     return "";
   };
 
-  // ✅ 로딩 화면
-  const isGenerating = loading || !data;
-
-  if (isGenerating) {
+  if (loading || !data) {
     return (
       <AppShell showHeader={false}>
         <div className="flex-1 flex flex-col items-center justify-center gap-6 h-[100dvh] px-6">
-          <div className="relative">
-            <Loader2 className="w-12 h-12 animate-spin text-foreground" />
-          </div>
-
+          <Loader2 className="w-12 h-12 animate-spin text-black" />
           <div className="text-center space-y-2">
-            <p className="text-xl font-bold text-foreground">AI가 열심히 분석 중입니다...</p>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              텍스트를 분석하고
-              <br />
-              4개 채널용 콘텐츠를 생성하고 있어요.
-            </p>
+            <p className="text-xl font-bold">AI가 열심히 분석 중입니다...</p>
+            <p className="text-sm text-gray-500">잠시만 기다려주세요.</p>
           </div>
-
-          {/* ✅ 5초 이상 걸리면 나타나는 수동 새로고침 버튼 */}
           {showManualRefresh && (
-            <div className="mt-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-              <p className="text-xs text-gray-400 mb-3 text-center">생성이 조금 오래 걸리네요?</p>
-              <Button
-                onClick={() => window.location.reload()}
-                variant="outline"
-                className="gap-2 rounded-full border-gray-300 text-gray-600 font-medium"
-              >
-                <RefreshCw className="w-4 h-4" />
-                결과 확인하러 가기
-              </Button>
-            </div>
+            <Button onClick={() => window.location.reload()} variant="outline" className="gap-2 rounded-full mt-4">
+              <RefreshCw className="w-4 h-4" /> 결과가 안 나오나요?
+            </Button>
           )}
         </div>
       </AppShell>
@@ -387,42 +201,54 @@ const DraftResult = () => {
 
   return (
     <AppShell className="h-[100dvh] flex flex-col overflow-hidden">
-      <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5 bg-white">
-        <h2 className="text-xl font-semibold text-foreground">오늘의 결과</h2>
+      <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5 bg-white pb-32">
+        <h2 className="text-xl font-semibold">오늘의 결과</h2>
 
+        {/* 원본 카드 */}
         <div className="bg-[#F8F8F8] rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium text-foreground">오늘 내가 기록한 내용</h3>
+            <h3 className="text-sm font-medium">오늘 내가 기록한 내용</h3>
+            {/* 게스트도 '수정하기' 버튼 노출 (기능은 로그인 유도) */}
             <Button variant="outline" size="sm" onClick={handleEditInput} className="h-8 text-xs">
-              {user ? "수정하기" : "저장"}
+              수정하기
             </Button>
           </div>
-          <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap line-clamp-4">
+          {/* 전체 내용 보기 (스크롤) */}
+          <div className="max-h-[200px] overflow-y-auto text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
             {data.input_text || "내용을 불러오는 중입니다..."}
-          </p>
+          </div>
         </div>
 
+        {/* 결과 카드 */}
         <div className="grid grid-cols-2 gap-3 mb-4">
           {Object.keys(platformIcons).map((key) => {
             const meta = platformIcons[key as keyof typeof platformIcons];
             const Icon = meta.icon;
             const content = getContent(key);
+            const hasContent = content && content.length > 0;
 
             return (
               <button
                 key={key}
-                onClick={() => handleCardClick(key)}
-                className="bg-[#F8F8F8] rounded-2xl p-4 hover:bg-[#F0F0F0] transition-all text-left space-y-2"
+                onClick={hasContent ? () => handleCardClick(key) : undefined}
+                disabled={!hasContent}
+                className="bg-[#F8F8F8] rounded-2xl p-4 hover:bg-[#F0F0F0] transition-all text-left space-y-2 relative h-40 flex flex-col"
               >
+                {!hasContent && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/60 rounded-2xl z-10 backdrop-blur-[1px]">
+                    <Loader2 className="w-6 h-6 animate-spin text-gray-400 mb-2" />
+                    <span className="text-xs text-gray-400 font-medium">생성 중...</span>
+                  </div>
+                )}
                 <div
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center ${key === "reels" ? "bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af]" : ""}`}
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${key === "reels" ? "bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af]" : ""}`}
                   style={{ backgroundColor: key === "reels" ? undefined : meta.color }}
                 >
                   <Icon className="w-4 h-4 text-white" />
                 </div>
-                <div>
-                  <h3 className="font-medium text-foreground text-xs mb-1">{meta.title}</h3>
-                  <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed font-normal">
+                <div className="flex-1 overflow-hidden">
+                  <h3 className="font-medium text-black text-xs mb-1">{meta.title}</h3>
+                  <p className="text-xs text-gray-500 line-clamp-3 leading-relaxed font-normal">
                     {getSummary(content)}
                   </p>
                 </div>
@@ -430,19 +256,18 @@ const DraftResult = () => {
             );
           })}
         </div>
-      </div>
 
-      <div className="mt-auto p-4 bg-white border-t border-gray-100 flex-shrink-0">
-        <div className="max-w-md mx-auto">
+        {/* 버튼 영역 (여백 제거하고 바로 아래 붙임) */}
+        <div className="flex flex-col gap-3 pt-2">
           {!user ? (
             <Button
               onClick={() => performLogin()}
-              className="w-full h-14 rounded-xl bg-foreground text-background hover:bg-foreground/90 text-base font-bold shadow-lg"
+              className="w-full h-14 rounded-xl bg-black text-white hover:bg-black/90 text-base font-bold shadow-lg"
             >
-              3초 만에 로그인하고 결과 복사/저장하기
+              3초 만에 로그인하고 결과 저장하기
             </Button>
           ) : (
-            <div className="flex flex-col gap-3">
+            <>
               <Button
                 onClick={() => navigate("/input")}
                 className="w-full h-14 rounded-xl bg-black text-white hover:bg-black/90 font-bold text-base"
@@ -452,11 +277,11 @@ const DraftResult = () => {
               <Button
                 variant="outline"
                 onClick={() => navigate("/")}
-                className="w-full h-14 rounded-xl font-bold text-base bg-white border-gray-200 text-black hover:bg-gray-50"
+                className="w-full h-14 rounded-xl font-bold text-base border-gray-200 hover:bg-gray-50"
               >
                 홈으로 돌아가기
               </Button>
-            </div>
+            </>
           )}
         </div>
       </div>
@@ -464,12 +289,8 @@ const DraftResult = () => {
       <AlertDialog open={showLoginAlert} onOpenChange={setShowLoginAlert}>
         <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>로그인이 필요한 기능입니다</AlertDialogTitle>
-            <AlertDialogDescription>
-              결과를 저장하거나 복사하려면 로그인이 필요해요.
-              <br />
-              3초 만에 로그인하고 안전하게 보관하세요!
-            </AlertDialogDescription>
+            <AlertDialogTitle>로그인이 필요합니다</AlertDialogTitle>
+            <AlertDialogDescription>결과를 저장하거나 복사하려면 로그인이 필요해요.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="rounded-xl border-0">취소</AlertDialogCancel>
@@ -497,7 +318,6 @@ const DraftResult = () => {
           isDraftMode={!isSessionType}
           onSave={() => (user ? null : setShowLoginAlert(true))}
           onCopy={(content) => handleCopyAction(content)}
-          onContentUpdate={handleContentUpdate}
         />
       )}
     </AppShell>
