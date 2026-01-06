@@ -67,6 +67,26 @@ const Home = ({ isGuest = false }: HomeProps) => {
   const personaScrollRef = useRef<HTMLDivElement>(null);
   const purposeScrollRef = useRef<HTMLDivElement>(null);
 
+  // ✅ Supabase Edge Function 호출을 "항상 성공시키기" 위한 안전장치
+  const SUPABASE_URL = (import.meta as any).env?.VITE_SUPABASE_URL || "https://qdzhwrcanenolbocysmx.supabase.co";
+  const SUPABASE_ANON_KEY = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || "";
+  const PROCESS_AUDIO_URL = `${SUPABASE_URL}/functions/v1/process-audio`;
+
+  const fireAndForgetProcessAudio = (formData: FormData) => {
+    const headers: Record<string, string> = {};
+    // Supabase Edge Function 기본은 JWT 검증(verify_jwt)일 수 있음 → 최소한 anon key 헤더를 넣어줌
+    if (SUPABASE_ANON_KEY) {
+      headers["apikey"] = SUPABASE_ANON_KEY;
+      headers["Authorization"] = `Bearer ${SUPABASE_ANON_KEY}`;
+    }
+
+    fetch(PROCESS_AUDIO_URL, {
+      method: "POST",
+      headers: Object.keys(headers).length ? headers : undefined,
+      body: formData,
+    }).catch((e) => console.error("process-audio fetch failed:", e));
+  };
+
   useEffect(() => {
     if (location.state?.initialText) {
       setInputMode("text");
@@ -106,6 +126,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
       }
     };
     checkUserStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   useEffect(() => {
@@ -171,14 +192,14 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
   const handleSubmit = async (mode: "voice" | "text") => {
     setIsSubmitting(true);
+
     try {
-      let audioBase64 = null;
+      let audioBase64: string | null = null;
       let finalTextInput = textInput;
 
       if (mode === "voice") {
         if (!recordedBlob) {
           toast({ title: "오류", description: "녹음 파일이 없습니다.", variant: "destructive" });
-          setIsSubmitting(false);
           return;
         }
         audioBase64 = await blobToBase64(recordedBlob);
@@ -187,7 +208,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
         if (!textInput.trim()) throw new Error("입력된 텍스트가 없습니다.");
       }
 
-      // 1. 회원: 세션 생성 -> AI 실행(대기X) -> 이동
+      // 1) 회원 플로우
       if (user) {
         const { data: sessionData, error: sessionError } = await supabase
           .from("sessions")
@@ -218,56 +239,59 @@ const Home = ({ isGuest = false }: HomeProps) => {
           formData.append("raw_text", finalTextInput);
         }
 
-        // ✅ [속도 개선 핵심] await 제거! AI가 처리하든 말든 일단 결과창으로 보냄.
-        fetch("https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/process-audio", {
-          method: "POST",
-          body: formData,
-        }).catch(console.error);
+        // ✅ 핵심: 헤더 포함 + fire-and-forget
+        fireAndForgetProcessAudio(formData);
 
+        // 사용 목적 저장(실패해도 서비스 흐름 영향 없게 fire-and-forget)
         supabase
           .from("users")
           .update({ usage_purpose: sessionPurpose || undefined })
           .eq("id", user.id)
-          .then();
+          .then()
+          .catch(() => {});
 
         // 즉시 이동
         navigate(`/result/${sessionData.id}?type=session`);
-      } else {
-        // 2. 게스트: Drafts 저장 -> 이동
-        const inputData = {
-          inputMode: mode,
-          selectedMood,
-          selectedPersona,
-          sessionPurpose,
-          keyword,
-          audioBase64,
-          textInput: finalTextInput,
-        };
-
-        const { data: draftData, error: draftError } = await supabase
-          .from("drafts")
-          .insert({
-            status: "idle",
-            input_data: inputData,
-          })
-          .select("id")
-          .single();
-
-        if (draftError) throw draftError;
-
-        localStorage.setItem("pending_draft_id", draftData.id);
-
-        // 즉시 이동 (0.5초 딜레이 삭제)
-        navigate(`/result/${draftData.id}?type=draft`);
+        return;
       }
+
+      // 2) 게스트 플로우
+      const inputData = {
+        inputMode: mode,
+        selectedMood,
+        selectedPersona,
+        sessionPurpose,
+        keyword,
+        audioBase64,
+        textInput: finalTextInput,
+      };
+
+      const { data: draftData, error: draftError } = await supabase
+        .from("drafts")
+        .insert({
+          status: "idle",
+          input_data: inputData,
+        })
+        .select("id")
+        .single();
+
+      if (draftError) throw draftError;
+
+      localStorage.setItem("pending_draft_id", draftData.id);
+
+      // 즉시 이동
+      navigate(`/result/${draftData.id}?type=draft`);
     } catch (error: any) {
       console.error("Submission failed:", error);
-      toast({ title: "저장 실패", description: error.message, variant: "destructive" });
+      toast({ title: "저장 실패", description: error?.message || "오류가 발생했습니다.", variant: "destructive" });
+    } finally {
+      // ✅ 성공/실패/예외 어떤 경우든 상태 정리
       setIsSubmitting(false);
     }
   };
 
   const handleVoiceSubmit = () => handleSubmit("voice");
+
   const handleTextSubmit = () => {
     if (!selectedMood || !selectedPersona) {
       toast({ title: "선택 필요", description: "기분과 모드를 선택해주세요.", variant: "destructive" });
@@ -302,7 +326,11 @@ const Home = ({ isGuest = false }: HomeProps) => {
                   <button
                     key={purpose.value}
                     onClick={() => setSessionPurpose(sessionPurpose === purpose.value ? "" : purpose.value)}
-                    className={`flex-shrink-0 px-4 py-2 rounded-full border-2 text-sm font-medium transition-all whitespace-nowrap snap-start ${sessionPurpose === purpose.value ? "border-foreground bg-foreground text-background" : "border-border bg-background text-foreground hover:border-foreground/30"}`}
+                    className={`flex-shrink-0 px-4 py-2 rounded-full border-2 text-sm font-medium transition-all whitespace-nowrap snap-start ${
+                      sessionPurpose === purpose.value
+                        ? "border-foreground bg-foreground text-background"
+                        : "border-border bg-background text-foreground hover:border-foreground/30"
+                    }`}
                   >
                     {purpose.label}
                   </button>
@@ -332,7 +360,11 @@ const Home = ({ isGuest = false }: HomeProps) => {
                 <button
                   key={mood.value}
                   onClick={() => setSelectedMood(mood.value)}
-                  className={`flex-shrink-0 px-4 py-2.5 rounded-xl border-2 transition-all whitespace-nowrap snap-start ${selectedMood === mood.value ? "border-foreground bg-background shadow-sm" : "border-border bg-background hover:border-foreground/30"}`}
+                  className={`flex-shrink-0 px-4 py-2.5 rounded-xl border-2 transition-all whitespace-nowrap snap-start ${
+                    selectedMood === mood.value
+                      ? "border-foreground bg-background shadow-sm"
+                      : "border-border bg-background hover:border-foreground/30"
+                  }`}
                 >
                   <span className="text-sm font-medium text-foreground">{mood.label}</span>
                 </button>
@@ -364,7 +396,11 @@ const Home = ({ isGuest = false }: HomeProps) => {
                 <button
                   key={persona.value}
                   onClick={() => setSelectedPersona(persona.value)}
-                  className={`flex-shrink-0 px-4 py-2.5 rounded-xl border-2 transition-all snap-start ${selectedPersona === persona.value ? "border-foreground bg-background shadow-sm" : "border-border bg-background hover:border-foreground/30"}`}
+                  className={`flex-shrink-0 px-4 py-2.5 rounded-xl border-2 transition-all snap-start ${
+                    selectedPersona === persona.value
+                      ? "border-foreground bg-background shadow-sm"
+                      : "border-border bg-background hover:border-foreground/30"
+                  }`}
                 >
                   <div className="text-sm font-medium text-foreground whitespace-nowrap">{persona.label}</div>
                   <div className="text-xs text-muted-foreground mt-0.5 whitespace-nowrap">{persona.desc}</div>
@@ -393,13 +429,21 @@ const Home = ({ isGuest = false }: HomeProps) => {
         <div className="flex items-center justify-center gap-2 py-2">
           <button
             onClick={() => setInputMode("voice")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${inputMode === "voice" ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+              inputMode === "voice"
+                ? "bg-foreground text-background"
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
+            }`}
           >
             <Mic className="w-4 h-4" /> 음성
           </button>
           <button
             onClick={() => setInputMode("text")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${inputMode === "text" ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+              inputMode === "text"
+                ? "bg-foreground text-background"
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
+            }`}
           >
             <Type className="w-4 h-4" /> 텍스트
           </button>
@@ -409,7 +453,9 @@ const Home = ({ isGuest = false }: HomeProps) => {
           <div className="flex flex-col items-center space-y-4 py-6">
             <button
               onClick={toggleRecording}
-              className={`w-28 h-28 rounded-full bg-foreground flex items-center justify-center transition-all shadow-xl ${isRecording ? "animate-pulse scale-95" : "hover:scale-105"}`}
+              className={`w-28 h-28 rounded-full bg-foreground flex items-center justify-center transition-all shadow-xl ${
+                isRecording ? "animate-pulse scale-95" : "hover:scale-105"
+              }`}
             >
               <Mic className="w-12 h-12 text-background" strokeWidth={2.5} />
             </button>
@@ -450,7 +496,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
               disabled={isSubmitting}
               className="w-full h-12 rounded-xl bg-foreground text-background hover:bg-foreground/90"
             >
-              {isSubmitting ? "콘텐츠 생성하기" : "콘텐츠 생성하기"}
+              {isSubmitting ? "생성 중..." : "콘텐츠 생성하기"}
             </Button>
           </div>
         </SheetContent>
