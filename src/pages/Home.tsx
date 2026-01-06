@@ -257,27 +257,29 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
         if (draftError) throw draftError;
 
+        // drafts insert 성공 후
         localStorage.setItem("pending_draft_id", draftData.id);
 
-        // ✅ 여기서 Edge Function 호출 추가 (이게 핵심)
-        const formData = new FormData();
-        formData.append("draft_id", draftData.id);
-        formData.append("user_persona", selectedPersona);
-        formData.append("user_mood", selectedMood);
-        formData.append("session_purpose", sessionPurpose);
+        // ✅ Edge Function 호출 (딱 1번만)
+        const fd = new FormData();
+        fd.append("draft_id", draftData.id);
+        fd.append("user_persona", selectedPersona);
+        fd.append("user_mood", selectedMood);
+        fd.append("session_purpose", sessionPurpose);
+        fd.append("input_type", mode);
+        fd.append("keyword", keyword || "");
 
         if (mode === "voice" && recordedBlob) {
-          formData.append("audio", recordedBlob, "recording.webm");
+          fd.append("audio", recordedBlob, "recording.webm");
         } else {
-          formData.append("raw_text", finalTextInput);
+          fd.append("raw_text", finalTextInput);
         }
 
-        // ✅ await 안 걸고 백그라운드로 호출만 던짐
+        // ✅ await 걸 필요 없음 (백그라운드)
         supabase.functions
-          .invoke("process-audio", { body: formData })
-          .then(({ data, error }) => {
+          .invoke("process-audio", { body: fd })
+          .then(({ error }) => {
             if (error) console.error("process-audio invoke error:", error);
-            else console.log("process-audio invoked:", data);
           })
           .catch(console.error);
 
