@@ -125,7 +125,7 @@ const DraftResult = () => {
 
           if (draft.status === "completed" && resultData && Object.keys(resultData).length > 0) {
             setData({
-              input_text: inputData?.textInput || "변환 중...",
+              input_text: resultData?.transcript || inputData?.textInput || "변환 중...", // ✅ 여기만 변경
               input_mode: inputData?.inputMode,
               result_data: resultData || {},
             });
