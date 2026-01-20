@@ -42,8 +42,10 @@ const Auth = () => {
         }
 
         if (guestPending) {
-          console.log("[auth] guest_pending_submission detected → /processing");
-          navigate("/processing", { replace: true });
+          console.log("[auth] guest_pending_submission → redirect to result");
+
+          // ✅ 게스트가 보던 결과 페이지로 복귀
+          navigate(`/result/${guestPending}`, { replace: true });
           return;
         }
 
@@ -100,7 +102,9 @@ const Auth = () => {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <h1 className="text-2xl font-normal italic text-foreground tracking-tight font-bodoni">knots</h1>
-          <p className="text-muted-foreground whitespace-pre-line mt-2">{"3초 만에 시작하고\n나만의 콘텐츠를 만드세요"}</p>
+          <p className="text-muted-foreground whitespace-pre-line mt-2">
+            {"3초 만에 시작하고\n나만의 콘텐츠를 만드세요"}
+          </p>
         </div>
 
         <div className="bg-card rounded-2xl p-8 shadow-sm border flex flex-col items-center justify-center">
