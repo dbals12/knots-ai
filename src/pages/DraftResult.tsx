@@ -175,8 +175,8 @@ const DraftResult = () => {
   }, [draftId, isSessionType]);
 
   const performLogin = () => {
-    // 🔥 원래 잘 되던 방식(next 파라미터)으로 복구
-    navigate(`/login?next=/result/${draftId}?type=draft`);
+    const nextUrl = `/result/${draftId}?type=draft`;
+    navigate(`/login?next=${encodeURIComponent(nextUrl)}`);
   };
 
   const handleEditInput = () => {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -11,6 +11,7 @@ import { getGuestPendingSubmission } from "@/lib/guestPendingSubmission";
 const Auth = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
@@ -72,12 +73,33 @@ const Auth = () => {
 
   const handleSocialLogin = async (provider: "google" | "kakao") => {
     setLoading(true);
+  
+    // ✅ /login?next=... 에서 next 읽기
+    const searchParams = new URLSearchParams(location.search);
+    const next = searchParams.get("next");
+  
+    // ✅ 로그인 완료 후 무조건 auth/callback으로 이동
+    // + next가 있으면 그대로 전달
+    const redirectTo = `${window.location.origin}/auth/callback${
+      next ? `?next=${encodeURIComponent(next)}` : ""
+    }`;
+  
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${window.location.origin}/login`,
+        redirectTo,
       },
     });
+  
+    if (error) {
+      toast({
+        title: "로그인 실패",
+        description: error.message,
+        variant: "destructive",
+      });
+      setLoading(false);
+    }
+  };
 
     if (error) {
       toast({
