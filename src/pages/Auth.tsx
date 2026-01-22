@@ -16,73 +16,77 @@ const Auth = () => {
   const location = useLocation();
   const { toast } = useToast();
 
-  /**
-   * 이미 로그인된 상태로 /login에 들어온 경우 처리
-   */
   useEffect(() => {
     const checkUserAndRedirect = async () => {
+      // ✅ 1) URL의 next 최우선 처리 (결과창에서 로그인 눌렀을 때 여기로 돌아옴)
+      const searchParams = new URLSearchParams(location.search);
+      const next = searchParams.get("next");
+
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
-      if (!user) {
-        setIsCheckingAuth(false);
+      if (user) {
+        // ✅ next가 있으면 무조건 그곳으로 (온보딩/인풋보다 우선)
+        if (next) {
+          navigate(next, { replace: true });
+          return;
+        }
+
+        // ✅ 게스트 결과 복귀(백업 플랜)
+        const guestPendingDraftId = getGuestPendingSubmission();
+        if (guestPendingDraftId) {
+          navigate(`/result/${guestPendingDraftId}`, { replace: true });
+          return;
+        }
+
+        // (기존 로직 유지)
+        const pending = getPendingSubmission();
+
+        // users 테이블 보장
+        const { data: userData } = await supabase
+          .from("users")
+          .select("job_role, usage_purpose, preferred_tone")
+          .eq("id", user.id)
+          .single();
+
+        if (!userData) {
+          await supabase.from("users").insert({
+            id: user.id,
+            email: user.email,
+            created_at: new Date().toISOString(),
+          });
+        }
+
+        if (pending) {
+          navigate("/input", { replace: true });
+          return;
+        }
+
+        if (userData?.job_role && userData?.usage_purpose && userData?.preferred_tone) {
+          navigate("/input", { replace: true });
+        } else {
+          navigate("/onboarding", { replace: true });
+        }
         return;
       }
 
-      // ✅ 게스트가 보던 결과 draft
-      const guestPendingDraftId = getGuestPendingSubmission();
-
-      // users 테이블 보장
-      const { data: userData } = await supabase
-        .from("users")
-        .select("job_role, usage_purpose, preferred_tone")
-        .eq("id", user.id)
-        .single();
-
-      if (!userData) {
-        await supabase.from("users").insert({
-          id: user.id,
-          email: user.email,
-          created_at: new Date().toISOString(),
-        });
-      }
-
-      // ✅ 최우선: 게스트 결과 복귀
-      if (guestPendingDraftId) {
-        navigate(`/result/${guestPendingDraftId}`, { replace: true });
-        return;
-      }
-
-      // 기존 로그인 유저 플로우
-      const pending = getPendingSubmission();
-      if (pending) {
-        navigate("/input", { replace: true });
-        return;
-      }
-
-      if (userData?.job_role && userData?.usage_purpose && userData?.preferred_tone) {
-        navigate("/input", { replace: true });
-      } else {
-        navigate("/onboarding", { replace: true });
-      }
+      setIsCheckingAuth(false);
     };
 
     checkUserAndRedirect();
-  }, [navigate]);
+  }, [navigate, location.search]); // ✅ location.search 변화도 반영
 
-  /**
-   * 소셜 로그인 클릭
-   */
   const handleSocialLogin = async (provider: "google" | "kakao") => {
     setLoading(true);
 
-    // ✅ 현재 URL에 next가 있으면 그대로 유지
+    // ✅ /login?next=... 에서 next 읽기
     const searchParams = new URLSearchParams(location.search);
     const next = searchParams.get("next");
 
-    // ✅ 무조건 auth/callback으로 복귀
-    const redirectTo = `${window.location.origin}/auth/callback${next ? `?next=${encodeURIComponent(next)}` : ""}`;
+    // ✅ 로그인 후 어디로 돌아오든 next를 유지시키기
+    // (auth/callback으로 가도 되고, /login으로 돌아와도 위 useEffect가 next로 보내줌)
+    const redirectTo = `${window.location.origin}/login${next ? `?next=${encodeURIComponent(next)}` : ""}`;
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
@@ -117,11 +121,12 @@ const Auth = () => {
           </p>
         </div>
 
-        <div className="bg-card rounded-2xl p-8 shadow-sm border">
-          <div className="space-y-3">
+        <div className="bg-card rounded-2xl p-8 shadow-sm border flex flex-col items-center justify-center">
+          <div className="space-y-3 w-full">
             <Button
+              type="button"
               variant="outline"
-              className="w-full h-12 flex items-center gap-2"
+              className="w-full h-12 bg-white hover:bg-gray-50 text-gray-900 border-gray-300 flex items-center justify-center gap-2"
               onClick={() => handleSocialLogin("google")}
               disabled={loading}
             >
@@ -130,7 +135,8 @@ const Auth = () => {
             </Button>
 
             <Button
-              className="w-full h-12 text-black flex items-center gap-2"
+              type="button"
+              className="w-full h-12 text-black hover:bg-[#FEE500]/90 font-medium flex items-center justify-center gap-2"
               style={{ backgroundColor: "#FEE500" }}
               onClick={() => handleSocialLogin("kakao")}
               disabled={loading}
