@@ -62,6 +62,9 @@ const DraftResult = () => {
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showLoginAlert, setShowLoginAlert] = useState(false);
+  const [isEditingInput, setIsEditingInput] = useState(false);
+  const [editedInput, setEditedInput] = useState("");
+  const [savingInput, setSavingInput] = useState(false);
 
   const isSessionType = new URLSearchParams(location.search).get("type") === "session";
 
@@ -184,7 +187,66 @@ const DraftResult = () => {
       setShowLoginAlert(true);
       return;
     }
-    navigate("/input", { state: { initialText: data?.input_text } });
+    // ✅ 결과창에서 바로 수정 모드로
+    setEditedInput(data?.input_text || "");
+    setIsEditingInput(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingInput(false);
+    setEditedInput("");
+  };
+
+  const handleSaveEditedInput = async () => {
+    if (!user) {
+      setShowLoginAlert(true);
+      return;
+    }
+    if (!draftId) return;
+
+    const nextText = editedInput.trim();
+    if (!nextText) {
+      toast({ title: "내용이 비어있어요", description: "텍스트를 입력해주세요.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      setSavingInput(true);
+
+      if (isSessionType) {
+        // session 모드면 sessions.raw_text 업데이트
+        const { error } = await supabase.from("sessions").update({ raw_text: nextText }).eq("id", draftId);
+        if (error) throw error;
+      } else {
+        // draft 모드면 drafts.input_data.textInput 업데이트
+        const { data: draftRow, error: readErr } = await supabase
+          .from("drafts")
+          .select("input_data")
+          .eq("id", draftId)
+          .single();
+        if (readErr) throw readErr;
+
+        const nextInputData = { ...(draftRow?.input_data || {}), textInput: nextText };
+
+        const { error: updateErr } = await supabase
+          .from("drafts")
+          .update({ input_data: nextInputData })
+          .eq("id", draftId);
+
+        if (updateErr) throw updateErr;
+      }
+
+      // ✅ 화면에도 즉시 반영
+      setData((prev) => (prev ? { ...prev, input_text: nextText } : prev));
+      setIsEditingInput(false);
+      setEditedInput("");
+
+      toast({ title: "저장 완료", description: "원문이 업데이트됐어요." });
+    } catch (e: any) {
+      toast({ title: "저장 실패", description: e.message, variant: "destructive" });
+    } finally {
+      setSavingInput(false);
+    }
   };
 
   const handleCopyAction = (content: string) => {
@@ -255,19 +317,49 @@ const DraftResult = () => {
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-gray-800">오늘 내가 기록한 내용</h3>
             {/* 게스트도 '수정하기'로 버튼명 통일 */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleEditInput}
-              className="h-8 text-xs bg-white border-gray-200"
-            >
-              수정하기
-            </Button>
+            {!isEditingInput ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleEditInput}
+                className="h-8 text-xs bg-white border-gray-200"
+              >
+                수정하기
+              </Button>
+            ) : (
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCancelEdit}
+                  className="h-8 text-xs bg-white border-gray-200"
+                  disabled={savingInput}
+                >
+                  취소
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleSaveEditedInput}
+                  className="h-8 text-xs bg-black text-white hover:bg-gray-800"
+                  disabled={savingInput || !editedInput.trim()}
+                >
+                  {savingInput ? "저장 중..." : "저장"}
+                </Button>
+              </div>
+            )}
           </div>
           {/* 내용 전체 보기 (스크롤) */}
-          <div className="max-h-[200px] overflow-y-auto text-sm text-gray-600 leading-relaxed whitespace-pre-wrap scrollbar-hide">
-            {data.input_text}
-          </div>
+          {!isEditingInput ? (
+            <div className="max-h-[200px] overflow-y-auto text-sm text-gray-600 leading-relaxed whitespace-pre-wrap scrollbar-hide">
+              {data.input_text}
+            </div>
+          ) : (
+            <textarea
+              value={editedInput}
+              onChange={(e) => setEditedInput(e.target.value)}
+              className="w-full min-h-[160px] max-h-[240px] p-3 rounded-xl border border-gray-200 bg-white text-sm text-gray-800 leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-black/20"
+            />
+          )}
         </div>
 
         {/* 결과 카드 */}
