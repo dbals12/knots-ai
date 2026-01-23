@@ -242,6 +242,38 @@ const DraftResult = () => {
       setEditedInput("");
 
       toast({ title: "저장 완료", description: "원문이 업데이트됐어요." });
+      // ✅ 원문 저장 후 4개 콘텐츠 재생성 요청
+      try {
+        // draft 모드: drafts 테이블 기반 재생성
+        if (!isSessionType) {
+          // drafts를 다시 "processing"으로 바꿔서 polling이 다시 로딩/갱신하도록 유도
+          await supabase.from("drafts").update({ status: "processing" }).eq("id", draftId);
+
+          const fd = new FormData();
+          fd.append("draft_id", draftId);
+          fd.append("raw_text", nextText);
+          // 필요하면 아래도 전달(너희 로직에 맞게)
+          // fd.append("user_persona", "");
+          // fd.append("user_mood", "");
+          // fd.append("session_purpose", "");
+
+          await supabase.functions.invoke("process-audio", { body: fd });
+        } else {
+          // session 모드: sessions/outputs 기반 재생성
+          // outputs 기존값 삭제 후 다시 insert하는 방식이 가장 깔끔한데,
+          // 지금은 간단히 “재생성 요청”만 하고 싶으면 세션용 payload로 호출
+          const fd = new FormData();
+          fd.append("session_id", draftId);
+          fd.append("raw_text", nextText);
+
+          await supabase.functions.invoke("process-audio", { body: fd });
+        }
+
+        toast({ title: "재생성 시작", description: "새 원문 기준으로 콘텐츠를 다시 만들고 있어요." });
+        setLoading(true); // 결과 UI에서도 로딩 상태로 돌아가게 하고 싶다면(선택)
+      } catch (e: any) {
+        toast({ title: "재생성 실패", description: e.message, variant: "destructive" });
+      }
     } catch (e: any) {
       toast({ title: "저장 실패", description: e.message, variant: "destructive" });
     } finally {
