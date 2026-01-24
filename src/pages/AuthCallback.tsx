@@ -12,6 +12,7 @@ const AuthCallback = () => {
       const next = searchParams.get("next");
       const pendingDraftId = localStorage.getItem("pending_draft_id");
 
+      // 세션 확정
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -22,35 +23,47 @@ const AuthCallback = () => {
       }
 
       try {
-        // ✅ draft 결과에서 로그인한 케이스: next에 /result/...type=draft 가 있음
-        const draftIdFromNext =
-          next?.includes("/result/") && next?.includes("type=draft") ? next.match(/\/result\/([^?]+)/)?.[1] : null;
+        // ✅ 케이스 A: 결과(draft)에서 로그인한 경우 -> promote-draft 호출
+        if (next && next.includes("/result/") && next.includes("type=draft")) {
+          const m = next.match(/\/result\/([^?]+)/);
+          const draftIdFromNext = m?.[1];
 
-        const draftId = draftIdFromNext || pendingDraftId;
+          if (draftIdFromNext) {
+            const { data, error } = await supabase.functions.invoke("promote-draft", {
+              body: { draft_id: draftIdFromNext },
+            });
 
-        if (draftId) {
-          // ✅ 승격은 Edge Function 1번으로 처리
+            if (!error && data?.session_id) {
+              // ✅ session 결과로 이동
+              localStorage.removeItem("pending_draft_id");
+              navigate(`/result/${data.session_id}?type=session`, { replace: true });
+              return;
+            }
+          }
+        }
+
+        // ✅ 케이스 B: next가 없지만 pendingDraftId가 있으면 승격 시도
+        if (!next && pendingDraftId) {
           const { data, error } = await supabase.functions.invoke("promote-draft", {
-            body: { draft_id: draftId },
+            body: { draft_id: pendingDraftId },
           });
 
-          if (error) throw error;
-
-          const sessionId = data?.session_id;
-          if (sessionId) {
-            // ✅ localStorage 정리
+          if (!error && data?.session_id) {
             localStorage.removeItem("pending_draft_id");
-            // ✅ 세션 결과 화면으로 즉시 이동
-            navigate(`/result/${sessionId}?type=session`, { replace: true });
+            navigate(`/result/${data.session_id}?type=session`, { replace: true });
             return;
           }
         }
 
-        // 일반 로그인 흐름
-        if (next) navigate(next, { replace: true });
-        else navigate("/input", { replace: true });
+        // ✅ 일반 로그인 흐름
+        if (next) {
+          navigate(next, { replace: true });
+        } else {
+          navigate("/input", { replace: true });
+        }
       } catch (e) {
         console.error("[AuthCallback] promote failed:", e);
+        // 승격 실패해도 next로는 보내주기
         if (next) navigate(next, { replace: true });
         else navigate("/input", { replace: true });
       }
