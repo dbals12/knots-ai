@@ -38,6 +38,8 @@ const AuthCallback = () => {
 
           const sessionId = data?.session_id;
           if (sessionId) {
+            // ✅ localStorage 정리
+            localStorage.removeItem("pending_draft_id");
             // ✅ 세션 결과 화면으로 즉시 이동
             navigate(`/result/${sessionId}?type=session`, { replace: true });
             return;

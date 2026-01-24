@@ -21,6 +21,7 @@ export type Database = {
           id: string
           input_data: Json | null
           result_data: Json | null
+          session_id: string | null
           status: string
           updated_at: string
           user_id: string | null
@@ -31,6 +32,7 @@ export type Database = {
           id?: string
           input_data?: Json | null
           result_data?: Json | null
+          session_id?: string | null
           status?: string
           updated_at?: string
           user_id?: string | null
@@ -41,11 +43,20 @@ export type Database = {
           id?: string
           input_data?: Json | null
           result_data?: Json | null
+          session_id?: string | null
           status?: string
           updated_at?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "drafts_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       edits: {
         Row: {

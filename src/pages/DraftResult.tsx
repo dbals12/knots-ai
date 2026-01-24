@@ -226,7 +226,8 @@ const DraftResult = () => {
           .single();
         if (readErr) throw readErr;
 
-        const nextInputData = { ...(draftRow?.input_data || {}), textInput: nextText };
+        const existingInputData = (draftRow?.input_data as Record<string, unknown>) || {};
+        const nextInputData = { ...existingInputData, textInput: nextText };
 
         const { error: updateErr } = await supabase
           .from("drafts")
