@@ -175,7 +175,7 @@ const DraftResult = () => {
       clearTimeout(timeoutId);
       supabase.removeChannel(channel);
     };
-  }, [draftId, isSessionType]);
+  }, [draftId, isSessionType, showManualRefresh]);
 
   const performLogin = () => {
     const nextUrl = `/result/${draftId}?type=draft`;
