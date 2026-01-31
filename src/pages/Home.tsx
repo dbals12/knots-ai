@@ -235,7 +235,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
         // 즉시 이동
         navigate(`/result/${sessionData.id}?type=session`);
       } else {
-        // 2. 게스트: Drafts 저장 -> Edge Function 호출 -> 이동
+        // 2. 게스트: Drafts 저장 (status: processing) -> Edge Function 호출 -> 이동
         const inputData = {
           inputMode: mode,
           selectedMood,
@@ -246,10 +246,11 @@ const Home = ({ isGuest = false }: HomeProps) => {
           textInput: finalTextInput,
         };
 
+        // ✅ 생성 시 바로 processing 상태로 설정
         const { data: draftData, error: draftError } = await supabase
           .from("drafts")
           .insert({
-            status: "idle",
+            status: "processing",
             input_data: inputData,
           })
           .select("id")
@@ -257,10 +258,9 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
         if (draftError) throw draftError;
 
-        // drafts insert 성공 후
         localStorage.setItem("pending_draft_id", draftData.id);
 
-        // ✅ Edge Function 호출 (딱 1번만)
+        // ✅ Edge Function 호출 (draft_id 포함)
         const fd = new FormData();
         fd.append("draft_id", draftData.id);
         fd.append("user_persona", selectedPersona);
@@ -275,12 +275,9 @@ const Home = ({ isGuest = false }: HomeProps) => {
           fd.append("raw_text", finalTextInput);
         }
 
-        // ✅ await 걸 필요 없음 (백그라운드)
+        // 백그라운드 호출 (await 없음)
         supabase.functions
           .invoke("process-audio", { body: fd })
-          .then(({ error }) => {
-            if (error) console.error("process-audio invoke error:", error);
-          })
           .catch(console.error);
 
         // 즉시 이동

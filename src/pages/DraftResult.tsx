@@ -55,9 +55,11 @@ const DraftResult = () => {
 
   const [data, setData] = useState<ContentData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showManualRefresh, setShowManualRefresh] = useState(false);
+  const [showRetryButton, setShowRetryButton] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("AI가 기록을 분석하고 있어요...");
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  const loadingStartRef = useRef<number>(Date.now());
 
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -85,6 +87,82 @@ const DraftResult = () => {
     return () => clearInterval(interval);
   }, [loading]);
 
+  // ✅ 재시도 함수: 같은 draft_id로 process-audio 다시 호출
+  const handleRetry = async () => {
+    if (!draftId || isRetrying) return;
+    
+    setIsRetrying(true);
+    setShowRetryButton(false);
+    setLoadingMessage("재시도 중...");
+    loadingStartRef.current = Date.now();
+
+    try {
+      // 먼저 draft의 input_data를 가져옴
+      const { data: draft, error: fetchError } = await supabase
+        .from("drafts")
+        .select("input_data")
+        .eq("id", draftId)
+        .single();
+
+      if (fetchError || !draft) {
+        throw new Error("Draft를 찾을 수 없습니다.");
+      }
+
+      const inputData = draft.input_data as Record<string, unknown>;
+
+      // status를 processing으로 업데이트
+      await supabase
+        .from("drafts")
+        .update({ status: "processing", error_message: null })
+        .eq("id", draftId);
+
+      // FormData 구성
+      const fd = new FormData();
+      fd.append("draft_id", draftId);
+      fd.append("user_persona", (inputData?.selectedPersona as string) || "");
+      fd.append("user_mood", (inputData?.selectedMood as string) || "");
+      fd.append("session_purpose", (inputData?.sessionPurpose as string) || "");
+      fd.append("input_type", (inputData?.inputMode as string) || "text");
+      fd.append("keyword", (inputData?.keyword as string) || "");
+
+      // 텍스트 또는 오디오 추가
+      const textInput = inputData?.textInput as string;
+      const audioBase64 = inputData?.audioBase64 as string;
+
+      if (textInput) {
+        fd.append("raw_text", textInput);
+      } else if (audioBase64) {
+        // base64를 Blob으로 변환
+        const byteString = atob(audioBase64.split(",")[1] || audioBase64);
+        const mimeString = audioBase64.split(",")[0]?.split(":")[1]?.split(";")[0] || "audio/webm";
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        for (let i = 0; i < byteString.length; i++) {
+          ia[i] = byteString.charCodeAt(i);
+        }
+        const blob = new Blob([ab], { type: mimeString });
+        fd.append("audio", blob, "recording.webm");
+      } else {
+        throw new Error("입력 데이터가 없습니다.");
+      }
+
+      // Edge Function 호출
+      const { error: invokeError } = await supabase.functions.invoke("process-audio", { body: fd });
+      
+      if (invokeError) {
+        console.error("Retry invoke error:", invokeError);
+      }
+
+      toast({ title: "재시도 시작", description: "콘텐츠를 다시 생성하고 있어요." });
+    } catch (error: any) {
+      console.error("Retry error:", error);
+      toast({ title: "재시도 실패", description: error.message, variant: "destructive" });
+      setShowRetryButton(true);
+    } finally {
+      setIsRetrying(false);
+    }
+  };
+
   const checkData = async () => {
     try {
       if (isSessionType) {
@@ -108,8 +186,8 @@ const DraftResult = () => {
             });
           }
 
-          // 🔥 4개 콘텐츠가 다 만들어졌거나, 15초가 지나서 수동 새로고침이 활성화되었을 때만 보여주기
-          if (outputCount >= 4 || (showManualRefresh && session.raw_text)) {
+          // 🔥 4개 콘텐츠가 다 만들어졌거나, 15초가 지나서 재시도 버튼이 활성화되었을 때만 보여주기
+          if (outputCount >= 4 || (showRetryButton && session.raw_text)) {
             setData({
               input_text: session.raw_text || "음성 변환 중...",
               input_mode: session.input_type,
@@ -137,7 +215,7 @@ const DraftResult = () => {
           }
           if (draft.status === "failed") {
             setLoadingMessage("생성에 실패했습니다. 다시 시도해주세요.");
-            setShowManualRefresh(true);
+            setShowRetryButton(true);
             return true;
           }
         }
@@ -152,16 +230,23 @@ const DraftResult = () => {
   useEffect(() => {
     if (!draftId) return;
 
+    loadingStartRef.current = Date.now();
     checkData();
 
-    // 1초마다 데이터 확인 (Polling)
+    // 1초마다 데이터 확인 (Polling) + 15초 타임아웃 체크
     pollingRef.current = setInterval(async () => {
       const allDone = await checkData();
-      if (allDone && pollingRef.current) clearInterval(pollingRef.current);
+      if (allDone && pollingRef.current) {
+        clearInterval(pollingRef.current);
+        return;
+      }
+      
+      // 15초 이상 idle 또는 processing 상태면 재시도 버튼 표시
+      const elapsed = Date.now() - loadingStartRef.current;
+      if (elapsed >= 15000 && !showRetryButton) {
+        setShowRetryButton(true);
+      }
     }, 1000);
-
-    // 15초 지나면 수동 새로고침 버튼 띄우기 (무한로딩 방지)
-    const timeoutId = setTimeout(() => setShowManualRefresh(true), 15000);
 
     const channel = supabase
       .channel(`any-${draftId}`)
@@ -172,17 +257,16 @@ const DraftResult = () => {
 
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
-      clearTimeout(timeoutId);
       supabase.removeChannel(channel);
     };
-  }, [draftId, isSessionType, showManualRefresh]);
+  }, [draftId, isSessionType]);
 
   const performLogin = () => {
     const nextUrl = `/result/${draftId}?type=draft`;
     navigate(`/login?next=${encodeURIComponent(nextUrl)}`);
   };
 
-  const handleEditInput = () => {
+  const handleEditInputClick = () => {
     if (!user) {
       setShowLoginAlert(true);
       return;
@@ -324,13 +408,15 @@ const DraftResult = () => {
             <p className="text-sm text-gray-500">잠시만 기다려주세요 (약 10초 소요)</p>
           </div>
 
-          {showManualRefresh && (
+          {showRetryButton && (
             <Button
-              onClick={() => window.location.reload()}
+              onClick={handleRetry}
+              disabled={isRetrying}
               variant="outline"
               className="gap-2 rounded-full mt-4 border-gray-200 text-gray-600"
             >
-              <RefreshCw className="w-4 h-4" /> 결과가 안 나오나요? 새로고침
+              <RefreshCw className={`w-4 h-4 ${isRetrying ? "animate-spin" : ""}`} />
+              {isRetrying ? "재시도 중..." : "결과가 안 나오나요? 재시도"}
             </Button>
           )}
         </div>
@@ -354,7 +440,7 @@ const DraftResult = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleEditInput}
+                onClick={handleEditInputClick}
                 className="h-8 text-xs bg-white border-gray-200"
               >
                 수정하기

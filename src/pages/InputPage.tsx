@@ -186,7 +186,7 @@ const InputPage = () => {
         // 3. 즉시 결과 페이지로 이동
         navigate(`/result/${sessionData.id}?type=session`);
       } else {
-        // [게스트 로직]
+        // [게스트 로직] - status를 processing으로 설정하고 Edge Function 호출
         const inputData = {
           inputMode,
           selectedMood,
@@ -196,14 +196,36 @@ const InputPage = () => {
           textInput: isVoiceMode ? "" : textInput.trim(),
           audioBase64,
         };
+        
+        // ✅ 생성 시 바로 processing 상태로 설정
         const { data: draftData, error: draftError } = await supabase
           .from("drafts")
-          .insert({ status: "idle", input_data: inputData as unknown as Json })
+          .insert({ status: "processing", input_data: inputData as unknown as Json })
           .select("id")
           .single();
 
         if (draftError) throw draftError;
         localStorage.setItem("pending_draft_id", draftData.id);
+
+        // ✅ Edge Function 호출 (draft_id 포함)
+        const fd = new FormData();
+        fd.append("draft_id", draftData.id);
+        fd.append("user_persona", selectedPersona);
+        fd.append("user_mood", selectedMood);
+        fd.append("session_purpose", sessionPurpose);
+        fd.append("input_type", inputMode);
+        fd.append("keyword", keyword || "");
+
+        if (isVoiceMode && recordedBlob) {
+          fd.append("audio", recordedBlob, "recording.webm");
+        } else {
+          fd.append("raw_text", textInput.trim());
+        }
+
+        // 백그라운드 호출
+        supabase.functions
+          .invoke("process-audio", { body: fd })
+          .catch(console.error);
 
         navigate(`/result/${draftData.id}?type=draft`);
       }
