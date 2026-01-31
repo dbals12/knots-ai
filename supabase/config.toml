@@ -5,3 +5,9 @@ verify_jwt = false
 
 [functions.refine-output]
 verify_jwt = false
+
+[functions.update-and-regenerate]
+verify_jwt = false
+
+[functions.promote-draft]
+verify_jwt = false

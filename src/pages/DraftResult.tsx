@@ -300,73 +300,69 @@ const DraftResult = () => {
 
     try {
       setSavingInput(true);
-
-      if (isSessionType) {
-        // session 모드면 sessions.raw_text 업데이트
-        const { error } = await supabase.from("sessions").update({ raw_text: nextText }).eq("id", draftId);
-        if (error) throw error;
-      } else {
-        // draft 모드면 drafts.input_data.textInput 업데이트
-        const { data: draftRow, error: readErr } = await supabase
-          .from("drafts")
-          .select("input_data")
-          .eq("id", draftId)
-          .single();
-        if (readErr) throw readErr;
-
-        const existingInputData = (draftRow?.input_data as Record<string, unknown>) || {};
-        const nextInputData = { ...existingInputData, textInput: nextText };
-
-        const { error: updateErr } = await supabase
-          .from("drafts")
-          .update({ input_data: nextInputData })
-          .eq("id", draftId);
-
-        if (updateErr) throw updateErr;
-      }
-
-      // ✅ 화면에도 즉시 반영
-      setData((prev) => (prev ? { ...prev, input_text: nextText } : prev));
+      // ✅ 즉시 로딩 화면으로 전환
+      setIsRegenerating(true);
+      setLoadingMessage("재생성 중...");
       setIsEditingInput(false);
       setEditedInput("");
 
-      toast({ title: "저장 완료", description: "원문이 업데이트됐어요." });
-      // ✅ 원문 저장 후 4개 콘텐츠 재생성 요청
-      try {
-        // draft 모드: drafts 테이블 기반 재생성
-        if (!isSessionType) {
-          // drafts를 다시 "processing"으로 바꿔서 polling이 다시 로딩/갱신하도록 유도
-          await supabase.from("drafts").update({ status: "processing" }).eq("id", draftId);
+      toast({ title: "재생성 시작", description: "새 원문 기준으로 콘텐츠를 다시 만들고 있어요." });
 
-          const fd = new FormData();
-          fd.append("draft_id", draftId);
-          fd.append("raw_text", nextText);
-          // 필요하면 아래도 전달(너희 로직에 맞게)
-          // fd.append("user_persona", "");
-          // fd.append("user_mood", "");
-          // fd.append("session_purpose", "");
+      // ✅ update-and-regenerate Edge Function 호출
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
 
-          await supabase.functions.invoke("process-audio", { body: fd });
-        } else {
-          // session 모드: sessions/outputs 기반 재생성
-          // outputs 기존값 삭제 후 다시 insert하는 방식이 가장 깔끔한데,
-          // 지금은 간단히 “재생성 요청”만 하고 싶으면 세션용 payload로 호출
-          const fd = new FormData();
-          fd.append("session_id", draftId);
-          fd.append("raw_text", nextText);
-
-          await supabase.functions.invoke("process-audio", { body: fd });
+      const response = await fetch(
+        `https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/update-and-regenerate`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            mode: isSessionType ? "session" : "draft",
+            id: promotedSessionId || draftId,
+            new_text: nextText,
+          }),
         }
+      );
 
-        toast({ title: "재생성 시작", description: "새 원문 기준으로 콘텐츠를 다시 만들고 있어요." });
-        setLoading(true); // 결과 UI에서도 로딩 상태로 돌아가게 하고 싶다면(선택)
-      } catch (e: any) {
-        toast({ title: "재생성 실패", description: e.message, variant: "destructive" });
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "재생성에 실패했습니다.");
       }
+
+      // ✅ 성공 시 session_id 저장하고 결과 데이터로 즉시 갱신
+      if (result.session_id && result.session_id !== draftId) {
+        setPromotedSessionId(result.session_id);
+        // URL도 session 타입으로 변경
+        navigate(`/result/${result.session_id}?type=session`, { replace: true });
+      }
+
+      // ✅ 화면에 새 콘텐츠 즉시 반영
+      if (result.result_data) {
+        setData({
+          input_text: result.result_data.transcript || nextText,
+          input_mode: data?.input_mode,
+          result_data: {
+            blog_content: result.result_data.blog_content,
+            linkedin_content: result.result_data.linkedin_content,
+            reels_content: result.result_data.reels_content,
+            threads_content: result.result_data.threads_content,
+          },
+        });
+      }
+
+      toast({ title: "재생성 완료", description: "콘텐츠가 새로 생성되었어요." });
     } catch (e: any) {
-      toast({ title: "저장 실패", description: e.message, variant: "destructive" });
+      console.error("Regeneration error:", e);
+      toast({ title: "재생성 실패", description: e.message, variant: "destructive" });
     } finally {
       setSavingInput(false);
+      setIsRegenerating(false);
+      setLoading(false);
     }
   };
 
