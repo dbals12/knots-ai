@@ -30,9 +30,6 @@ interface ContentData {
   };
 }
 
-const [draftStatus, setDraftStatus] = useState<string | null>(null);
-const [canRetry, setCanRetry] = useState(false);
-
 const platformIcons = {
   blog: { icon: SiNaver, color: "#03C75A", title: "블로그 (회고형)" },
   linkedin: { icon: SiLinkedin, color: "#0077B5", title: "LinkedIn (인사이트형)" },
@@ -124,66 +121,23 @@ const DraftResult = () => {
         }
       } else {
         // [게스트] Drafts 테이블 확인
-        const { data: draft, error } = await supabase.from("drafts").select("*").eq("id", draftId).single();
-
-        if (error) {
-          console.error("[DraftResult] draft fetch error:", error);
-          return false;
-        }
-
+        const { data: draft } = await supabase.from("drafts").select("*").eq("id", draftId).single();
         if (draft) {
-          setDraftStatus(draft.status);
+          const inputData = draft.input_data as any;
+          const resultData = draft.result_data as any;
 
-          const inputData = (draft.input_data || {}) as any;
-          const resultData = (draft.result_data || {}) as any;
-
-          // ✅ failed: 즉시 종료
+          if (draft.status === "completed" && resultData && Object.keys(resultData).length > 0) {
+            setData({
+              input_text: resultData?.transcript || inputData?.textInput || "변환 중...", // ✅ 여기만 변경
+              input_mode: inputData?.inputMode,
+              result_data: resultData || {},
+            });
+            setLoading(false);
+            return true;
+          }
           if (draft.status === "failed") {
             setLoadingMessage("생성에 실패했습니다. 다시 시도해주세요.");
             setShowManualRefresh(true);
-            setCanRetry(true);
-            setLoading(false);
-            return true;
-          }
-
-          // ✅ completed: 즉시 결과 화면
-          if (draft.status === "completed") {
-            setData({
-              input_text: resultData?.transcript || inputData?.textInput || "원문 없음",
-              input_mode: inputData?.inputMode,
-              result_data: {
-                blog_content: resultData?.blog_content ?? "",
-                linkedin_content: resultData?.linkedin_content ?? "",
-                reels_content: resultData?.reels_content ?? "",
-                threads_content: resultData?.threads_content ?? "",
-              },
-            });
-            setLoading(false);
-            return true;
-          }
-
-          // ✅ idle / processing: 15초 지나면 무한로딩 방지로 '대기/재시도' 화면으로 전환
-          if (showManualRefresh && (draft.status === "idle" || draft.status === "processing")) {
-            setLoadingMessage(
-              draft.status === "idle"
-                ? "아직 생성이 시작되지 않았어요. 재시도해볼까요?"
-                : "생성이 지연되고 있어요. 재시도해볼까요?",
-            );
-            setCanRetry(true);
-
-            // data는 없어도 되지만, 화면 구성상 원문이라도 보여주고 싶으면 세팅 가능
-            setData({
-              input_text: inputData?.textInput || "변환 중...",
-              input_mode: inputData?.inputMode,
-              result_data: {
-                blog_content: "",
-                linkedin_content: "",
-                reels_content: "",
-                threads_content: "",
-              },
-            });
-
-            setLoading(false);
             return true;
           }
         }
