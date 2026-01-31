@@ -101,6 +101,17 @@ const DraftResult = () => {
     loadingStartRef.current = Date.now();
 
     try {
+      // ✅ 세션 확인 및 토큰 가져오기
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+
+      if (!accessToken) {
+        toast({ title: "다시 로그인해 주세요", description: "세션이 만료되었습니다.", variant: "destructive" });
+        setShowRetryButton(true);
+        setIsRetrying(false);
+        return;
+      }
+
       // 먼저 draft의 input_data를 가져옴
       const { data: draft, error: fetchError } = await supabase
         .from("drafts")
@@ -150,8 +161,11 @@ const DraftResult = () => {
         throw new Error("입력 데이터가 없습니다.");
       }
 
-      // Edge Function 호출
-      const { error: invokeError } = await supabase.functions.invoke("process-audio", { body: fd });
+      // ✅ Edge Function 호출 (Authorization 헤더 포함)
+      const { error: invokeError } = await supabase.functions.invoke("process-audio", { 
+        body: fd,
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
       
       if (invokeError) {
         console.error("Retry invoke error:", invokeError);
@@ -311,6 +325,13 @@ const DraftResult = () => {
       // ✅ update-and-regenerate Edge Function 호출
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token;
+
+      if (!accessToken) {
+        toast({ title: "다시 로그인해 주세요", description: "세션이 만료되었습니다.", variant: "destructive" });
+        setIsRegenerating(false);
+        setSavingInput(false);
+        return;
+      }
 
       const response = await fetch(
         `https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/update-and-regenerate`,
