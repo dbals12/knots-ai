@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -129,6 +130,28 @@ Return strictly this JSON object:
 }
 `;
 
+// Helper function to update draft status
+async function updateDraftStatus(
+  supabaseAdmin: any,
+  draftId: string,
+  status: "completed" | "failed",
+  resultData?: Record<string, unknown>,
+  errorMessage?: string
+) {
+  const updatePayload: Record<string, unknown> = { status };
+  if (resultData) updatePayload.result_data = resultData;
+  if (errorMessage) updatePayload.error_message = errorMessage;
+
+  const { error } = await supabaseAdmin
+    .from("drafts")
+    .update(updatePayload)
+    .eq("id", draftId);
+
+  if (error) {
+    console.error("Failed to update draft status:", error);
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -136,6 +159,8 @@ serve(async (req) => {
   }
 
   const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+  const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   
   if (!OPENAI_API_KEY) {
     console.error('OPENAI_API_KEY is not set');
@@ -145,6 +170,9 @@ serve(async (req) => {
     );
   }
 
+  // Create Supabase admin client for draft updates
+  const supabaseAdmin = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
+
   try {
     // Parse the incoming FormData
     const formData = await req.formData();
@@ -153,6 +181,8 @@ serve(async (req) => {
     const userPersona = formData.get('user_persona') as string || '';
     const userMood = formData.get('user_mood') as string || '';
     const sessionPurpose = formData.get('session_purpose') as string || '';
+    const draftId = formData.get('draft_id') as string | null;
+    const sessionId = formData.get('session_id') as string | null;
 
     let transcript = '';
 
@@ -180,6 +210,12 @@ serve(async (req) => {
       if (!whisperResponse.ok) {
         const errorText = await whisperResponse.text();
         console.error('Whisper API error:', whisperResponse.status, errorText);
+        
+        // Update draft status to failed
+        if (draftId) {
+          await updateDraftStatus(supabaseAdmin, draftId, "failed", undefined, `Whisper transcription failed: ${errorText}`);
+        }
+        
         return new Response(
           JSON.stringify({ error: `Whisper transcription failed: ${errorText}` }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -192,13 +228,18 @@ serve(async (req) => {
       console.log('Whisper transcription completed. Transcript length:', transcript.length);
     } else {
       console.error('No audio file or raw_text provided');
+      
+      if (draftId) {
+        await updateDraftStatus(supabaseAdmin, draftId, "failed", undefined, "No audio file or raw_text provided");
+      }
+      
       return new Response(
         JSON.stringify({ error: 'No audio file or raw_text provided' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('User context:', { userPersona, userMood, sessionPurpose });
+    console.log('User context:', { userPersona, userMood, sessionPurpose, draftId, sessionId });
 
     // ========================
     // GPT-4o JSON Generation
@@ -237,6 +278,11 @@ Please generate the content for all 4 platforms based on the transcript and user
     if (!gptResponse.ok) {
       const errorText = await gptResponse.text();
       console.error('GPT-4o API error:', gptResponse.status, errorText);
+      
+      if (draftId) {
+        await updateDraftStatus(supabaseAdmin, draftId, "failed", undefined, `GPT content generation failed: ${errorText}`);
+      }
+      
       return new Response(
         JSON.stringify({ error: `GPT content generation failed: ${errorText}` }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -248,6 +294,65 @@ Please generate the content for all 4 platforms based on the transcript and user
 
     console.log('GPT-4o content generation completed');
     console.log('Generated keywords:', generatedContent.analysis_keywords);
+
+    // ========================
+    // Update draft status to completed (if draft_id provided)
+    // ========================
+    if (draftId) {
+      const resultData = {
+        transcript,
+        ...generatedContent,
+      };
+      await updateDraftStatus(supabaseAdmin, draftId, "completed", resultData);
+      console.log('Draft status updated to completed:', draftId);
+    }
+
+    // ========================
+    // Update session outputs (if session_id provided)
+    // ========================
+    if (sessionId) {
+      // Update session raw_text if it was voice input
+      if (transcript) {
+        await supabaseAdmin
+          .from("sessions")
+          .update({ raw_text: transcript })
+          .eq("id", sessionId);
+      }
+
+      // Insert/update outputs for each platform
+      const platforms = [
+        { type: "blog", content: generatedContent.blog_content },
+        { type: "linkedin", content: generatedContent.linkedin_content },
+        { type: "reels", content: generatedContent.reels_content },
+        { type: "threads", content: generatedContent.threads_content },
+      ];
+
+      for (const platform of platforms) {
+        // Upsert: check if exists, update or insert
+        const { data: existing } = await supabaseAdmin
+          .from("outputs")
+          .select("id")
+          .eq("session_id", sessionId)
+          .eq("platform_type", platform.type)
+          .single();
+
+        if (existing) {
+          await supabaseAdmin
+            .from("outputs")
+            .update({ generated_content: platform.content })
+            .eq("id", existing.id);
+        } else {
+          await supabaseAdmin
+            .from("outputs")
+            .insert({
+              session_id: sessionId,
+              platform_type: platform.type,
+              generated_content: platform.content,
+            });
+        }
+      }
+      console.log('Session outputs updated:', sessionId);
+    }
 
     // ========================
     // Return combined result
@@ -267,6 +372,18 @@ Please generate the content for all 4 platforms based on the transcript and user
   } catch (error) {
     console.error('Unexpected error in process-audio:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    
+    // Try to update draft status if we have draft_id in the error context
+    try {
+      const formData = await req.clone().formData();
+      const draftId = formData.get('draft_id') as string | null;
+      if (draftId) {
+        await updateDraftStatus(supabaseAdmin, draftId, "failed", undefined, errorMessage);
+      }
+    } catch {
+      // Ignore if we can't get draft_id
+    }
+    
     return new Response(
       JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
