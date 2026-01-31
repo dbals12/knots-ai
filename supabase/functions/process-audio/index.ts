@@ -134,13 +134,20 @@ Return strictly this JSON object:
 async function updateDraftStatus(
   supabaseAdmin: any,
   draftId: string,
-  status: "completed" | "failed",
-  resultData?: Record<string, unknown>,
+  status: "processing" | "completed" | "failed",
+  resultData?: Record<string, unknown> | null,
   errorMessage?: string
 ) {
   const updatePayload: Record<string, unknown> = { status };
-  if (resultData) updatePayload.result_data = resultData;
-  if (errorMessage) updatePayload.error_message = errorMessage;
+  
+  // processing 상태일 때 result_data를 null로 초기화
+  if (status === "processing") {
+    updatePayload.result_data = null;
+    updatePayload.error_message = null;
+  } else {
+    if (resultData !== undefined) updatePayload.result_data = resultData;
+    if (errorMessage) updatePayload.error_message = errorMessage;
+  }
 
   const { error } = await supabaseAdmin
     .from("drafts")
@@ -185,6 +192,12 @@ serve(async (req) => {
     const sessionId = formData.get('session_id') as string | null;
 
     let transcript = '';
+
+    // ✅ 재생성 요청 시 즉시 processing 상태로 전환 + result_data 초기화
+    if (draftId) {
+      await updateDraftStatus(supabaseAdmin, draftId, "processing");
+      console.log('Draft status set to processing:', draftId);
+    }
 
     // Check if raw_text is provided (text-only mode, skip STT)
     if (rawTextInput && rawTextInput.trim().length > 0) {

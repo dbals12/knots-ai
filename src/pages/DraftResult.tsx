@@ -57,6 +57,7 @@ const DraftResult = () => {
   const [loading, setLoading] = useState(true);
   const [showRetryButton, setShowRetryButton] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false); // ✅ 재생성 중 상태 추가
   const [loadingMessage, setLoadingMessage] = useState("AI가 기록을 분석하고 있어요...");
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const loadingStartRef = useRef<number>(Date.now());
@@ -67,6 +68,9 @@ const DraftResult = () => {
   const [isEditingInput, setIsEditingInput] = useState(false);
   const [editedInput, setEditedInput] = useState("");
   const [savingInput, setSavingInput] = useState(false);
+  
+  // ✅ 로그인 유저의 경우 session 모드로 전환된 상태 관리
+  const [promotedSessionId, setPromotedSessionId] = useState<string | null>(null);
 
   const isSessionType = new URLSearchParams(location.search).get("type") === "session";
 
@@ -391,29 +395,29 @@ const DraftResult = () => {
     return "";
   };
 
-  // ✅ [로딩 화면] 데이터가 준비되기 전에는 무조건 전체 화면 로딩
-  if (loading || !data) {
+  // ✅ [로딩 화면] 데이터가 준비되기 전 또는 재생성 중일 때 전체 화면 로딩
+  if (loading || !data || isRegenerating) {
     return (
       <AppShell showHeader={false}>
-        <div className="flex-1 flex flex-col items-center justify-center gap-8 h-[100dvh] px-6 bg-white">
+        <div className="flex-1 flex flex-col items-center justify-center gap-8 h-[100dvh] px-6 bg-background">
           <div className="relative">
-            <div className="w-16 h-16 border-4 border-gray-100 border-t-black rounded-full animate-spin"></div>
+            <div className="w-16 h-16 border-4 border-muted border-t-foreground rounded-full animate-spin"></div>
             <div className="absolute inset-0 flex items-center justify-center">
               <span className="text-2xl">✨</span>
             </div>
           </div>
 
           <div className="text-center space-y-3">
-            <p className="text-lg font-bold text-gray-900 animate-pulse">{loadingMessage}</p>
-            <p className="text-sm text-gray-500">잠시만 기다려주세요 (약 10초 소요)</p>
+            <p className="text-lg font-bold text-foreground animate-pulse">{loadingMessage}</p>
+            <p className="text-sm text-muted-foreground">잠시만 기다려주세요 (약 10초 소요)</p>
           </div>
 
-          {showRetryButton && (
+          {showRetryButton && !isRegenerating && (
             <Button
               onClick={handleRetry}
               disabled={isRetrying}
               variant="outline"
-              className="gap-2 rounded-full mt-4 border-gray-200 text-gray-600"
+              className="gap-2 rounded-full mt-4 border-border text-muted-foreground"
             >
               <RefreshCw className={`w-4 h-4 ${isRetrying ? "animate-spin" : ""}`} />
               {isRetrying ? "재시도 중..." : "결과가 안 나오나요? 재시도"}
