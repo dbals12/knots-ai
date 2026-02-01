@@ -173,13 +173,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
   const handleSubmit = async (mode: "voice" | "text") => {
     setIsSubmitting(true);
     try {
-      const accessToken = await getAccessToken();
-      if (!accessToken) {
-        toast({ title: "로그인이 필요합니다", description: "다시 로그인해 주세요.", variant: "destructive" });
-        setIsSubmitting(false);
-        return;
-      }
-
       let audioBase64 = null;
       let finalTextInput = textInput;
 
@@ -197,6 +190,13 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
       // 1. 회원: 세션 생성 -> AI 실행(대기X) -> 이동
       if (user) {
+        const accessToken = await getAccessToken();
+        if (!accessToken) {
+          toast({ title: "로그인이 필요합니다", description: "다시 로그인해 주세요.", variant: "destructive" });
+          setIsSubmitting(false);
+          return;
+        }
+
         const { data: sessionData, error: sessionError } = await supabase
           .from("sessions")
           .insert({
@@ -226,7 +226,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
           formData.append("raw_text", finalTextInput);
         }
 
-        // ✅ supabase.functions.invoke()로 호출 (Authorization 포함)
+        // ✅ 로그인 유저: Authorization 포함하여 호출
         void supabase.functions
           .invoke("process-audio", { body: formData, headers: { Authorization: `Bearer ${accessToken}` } })
           .then(({ error }) => {
@@ -268,7 +268,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
         localStorage.setItem("pending_draft_id", draftData.id);
 
-        // ✅ Edge Function 호출 (draft_id 포함)
+        // ✅ Edge Function 호출 (draft_id 포함) - 게스트는 Authorization 없이 fetch로 호출
         const fd = new FormData();
         fd.append("draft_id", draftData.id);
         fd.append("user_persona", selectedPersona);
@@ -283,10 +283,11 @@ const Home = ({ isGuest = false }: HomeProps) => {
           fd.append("raw_text", finalTextInput);
         }
 
-        // 백그라운드 호출 (await 없음)
-        supabase.functions
-          .invoke("process-audio", { body: fd, headers: { Authorization: `Bearer ${accessToken}` } })
-          .catch(console.error);
+        // ✅ 게스트: Authorization 없이 호출 (process-audio는 게스트도 허용)
+        fetch("https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/process-audio", {
+          method: "POST",
+          body: fd,
+        }).catch(console.error);
 
         // 즉시 이동
         navigate(`/result/${draftData.id}?type=draft`);
