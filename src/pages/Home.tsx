@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import AppShell from "@/components/AppShell";
 import { blobToBase64 } from "@/lib/guestPendingSubmission";
 import { getEntrySource } from "@/lib/analytics";
+import { getAccessToken } from "@/lib/edgeFunctionAuth";
 
 const sessionPurposes = [
   { value: "record", label: "기록" },
@@ -172,6 +173,13 @@ const Home = ({ isGuest = false }: HomeProps) => {
   const handleSubmit = async (mode: "voice" | "text") => {
     setIsSubmitting(true);
     try {
+      const accessToken = await getAccessToken();
+      if (!accessToken) {
+        toast({ title: "로그인이 필요합니다", description: "다시 로그인해 주세요.", variant: "destructive" });
+        setIsSubmitting(false);
+        return;
+      }
+
       let audioBase64 = null;
       let finalTextInput = textInput;
 
@@ -218,9 +226,9 @@ const Home = ({ isGuest = false }: HomeProps) => {
           formData.append("raw_text", finalTextInput);
         }
 
-        // ✅ supabase.functions.invoke()로 호출 (Authorization 자동)
+        // ✅ supabase.functions.invoke()로 호출 (Authorization 포함)
         void supabase.functions
-          .invoke("process-audio", { body: formData })
+          .invoke("process-audio", { body: formData, headers: { Authorization: `Bearer ${accessToken}` } })
           .then(({ error }) => {
             if (error) console.error("process-audio invoke error:", error);
           })
@@ -277,7 +285,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
         // 백그라운드 호출 (await 없음)
         supabase.functions
-          .invoke("process-audio", { body: fd })
+          .invoke("process-audio", { body: fd, headers: { Authorization: `Bearer ${accessToken}` } })
           .catch(console.error);
 
         // 즉시 이동

@@ -1,10 +1,13 @@
 import { useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { getAccessToken } from "@/lib/edgeFunctionAuth";
 
 const AuthCallback = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { toast } = useToast();
 
   useEffect(() => {
     const handleRedirect = async () => {
@@ -12,12 +15,9 @@ const AuthCallback = () => {
       const next = searchParams.get("next");
       const pendingDraftId = localStorage.getItem("pending_draft_id");
 
-      // 세션 확정
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session?.user) {
+      const accessToken = await getAccessToken();
+      if (!accessToken) {
+        toast({ title: "로그인이 필요합니다", description: "다시 로그인해 주세요.", variant: "destructive" });
         navigate("/login");
         return;
       }
@@ -31,6 +31,7 @@ const AuthCallback = () => {
           if (draftIdFromNext) {
             const { data, error } = await supabase.functions.invoke("promote-draft", {
               body: { draft_id: draftIdFromNext },
+              headers: { Authorization: `Bearer ${accessToken}` },
             });
 
             if (!error && data?.session_id) {
@@ -46,6 +47,7 @@ const AuthCallback = () => {
         if (!next && pendingDraftId) {
           const { data, error } = await supabase.functions.invoke("promote-draft", {
             body: { draft_id: pendingDraftId },
+            headers: { Authorization: `Bearer ${accessToken}` },
           });
 
           if (!error && data?.session_id) {

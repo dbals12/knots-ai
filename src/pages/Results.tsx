@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import AppShell from '@/components/AppShell';
 import { Loader2 } from 'lucide-react';
 import { trackViewResult, trackClickCopy } from '@/lib/analytics';
+import { getAccessToken } from '@/lib/edgeFunctionAuth';
 
 const platformIcons = {
   blog: { icon: SiNaver, color: '#03C75A', title: '블로그 (회고형)' },
@@ -170,6 +171,12 @@ const Results = () => {
     }
     
     if (!sessionId) return;
+
+    const accessToken = await getAccessToken();
+    if (!accessToken) {
+      toast({ title: "로그인이 필요합니다", description: "다시 로그인해 주세요.", variant: "destructive" });
+      return;
+    }
     
     setIsRegenerating(true);
     
@@ -182,6 +189,7 @@ const Results = () => {
 
       const response = await supabase.functions.invoke('process-audio', {
         body: formData,
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
 
       if (response.error) {
