@@ -223,17 +223,11 @@ const InputPage = () => {
           fd.append("raw_text", textInput.trim());
         }
 
-        // 백그라운드 호출
-        const accessToken = await getAccessToken();
-        if (!accessToken) {
-          toast({ title: "로그인이 필요합니다", description: "다시 로그인해 주세요.", variant: "destructive" });
-          setIsSubmitting(false);
-          return;
-        }
-
-        supabase.functions
-          .invoke("process-audio", { body: fd, headers: { Authorization: `Bearer ${accessToken}` } })
-          .catch(console.error);
+        // ✅ 게스트: Authorization 없이 호출 (process-audio는 게스트도 허용)
+        fetch("https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/process-audio", {
+          method: "POST",
+          body: fd,
+        }).catch(console.error);
 
         navigate(`/result/${draftData.id}?type=draft`);
       }
