@@ -106,7 +106,7 @@ const DraftResult = () => {
       const accessToken = sessionData?.session?.access_token;
 
       if (!accessToken) {
-        toast({ title: "다시 로그인해 주세요", description: "세션이 만료되었습니다.", variant: "destructive" });
+        toast({ title: "로그인이 필요합니다", description: "다시 로그인해 주세요.", variant: "destructive" });
         setShowRetryButton(true);
         setIsRetrying(false);
         return;
@@ -327,7 +327,7 @@ const DraftResult = () => {
       const accessToken = sessionData?.session?.access_token;
 
       if (!accessToken) {
-        toast({ title: "다시 로그인해 주세요", description: "세션이 만료되었습니다.", variant: "destructive" });
+        toast({ title: "로그인이 필요합니다", description: "다시 로그인해 주세요.", variant: "destructive" });
         setIsRegenerating(false);
         setSavingInput(false);
         return;

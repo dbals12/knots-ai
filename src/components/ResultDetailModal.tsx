@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import InstagramCardView from "./InstagramCardView";
 import { trackClickCopy, trackSaveContent, trackRefineContent, trackRating } from "@/lib/analytics";
+import { getAccessToken } from "@/lib/edgeFunctionAuth";
 
 interface ResultDetailModalProps {
   isOpen: boolean;
@@ -191,6 +192,12 @@ const ResultDetailModal = ({
   const callRefineApi = async (refineMode: string, options: any = {}) => {
     setIsRefining(true);
     try {
+      const accessToken = await getAccessToken();
+      if (!accessToken) {
+        toast({ title: "로그인이 필요합니다", description: "다시 로그인해 주세요.", variant: "destructive" });
+        return;
+      }
+
       trackRefineContent(refineMode, platform);
       const response = await supabase.functions.invoke("refine-output", {
         body: {
@@ -200,6 +207,7 @@ const ResultDetailModal = ({
           target_length: options.targetLength,
           extra_thoughts: options.extraThoughts,
         },
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
 
       if (response.error) throw response.error;
