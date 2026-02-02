@@ -1,13 +1,13 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { getAccessToken } from "@/lib/edgeFunctionAuth";
 
 const AuthCallback = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const [message, setMessage] = useState("로그인 완료! 결과 불러오는 중...");
 
   useEffect(() => {
     const handleRedirect = async () => {
@@ -15,36 +15,48 @@ const AuthCallback = () => {
       const next = searchParams.get("next");
       const pendingDraftId = localStorage.getItem("pending_draft_id");
 
-      const accessToken = await getAccessToken();
-      if (!accessToken) {
+      // ✅ 세션 가져오기
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+
+      if (sessionError || !accessToken) {
         toast({ title: "로그인이 필요합니다", description: "다시 로그인해 주세요.", variant: "destructive" });
         navigate("/login");
         return;
       }
 
       try {
-        // ✅ 케이스 A: 결과(draft)에서 로그인한 경우 -> promote-draft 호출
+        // ✅ 케이스 A: next URL에서 draft_id 추출 → 자동 승격
         if (next && next.includes("/result/") && next.includes("type=draft")) {
           const m = next.match(/\/result\/([^?]+)/);
           const draftIdFromNext = m?.[1];
 
           if (draftIdFromNext) {
+            setMessage("결과를 저장하는 중...");
+            
             const { data, error } = await supabase.functions.invoke("promote-draft", {
               body: { draft_id: draftIdFromNext },
               headers: { Authorization: `Bearer ${accessToken}` },
             });
 
             if (!error && data?.session_id) {
-              // ✅ session 결과로 이동
               localStorage.removeItem("pending_draft_id");
+              // ✅ 세션 기반 URL로 즉시 이동
               navigate(`/result/${data.session_id}?type=session`, { replace: true });
+              return;
+            } else {
+              console.error("[AuthCallback] promote-draft failed:", error, data);
+              // 승격 실패해도 draft 결과로는 보내줌
+              navigate(next, { replace: true });
               return;
             }
           }
         }
 
-        // ✅ 케이스 B: next가 없지만 pendingDraftId가 있으면 승격 시도
+        // ✅ 케이스 B: next 없지만 pendingDraftId가 있으면 승격 시도
         if (!next && pendingDraftId) {
+          setMessage("결과를 저장하는 중...");
+          
           const { data, error } = await supabase.functions.invoke("promote-draft", {
             body: { draft_id: pendingDraftId },
             headers: { Authorization: `Bearer ${accessToken}` },
@@ -53,6 +65,10 @@ const AuthCallback = () => {
           if (!error && data?.session_id) {
             localStorage.removeItem("pending_draft_id");
             navigate(`/result/${data.session_id}?type=session`, { replace: true });
+            return;
+          } else {
+            // 승격 실패 시 draft 결과로
+            navigate(`/result/${pendingDraftId}?type=draft`, { replace: true });
             return;
           }
         }
@@ -72,11 +88,14 @@ const AuthCallback = () => {
     };
 
     handleRedirect();
-  }, [navigate, location]);
+  }, [navigate, location, toast]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
-      <p className="text-muted-foreground">로그인 완료! 결과 불러오는 중...</p>
+      <div className="text-center space-y-3">
+        <div className="w-8 h-8 border-2 border-muted border-t-foreground rounded-full animate-spin mx-auto"></div>
+        <p className="text-muted-foreground">{message}</p>
+      </div>
     </div>
   );
 };
