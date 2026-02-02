@@ -57,7 +57,7 @@ const DraftResult = () => {
   const [loading, setLoading] = useState(true);
   const [showRetryButton, setShowRetryButton] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
-  const [isRegenerating, setIsRegenerating] = useState(false); // ✅ 재생성 중 상태 추가
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("AI가 기록을 분석하고 있어요...");
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const loadingStartRef = useRef<number>(Date.now());
@@ -68,10 +68,8 @@ const DraftResult = () => {
   const [isEditingInput, setIsEditingInput] = useState(false);
   const [editedInput, setEditedInput] = useState("");
   const [savingInput, setSavingInput] = useState(false);
-  
-  // ✅ 로그인 유저의 경우 session 모드로 전환된 상태 관리
-  const [promotedSessionId, setPromotedSessionId] = useState<string | null>(null);
 
+  // ✅ URL에서 type 파라미터 확인
   const isSessionType = new URLSearchParams(location.search).get("type") === "session";
 
   // 로딩 멘트 애니메이션
@@ -91,27 +89,16 @@ const DraftResult = () => {
     return () => clearInterval(interval);
   }, [loading]);
 
-  // ✅ 재시도 함수: 같은 draft_id로 process-audio 다시 호출
+  // ✅ 게스트 재시도: draft 기반 process-audio 호출
   const handleRetry = async () => {
     if (!draftId || isRetrying) return;
-    
+
     setIsRetrying(true);
     setShowRetryButton(false);
     setLoadingMessage("재시도 중...");
     loadingStartRef.current = Date.now();
 
     try {
-      // ✅ 세션 확인 및 토큰 가져오기
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData?.session?.access_token;
-
-      if (!accessToken) {
-        toast({ title: "로그인이 필요합니다", description: "다시 로그인해 주세요.", variant: "destructive" });
-        setShowRetryButton(true);
-        setIsRetrying(false);
-        return;
-      }
-
       // 먼저 draft의 input_data를 가져옴
       const { data: draft, error: fetchError } = await supabase
         .from("drafts")
@@ -161,15 +148,11 @@ const DraftResult = () => {
         throw new Error("입력 데이터가 없습니다.");
       }
 
-      // ✅ Edge Function 호출 (Authorization 헤더 포함)
-      const { error: invokeError } = await supabase.functions.invoke("process-audio", { 
+      // ✅ 게스트: Authorization 없이 fetch 호출
+      fetch("https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/process-audio", {
+        method: "POST",
         body: fd,
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
-      
-      if (invokeError) {
-        console.error("Retry invoke error:", invokeError);
-      }
+      }).catch(console.error);
 
       toast({ title: "재시도 시작", description: "콘텐츠를 다시 생성하고 있어요." });
     } catch (error: any) {
@@ -184,7 +167,7 @@ const DraftResult = () => {
   const checkData = async () => {
     try {
       if (isSessionType) {
-        // [로그인 유저] Sessions, Outputs 테이블 확인
+        // ✅ [세션 모드] sessions + outputs 테이블 조회
         const { data: session } = await supabase.from("sessions").select("*").eq("id", draftId).single();
         const { data: outputs } = await supabase.from("outputs").select("*").eq("session_id", draftId);
 
@@ -204,7 +187,7 @@ const DraftResult = () => {
             });
           }
 
-          // 🔥 4개 콘텐츠가 다 만들어졌거나, 15초가 지나서 재시도 버튼이 활성화되었을 때만 보여주기
+          // 4개 콘텐츠가 다 만들어졌거나, 15초 지나서 재시도 버튼 활성화 시
           if (outputCount >= 4 || (showRetryButton && session.raw_text)) {
             setData({
               input_text: session.raw_text || "음성 변환 중...",
@@ -216,7 +199,7 @@ const DraftResult = () => {
           }
         }
       } else {
-        // [게스트] Drafts 테이블 확인
+        // ✅ [드래프트 모드] drafts 테이블 조회
         const { data: draft } = await supabase.from("drafts").select("*").eq("id", draftId).single();
         if (draft) {
           const inputData = draft.input_data as any;
@@ -224,7 +207,7 @@ const DraftResult = () => {
 
           if (draft.status === "completed" && resultData && Object.keys(resultData).length > 0) {
             setData({
-              input_text: resultData?.transcript || inputData?.textInput || "변환 중...", // ✅ 여기만 변경
+              input_text: resultData?.transcript || inputData?.textInput || "변환 중...",
               input_mode: inputData?.inputMode,
               result_data: resultData || {},
             });
@@ -258,7 +241,7 @@ const DraftResult = () => {
         clearInterval(pollingRef.current);
         return;
       }
-      
+
       // 15초 이상 idle 또는 processing 상태면 재시도 버튼 표시
       const elapsed = Date.now() - loadingStartRef.current;
       if (elapsed >= 15000 && !showRetryButton) {
@@ -284,12 +267,12 @@ const DraftResult = () => {
     navigate(`/login?next=${encodeURIComponent(nextUrl)}`);
   };
 
+  // ✅ 수정 버튼 클릭: 로그인 유저만 허용
   const handleEditInputClick = () => {
     if (!user) {
       setShowLoginAlert(true);
       return;
     }
-    // ✅ 결과창에서 바로 수정 모드로
     setEditedInput(data?.input_text || "");
     setIsEditingInput(true);
   };
@@ -299,6 +282,7 @@ const DraftResult = () => {
     setEditedInput("");
   };
 
+  // ✅ 저장: 세션 기반으로만 동작 (update-and-regenerate 호출)
   const handleSaveEditedInput = async () => {
     if (!user) {
       setShowLoginAlert(true);
@@ -314,7 +298,6 @@ const DraftResult = () => {
 
     try {
       setSavingInput(true);
-      // ✅ 즉시 로딩 화면으로 전환
       setIsRegenerating(true);
       setLoadingMessage("재생성 중...");
       setIsEditingInput(false);
@@ -322,7 +305,7 @@ const DraftResult = () => {
 
       toast({ title: "재생성 시작", description: "새 원문 기준으로 콘텐츠를 다시 만들고 있어요." });
 
-      // ✅ update-and-regenerate Edge Function 호출
+      // ✅ 세션 토큰 가져오기
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token;
 
@@ -333,6 +316,7 @@ const DraftResult = () => {
         return;
       }
 
+      // ✅ update-and-regenerate 호출 (mode: session 또는 draft)
       const response = await fetch(
         `https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/update-and-regenerate`,
         {
@@ -343,7 +327,7 @@ const DraftResult = () => {
           },
           body: JSON.stringify({
             mode: isSessionType ? "session" : "draft",
-            id: promotedSessionId || draftId,
+            id: draftId,
             new_text: nextText,
           }),
         }
@@ -355,10 +339,8 @@ const DraftResult = () => {
         throw new Error(result.error || "재생성에 실패했습니다.");
       }
 
-      // ✅ 성공 시 session_id 저장하고 결과 데이터로 즉시 갱신
+      // ✅ 성공 시 session_id로 URL 변경 (draft → session 승격)
       if (result.session_id && result.session_id !== draftId) {
-        setPromotedSessionId(result.session_id);
-        // URL도 session 타입으로 변경
         navigate(`/result/${result.session_id}?type=session`, { replace: true });
       }
 
@@ -412,7 +394,7 @@ const DraftResult = () => {
     return "";
   };
 
-  // ✅ [로딩 화면] 데이터가 준비되기 전 또는 재생성 중일 때 전체 화면 로딩
+  // ✅ [로딩 화면]
   if (loading || !data || isRegenerating) {
     return (
       <AppShell showHeader={false}>
@@ -448,7 +430,6 @@ const DraftResult = () => {
   // ✅ [결과 화면]
   return (
     <AppShell className="h-[100dvh] flex flex-col overflow-hidden bg-white">
-      {/* 여백 제거 (pb-6) */}
       <div className="flex-1 overflow-y-auto px-5 py-6 space-y-5 pb-6">
         <h2 className="text-xl font-bold text-gray-900">오늘의 결과</h2>
 
@@ -456,7 +437,7 @@ const DraftResult = () => {
         <div className="bg-[#F9F9F9] rounded-2xl p-5 border border-gray-100">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-gray-800">오늘 내가 기록한 내용</h3>
-            {/* 게스트도 '수정하기'로 버튼명 통일 */}
+            {/* ✅ 로그인 유저만 수정 가능 */}
             {!isEditingInput ? (
               <Button
                 variant="outline"
@@ -464,7 +445,7 @@ const DraftResult = () => {
                 onClick={handleEditInputClick}
                 className="h-8 text-xs bg-white border-gray-200"
               >
-                수정하기
+                {user ? "수정하기" : "로그인하고 수정하기"}
               </Button>
             ) : (
               <div className="flex gap-2">
@@ -530,7 +511,7 @@ const DraftResult = () => {
           })}
         </div>
 
-        {/* 하단 버튼 (mt-auto 제거하여 바로 아래 붙음) */}
+        {/* 하단 버튼 */}
         <div className="flex flex-col gap-3 pt-2">
           {!user ? (
             <Button
