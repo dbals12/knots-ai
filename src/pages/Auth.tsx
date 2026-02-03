@@ -84,9 +84,8 @@ const Auth = () => {
     const searchParams = new URLSearchParams(location.search);
     const next = searchParams.get("next");
 
-    // ✅ 로그인 후 어디로 돌아오든 next를 유지시키기
-    // (auth/callback으로 가도 되고, /login으로 돌아와도 위 useEffect가 next로 보내줌)
-    const redirectTo = `${window.location.origin}/login${next ? `?next=${encodeURIComponent(next)}` : ""}`;
+    // ✅ OAuth 완료 후 /auth/callback으로 이동 (next 파라미터 유지)
+    const redirectTo = `${window.location.origin}/auth/callback${next ? `?next=${encodeURIComponent(next)}` : ""}`;
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
