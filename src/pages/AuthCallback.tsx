@@ -25,6 +25,24 @@ const AuthCallback = () => {
         return;
       }
 
+      // ✅ users 테이블 보장 (신규 유저일 경우 생성)
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: userData } = await supabase
+          .from("users")
+          .select("id")
+          .eq("id", user.id)
+          .single();
+
+        if (!userData) {
+          await supabase.from("users").insert({
+            id: user.id,
+            email: user.email,
+            created_at: new Date().toISOString(),
+          });
+        }
+      }
+
       try {
         // ✅ 케이스 A: next URL에서 draft_id 추출 → 자동 승격
         if (next && next.includes("/result/") && next.includes("type=draft")) {
@@ -33,7 +51,7 @@ const AuthCallback = () => {
 
           if (draftIdFromNext) {
             setMessage("결과를 저장하는 중...");
-            
+
             const { data, error } = await supabase.functions.invoke("promote-draft", {
               body: { draft_id: draftIdFromNext },
               headers: { Authorization: `Bearer ${accessToken}` },
@@ -46,6 +64,7 @@ const AuthCallback = () => {
               return;
             } else {
               console.error("[AuthCallback] promote-draft failed:", error, data);
+              toast({ title: "승격 실패", description: "결과 저장에 실패했습니다. 다시 시도해주세요.", variant: "destructive" });
               // 승격 실패해도 draft 결과로는 보내줌
               navigate(next, { replace: true });
               return;
@@ -56,7 +75,7 @@ const AuthCallback = () => {
         // ✅ 케이스 B: next 없지만 pendingDraftId가 있으면 승격 시도
         if (!next && pendingDraftId) {
           setMessage("결과를 저장하는 중...");
-          
+
           const { data, error } = await supabase.functions.invoke("promote-draft", {
             body: { draft_id: pendingDraftId },
             headers: { Authorization: `Bearer ${accessToken}` },
@@ -67,13 +86,15 @@ const AuthCallback = () => {
             navigate(`/result/${data.session_id}?type=session`, { replace: true });
             return;
           } else {
+            console.error("[AuthCallback] promote-draft failed:", error, data);
+            toast({ title: "승격 실패", description: "결과 저장에 실패했습니다.", variant: "destructive" });
             // 승격 실패 시 draft 결과로
             navigate(`/result/${pendingDraftId}?type=draft`, { replace: true });
             return;
           }
         }
 
-        // ✅ 일반 로그인 흐름
+        // ✅ 일반 로그인 흐름 (next가 있으면 해당 위치로)
         if (next) {
           navigate(next, { replace: true });
         } else {
@@ -81,6 +102,7 @@ const AuthCallback = () => {
         }
       } catch (e) {
         console.error("[AuthCallback] promote failed:", e);
+        toast({ title: "오류 발생", description: "잠시 후 다시 시도해주세요.", variant: "destructive" });
         // 승격 실패해도 next로는 보내주기
         if (next) navigate(next, { replace: true });
         else navigate("/input", { replace: true });

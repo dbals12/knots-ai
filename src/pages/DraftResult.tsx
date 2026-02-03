@@ -71,6 +71,59 @@ const DraftResult = () => {
 
   // ✅ URL에서 type 파라미터 확인
   const isSessionType = new URLSearchParams(location.search).get("type") === "session";
+  const [promotionAttempted, setPromotionAttempted] = useState(false);
+
+  // ✅ [세이프가드] 로그인 유저가 draft 페이지에 있으면 자동 승격 시도
+  useEffect(() => {
+    const attemptAutoPromotion = async () => {
+      // 이미 session 타입이거나, 유저가 없거나, 이미 시도했으면 스킵
+      if (isSessionType || !user || promotionAttempted || !draftId) return;
+
+      setPromotionAttempted(true);
+
+      try {
+        // 먼저 draft의 session_id 확인 (이미 승격되었는지)
+        const { data: draft } = await supabase
+          .from("drafts")
+          .select("session_id, status")
+          .eq("id", draftId)
+          .single();
+
+        // 이미 승격된 경우 바로 세션 페이지로 이동
+        if (draft?.session_id) {
+          navigate(`/result/${draft.session_id}?type=session`, { replace: true });
+          return;
+        }
+
+        // 아직 완료되지 않은 draft면 승격하지 않음
+        if (draft?.status !== "completed") {
+          return;
+        }
+
+        // ✅ 승격 시도
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData?.session?.access_token;
+
+        if (!accessToken) {
+          return;
+        }
+
+        const { data, error } = await supabase.functions.invoke("promote-draft", {
+          body: { draft_id: draftId },
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+
+        if (!error && data?.session_id) {
+          localStorage.removeItem("pending_draft_id");
+          navigate(`/result/${data.session_id}?type=session`, { replace: true });
+        }
+      } catch (e) {
+        console.error("[DraftResult] Auto-promotion failed:", e);
+      }
+    };
+
+    attemptAutoPromotion();
+  }, [user, isSessionType, draftId, promotionAttempted, navigate]);
 
   // 로딩 멘트 애니메이션
   useEffect(() => {
@@ -437,7 +490,7 @@ const DraftResult = () => {
         <div className="bg-[#F9F9F9] rounded-2xl p-5 border border-gray-100">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-bold text-gray-800">오늘 내가 기록한 내용</h3>
-            {/* ✅ 로그인 유저만 수정 가능 */}
+            {/* ✅ 수정 버튼: 텍스트는 항상 "수정하기", 게스트는 클릭 시 로그인 모달 */}
             {!isEditingInput ? (
               <Button
                 variant="outline"
@@ -445,7 +498,7 @@ const DraftResult = () => {
                 onClick={handleEditInputClick}
                 className="h-8 text-xs bg-white border-gray-200"
               >
-                {user ? "수정하기" : "로그인하고 수정하기"}
+                수정하기
               </Button>
             ) : (
               <div className="flex gap-2">
