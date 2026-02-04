@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.promote-draft]
 verify_jwt = false
+
+[functions.regenerate-session]
+verify_jwt = false
