@@ -25,11 +25,11 @@ Deno.serve(async (req) => {
     // 2) Clients
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!; // Edge 환경변수에 있어야 함
+    const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
     const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-    // ✅ 유저 검증은 getClaims 말고 getUser로 (가장 안정적)
+    // 유저 검증
     const supabaseUser = createClient(SUPABASE_URL, ANON_KEY, {
       global: { headers: { Authorization: `Bearer ${token}` } },
     });
@@ -57,32 +57,55 @@ Deno.serve(async (req) => {
 
     console.log(`[promote-draft] start draft_id=${draft_id} user_id=${userId}`);
 
-    // 4) Draft 조회 (최소 필드만)
-    const { data: draft, error: draftError } = await supabaseAdmin
+    // 4) 원자적 락 획득: promotion_status를 'none' -> 'promoting'으로 변경
+    const { data: lockResult, error: lockError } = await supabaseAdmin
       .from("drafts")
-      .select("id, status, input_data, result_data, session_id, user_id")
+      .update({ promotion_status: "promoting" })
       .eq("id", draft_id)
-      .single();
+      .eq("promotion_status", "none")
+      .select("id, status, input_data, result_data, session_id, user_id, promotion_status")
+      .maybeSingle();
 
-    if (draftError || !draft) {
-      console.error("[promote-draft] Draft not found:", draftError);
-      return new Response(JSON.stringify({ error: "Draft not found" }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // 락 획득 실패 시: 이미 승격 중이거나 완료된 상태
+    if (!lockResult) {
+      // 현재 상태 조회해서 이미 승격된 경우 session_id 반환
+      const { data: existingDraft } = await supabaseAdmin
+        .from("drafts")
+        .select("session_id, promotion_status")
+        .eq("id", draft_id)
+        .single();
+
+      if (existingDraft?.session_id) {
+        console.log(`[promote-draft] already promoted session_id=${existingDraft.session_id}`);
+        return new Response(
+          JSON.stringify({ session_id: existingDraft.session_id, already_promoted: true }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (existingDraft?.promotion_status === "promoting") {
+        return new Response(
+          JSON.stringify({ error: "Promotion in progress, please wait" }),
+          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ error: "Draft not found or already processed" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    // 5) 이미 승격된 경우 바로 반환 (idempotent)
-    if (draft.session_id) {
-      console.log(`[promote-draft] already promoted session_id=${draft.session_id}`);
-      return new Response(JSON.stringify({ session_id: draft.session_id, already_promoted: true }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const draft = lockResult;
 
-    // 6) status 확인
+    // 5) status 확인
     if (draft.status !== "completed") {
+      // 락 해제
+      await supabaseAdmin
+        .from("drafts")
+        .update({ promotion_status: "none" })
+        .eq("id", draft_id);
+
       return new Response(JSON.stringify({ error: "Draft is not completed yet" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -94,7 +117,7 @@ Deno.serve(async (req) => {
 
     const rawText = (resultData.transcript as string) || (inputData.textInput as string) || "";
 
-    // 7) sessions 생성
+    // 6) sessions 생성
     const { data: session, error: sessionError } = await supabaseAdmin
       .from("sessions")
       .insert({
@@ -110,6 +133,12 @@ Deno.serve(async (req) => {
 
     if (sessionError || !session) {
       console.error("[promote-draft] session insert failed:", sessionError);
+      // 락 해제
+      await supabaseAdmin
+        .from("drafts")
+        .update({ promotion_status: "none" })
+        .eq("id", draft_id);
+
       return new Response(JSON.stringify({ error: "Failed to create session" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -119,29 +148,27 @@ Deno.serve(async (req) => {
     const sessionId = session.id;
     console.log(`[promote-draft] created session=${sessionId}`);
 
-    // 8) outputs 4개 생성
-    // ✅ null 넣지 말고 "" (NOT NULL 대비)
-    const outputInserts = [
+    // 7) outputs 4개 upsert (unique constraint 활용)
+    const outputUpserts = [
       { session_id: sessionId, platform_type: "blog", generated_content: (resultData.blog_content as string) || "" },
-      {
-        session_id: sessionId,
-        platform_type: "linkedin",
-        generated_content: (resultData.linkedin_content as string) || "",
-      },
+      { session_id: sessionId, platform_type: "linkedin", generated_content: (resultData.linkedin_content as string) || "" },
       { session_id: sessionId, platform_type: "reels", generated_content: (resultData.reels_content as string) || "" },
-      {
-        session_id: sessionId,
-        platform_type: "threads",
-        generated_content: (resultData.threads_content as string) || "",
-      },
+      { session_id: sessionId, platform_type: "threads", generated_content: (resultData.threads_content as string) || "" },
     ];
 
-    const { error: outputsError } = await supabaseAdmin.from("outputs").insert(outputInserts);
-    if (outputsError) {
-      console.error("[promote-draft] outputs insert failed:", outputsError);
+    const { error: outputsError } = await supabaseAdmin
+      .from("outputs")
+      .upsert(outputUpserts, { onConflict: "session_id,platform_type" });
 
-      // 실패 시 session 제거 (롤백 느낌)
+    if (outputsError) {
+      console.error("[promote-draft] outputs upsert failed:", outputsError);
+
+      // 롤백: session 제거 + 락 해제
       await supabaseAdmin.from("sessions").delete().eq("id", sessionId);
+      await supabaseAdmin
+        .from("drafts")
+        .update({ promotion_status: "none" })
+        .eq("id", draft_id);
 
       return new Response(JSON.stringify({ error: "Failed to create outputs" }), {
         status: 500,
@@ -149,24 +176,22 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 9) ✅ drafts.session_id “락” 업데이트: session_id가 NULL일 때만 업데이트
-    // -> 중복 승격 방지의 핵심
-    const { error: updateError } = await supabaseAdmin
+    // 8) 승격 완료: drafts.session_id와 promotion_status='promoted' 업데이트
+    const { error: finalizeError } = await supabaseAdmin
       .from("drafts")
-      .update({ session_id: sessionId, user_id: userId })
-      .eq("id", draft_id)
-      .is("session_id", null);
+      .update({ session_id: sessionId, user_id: userId, promotion_status: "promoted" })
+      .eq("id", draft_id);
 
-    if (updateError) {
-      console.warn("[promote-draft] draft update warning:", updateError);
-      // 락 업데이트가 실패하면 경쟁조건 가능성 있음 -> 그래도 sessionId 반환은 가능
+    if (finalizeError) {
+      console.warn("[promote-draft] draft finalize warning:", finalizeError);
     }
 
-    // 10) events 로깅 (테이블 컬럼이 다를 수 있으니 실패해도 무시)
+    // 9) events 로깅
     try {
       await supabaseAdmin.from("events").insert({
         event_type: "promote_draft_to_session",
         session_id: sessionId,
+        user_id: userId,
         metadata: { draft_id, session_id: sessionId },
       });
     } catch (e) {

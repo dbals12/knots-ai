@@ -335,7 +335,7 @@ const DraftResult = () => {
     setEditedInput("");
   };
 
-  // ✅ 저장: 세션 기반으로만 동작 (update-and-regenerate 호출)
+  // ✅ 저장: 세션 기반으로만 동작 (regenerate-session 호출)
   const handleSaveEditedInput = async () => {
     if (!user) {
       setShowLoginAlert(true);
@@ -356,8 +356,6 @@ const DraftResult = () => {
       setIsEditingInput(false);
       setEditedInput("");
 
-      toast({ title: "재생성 시작", description: "새 원문 기준으로 콘텐츠를 다시 만들고 있어요." });
-
       // ✅ 세션 토큰 가져오기
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token;
@@ -369,44 +367,47 @@ const DraftResult = () => {
         return;
       }
 
-      // ✅ update-and-regenerate 호출 (mode: session 또는 draft)
-      const response = await fetch(
-        `https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/update-and-regenerate`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({
-            mode: isSessionType ? "session" : "draft",
-            id: draftId,
-            new_text: nextText,
-          }),
+      // ✅ 세션 모드가 아니면 먼저 승격 필요
+      let targetSessionId = draftId;
+      if (!isSessionType) {
+        const { data: promoteResult, error: promoteError } = await supabase.functions.invoke("promote-draft", {
+          body: { draft_id: draftId },
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+
+        if (promoteError || !promoteResult?.session_id) {
+          throw new Error("세션 생성에 실패했습니다.");
         }
-      );
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "재생성에 실패했습니다.");
+        targetSessionId = promoteResult.session_id;
       }
 
-      // ✅ 성공 시 session_id로 URL 변경 (draft → session 승격)
-      if (result.session_id && result.session_id !== draftId) {
-        navigate(`/result/${result.session_id}?type=session`, { replace: true });
+      toast({ title: "재생성 시작", description: "새 원문 기준으로 콘텐츠를 다시 만들고 있어요." });
+
+      // ✅ regenerate-session 호출 (세션 기반으로만 동작)
+      const { data: result, error: regenerateError } = await supabase.functions.invoke("regenerate-session", {
+        body: { session_id: targetSessionId, raw_text: nextText },
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+
+      if (regenerateError || !result?.success) {
+        throw new Error(result?.error || "재생성에 실패했습니다.");
+      }
+
+      // ✅ 세션 URL로 이동 (draft에서 session으로 승격된 경우)
+      if (targetSessionId !== draftId) {
+        navigate(`/result/${targetSessionId}?type=session`, { replace: true });
       }
 
       // ✅ 화면에 새 콘텐츠 즉시 반영
-      if (result.result_data) {
+      if (result.outputs) {
         setData({
-          input_text: result.result_data.transcript || nextText,
+          input_text: nextText,
           input_mode: data?.input_mode,
           result_data: {
-            blog_content: result.result_data.blog_content,
-            linkedin_content: result.result_data.linkedin_content,
-            reels_content: result.result_data.reels_content,
-            threads_content: result.result_data.threads_content,
+            blog_content: result.outputs.blog_content,
+            linkedin_content: result.outputs.linkedin_content,
+            reels_content: result.outputs.reels_content,
+            threads_content: result.outputs.threads_content,
           },
         });
       }

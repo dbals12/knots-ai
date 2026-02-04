@@ -20,6 +20,7 @@ export type Database = {
           error_message: string | null
           id: string
           input_data: Json | null
+          promotion_status: string
           result_data: Json | null
           session_id: string | null
           status: string
@@ -31,6 +32,7 @@ export type Database = {
           error_message?: string | null
           id?: string
           input_data?: Json | null
+          promotion_status?: string
           result_data?: Json | null
           session_id?: string | null
           status?: string
@@ -42,6 +44,7 @@ export type Database = {
           error_message?: string | null
           id?: string
           input_data?: Json | null
+          promotion_status?: string
           result_data?: Json | null
           session_id?: string | null
           status?: string
