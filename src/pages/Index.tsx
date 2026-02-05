@@ -168,7 +168,7 @@ const Index = () => {
                 </div>
                 <div>
                   <div className="text-sm font-normal text-foreground">내 정보 설정</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">기본 목적과 캐릭터를 수정합니다</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">더욱 맞춤화된 결과를 보고 싶다면 프로필을 설정하세요</div>
                 </div>
               </button>
             </div>
