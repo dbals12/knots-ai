@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import AppShell from "@/components/AppShell";
 import { blobToBase64 } from "@/lib/guestPendingSubmission";
-import { getEntrySource } from "@/lib/analytics";
+import { getEntrySource, trackPageView_Event, trackSubmitInput_Event, trackLoginStart } from "@/lib/analytics";
 import { getAccessToken } from "@/lib/edgeFunctionAuth";
 
 const sessionPurposes = [
@@ -67,6 +67,11 @@ const Home = ({ isGuest = false }: HomeProps) => {
   const moodScrollRef = useRef<HTMLDivElement>(null);
   const personaScrollRef = useRef<HTMLDivElement>(null);
   const purposeScrollRef = useRef<HTMLDivElement>(null);
+
+  // ✅ Track page view on mount
+  useEffect(() => {
+    trackPageView_Event("home");
+  }, []);
 
   useEffect(() => {
     if (location.state?.initialText) {
@@ -172,6 +177,10 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
   const handleSubmit = async (mode: "voice" | "text") => {
     setIsSubmitting(true);
+
+    // ✅ Track submit_input event
+    trackSubmitInput_Event(mode, { metadata: { mood: selectedMood, persona: selectedPersona } });
+
     try {
       let audioBase64 = null;
       let finalTextInput = textInput;
