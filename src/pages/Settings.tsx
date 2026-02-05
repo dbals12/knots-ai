@@ -16,6 +16,16 @@ const usagePurposes = [
   { value: "content_ideas", label: "콘텐츠 아이디어가 필요해요" },
 ];
 
+const jobRoleOptions = [
+  { value: "student", label: "학생 / 취준생" },
+  { value: "office_planning", label: "직장인 (기획·마케팅)" },
+  { value: "office_dev", label: "직장인 (개발·데이터)" },
+  { value: "designer_creator", label: "디자이너 / 크리에이터" },
+  { value: "freelancer", label: "프리랜서" },
+  { value: "entrepreneur", label: "창업가 / 1인 비즈니스" },
+  { value: "other", label: "기타" },
+];
+
 const personaOptions = [
   { value: "humble_expert", label: "겸손하지만 실력있는 전문가", desc: "차분하고 신뢰감을 주는 전문가 느낌" },
   { value: "energetic_challenger", label: "에너지 넘치는 도전가", desc: "추진력과 활기가 느껴지는 스타일" },
@@ -25,6 +35,7 @@ const personaOptions = [
 
 const Settings = () => {
   const [selectedPurpose, setSelectedPurpose] = useState("");
+  const [selectedJobRole, setSelectedJobRole] = useState("");
   const [selectedPersona, setSelectedPersona] = useState("");
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -38,7 +49,7 @@ const Settings = () => {
 
       const { data, error } = await supabase
         .from('users')
-        .select('usage_purpose, preferred_tone')
+        .select('usage_purpose, preferred_tone, job_role')
         .eq('id', user.id)
         .single();
 
@@ -53,6 +64,7 @@ const Settings = () => {
 
       if (data) {
         setSelectedPurpose(data.usage_purpose || '');
+        setSelectedJobRole(data.job_role || '');
         setSelectedPersona(data.preferred_tone || '');
       }
 
@@ -63,7 +75,7 @@ const Settings = () => {
   }, [user, toast]);
 
   const handleSave = async () => {
-    if (!user || !selectedPurpose || !selectedPersona) {
+    if (!user || !selectedPurpose || !selectedJobRole || !selectedPersona) {
       toast({
         title: '필수 항목',
         description: '모든 항목을 선택해주세요.',
@@ -78,6 +90,7 @@ const Settings = () => {
         .from('users')
         .update({
           usage_purpose: selectedPurpose,
+          job_role: selectedJobRole,
           preferred_tone: selectedPersona,
         })
         .eq('id', user.id);
@@ -144,7 +157,29 @@ const Settings = () => {
           </div>
         </div>
 
-        {/* Section 2: Preferred Tone */}
+        {/* Section 2: Job Role */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-foreground">
+            직업 선택
+          </h3>
+          <div className="space-y-2">
+            {jobRoleOptions.map((job) => (
+              <button
+                key={job.value}
+                onClick={() => setSelectedJobRole(job.value)}
+                className={`w-full p-3 rounded-xl border-2 text-left transition-all text-sm ${
+                  selectedJobRole === job.value
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-border bg-[#F8F8F8] hover:border-foreground/30"
+                }`}
+              >
+                {job.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Section 3: Preferred Tone */}
         <div className="space-y-3">
           <h3 className="text-sm font-semibold text-foreground">
             선호하는 페르소나
@@ -176,7 +211,7 @@ const Settings = () => {
         {/* Save Button */}
         <Button
           onClick={handleSave}
-          disabled={!selectedPurpose || !selectedPersona || loading}
+          disabled={!selectedPurpose || !selectedJobRole || !selectedPersona || loading}
           className="w-full h-11 rounded-xl bg-foreground text-background hover:bg-foreground/90"
         >
           {loading ? '저장 중...' : '저장하기'}
