@@ -18,6 +18,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  trackPageView_Event,
+  trackResultView,
+  trackOpenPlatformModal,
+  trackClickNewRecord,
+  trackClickGoHome,
+  trackLoginStart,
+} from "@/lib/analytics";
 
 interface ContentData {
   input_text: string;
@@ -124,6 +132,13 @@ const DraftResult = () => {
 
     attemptAutoPromotion();
   }, [user, isSessionType, draftId, promotionAttempted, navigate]);
+
+  // ✅ Track page_view and result_view
+  useEffect(() => {
+    const params = isSessionType ? { session_id: draftId } : { draft_id: draftId };
+    trackPageView_Event("result", params);
+    trackResultView(params);
+  }, [draftId, isSessionType]);
 
   // 로딩 멘트 애니메이션
   useEffect(() => {
@@ -434,6 +449,8 @@ const DraftResult = () => {
   };
 
   const handleCardClick = (platformKey: string) => {
+    const params = isSessionType ? { session_id: draftId } : { draft_id: draftId };
+    trackOpenPlatformModal(platformKey, params);
     setSelectedPlatform(platformKey);
     setIsModalOpen(true);
   };
@@ -577,14 +594,22 @@ const DraftResult = () => {
           ) : (
             <>
               <Button
-                onClick={() => navigate("/input")}
+                onClick={() => {
+                  const params = isSessionType ? { session_id: draftId } : { draft_id: draftId };
+                  trackClickNewRecord(params);
+                  navigate("/input");
+                }}
                 className="w-full h-14 rounded-xl bg-black text-white hover:bg-gray-800 font-bold text-base shadow-lg"
               >
                 새로운 기록 만들기
               </Button>
               <Button
                 variant="outline"
-                onClick={() => navigate("/")}
+                onClick={() => {
+                  const params = isSessionType ? { session_id: draftId } : { draft_id: draftId };
+                  trackClickGoHome(params);
+                  navigate("/");
+                }}
                 className="w-full h-14 rounded-xl font-bold text-base border-gray-200 hover:bg-gray-50 text-gray-700"
               >
                 홈으로 돌아가기

@@ -1,5 +1,7 @@
-// Analytics utility for GA4 and Meta Pixel dual-track logging
+// Analytics utility for GA4, Meta Pixel, and Supabase events dual-track logging
 // Safely wraps gtag and fbq functions with SSR safety
+
+import { supabase } from "@/integrations/supabase/client";
 
 declare global {
   interface Window {
@@ -13,11 +15,13 @@ declare global {
 const GA4_MEASUREMENT_ID = import.meta.env.VITE_GA4_MEASUREMENT_ID || "";
 const META_PIXEL_ID = import.meta.env.VITE_META_PIXEL_ID || "";
 
-// 👇 여기 아래에 이 로그를 추가하세요! (정석 디버깅)
-console.log("[Analytics Setup] ID Check:", {
-  gaId: GA4_MEASUREMENT_ID,
-  pixelId: META_PIXEL_ID,
-});
+// Debug logging (only in development)
+if (import.meta.env.DEV) {
+  console.log("[Analytics Setup] ID Check:", {
+    gaId: GA4_MEASUREMENT_ID,
+    pixelId: META_PIXEL_ID,
+  });
+}
 
 // UTM parameter storage key
 const UTM_STORAGE_KEY = "knots_entry_source";
@@ -358,3 +362,110 @@ export function trackPageView(pagePath: string, pageTitle?: string): void {
     window.fbq("track", "PageView");
   }
 }
+
+// ============================================
+// Supabase Events Table Tracking
+// ============================================
+
+export interface TrackEventParams {
+  session_id?: string;
+  draft_id?: string;
+  platform_type?: string;
+  metadata?: Record<string, any>;
+}
+
+/**
+ * Track event to Supabase events table via Edge Function
+ * - If logged in: includes user_id
+ * - If guest: user_id is null, but draft_id must be included if available
+ * - Never blocks UX on failure (logs warning to console only)
+ */
+export async function trackEvent(
+  event_type: string,
+  params: TrackEventParams = {}
+): Promise<void> {
+  if (typeof window === "undefined") return;
+
+  try {
+    // Get session for access token
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData?.session?.access_token;
+
+    const headers: Record<string, string> = {};
+    if (accessToken) {
+      headers["Authorization"] = `Bearer ${accessToken}`;
+    }
+
+    // Call Edge Function (bypasses RLS)
+    const { error } = await supabase.functions.invoke("log-event", {
+      body: {
+        event_type,
+        session_id: params.session_id || null,
+        draft_id: params.draft_id || null,
+        platform_type: params.platform_type || null,
+        metadata: params.metadata || null,
+      },
+      headers,
+    });
+
+    if (error) {
+      console.warn(`[Analytics] trackEvent failed (${event_type}):`, error);
+    } else {
+      console.log(`[Analytics] Event logged: ${event_type}`, params);
+    }
+  } catch (e) {
+    console.warn(`[Analytics] trackEvent error (${event_type}):`, e);
+  }
+}
+
+// Convenience wrappers for common events
+export const trackPageView_Event = (page: string, params?: TrackEventParams) =>
+  trackEvent("page_view", { ...params, metadata: { ...params?.metadata, page } });
+
+export const trackSubmitInput_Event = (inputType: "voice" | "text", params?: TrackEventParams) =>
+  trackEvent("submit_input", { ...params, metadata: { ...params?.metadata, input_type: inputType } });
+
+export const trackLoginStart = (params?: TrackEventParams) =>
+  trackEvent("login_start", params);
+
+export const trackLoginSuccess = (params?: TrackEventParams) =>
+  trackEvent("login_success", params);
+
+export const trackResultView = (params?: TrackEventParams) =>
+  trackEvent("result_view", params);
+
+export const trackOpenPlatformModal = (platform: string, params?: TrackEventParams) =>
+  trackEvent("open_platform_modal", { ...params, platform_type: platform });
+
+export const trackClickNewRecord = (params?: TrackEventParams) =>
+  trackEvent("click_new_record", params);
+
+export const trackClickGoHome = (params?: TrackEventParams) =>
+  trackEvent("click_go_home", params);
+
+export const trackCopyContent = (platform: string, params?: TrackEventParams) =>
+  trackEvent("copy_content", { ...params, platform_type: platform });
+
+export const trackSaveContentEvent = (platform: string, params?: TrackEventParams) =>
+  trackEvent("save_content", { ...params, platform_type: platform });
+
+export const trackThumbUp = (platform: string, params?: TrackEventParams) =>
+  trackEvent("thumb_up", { ...params, platform_type: platform });
+
+export const trackThumbDown = (platform: string, params?: TrackEventParams) =>
+  trackEvent("thumb_down", { ...params, platform_type: platform });
+
+export const trackAiToolChangeTone = (tone: string, platform: string, params?: TrackEventParams) =>
+  trackEvent("ai_tool_change_tone", { ...params, platform_type: platform, metadata: { ...params?.metadata, tone } });
+
+export const trackAiToolAdjustLength = (length: "shorter" | "longer", platform: string, params?: TrackEventParams) =>
+  trackEvent("ai_tool_adjust_length", { ...params, platform_type: platform, metadata: { ...params?.metadata, length } });
+
+export const trackAiToolApplyPersona = (platform: string, params?: TrackEventParams) =>
+  trackEvent("ai_tool_apply_persona", { ...params, platform_type: platform });
+
+export const trackAiToolAddThought = (platform: string, params?: TrackEventParams) =>
+  trackEvent("ai_tool_add_thought", { ...params, platform_type: platform });
+
+export const trackAiToolRegenerate = (platform: string, params?: TrackEventParams) =>
+  trackEvent("ai_tool_regenerate", { ...params, platform_type: platform });

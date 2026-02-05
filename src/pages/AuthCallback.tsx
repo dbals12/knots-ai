@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { trackLoginSuccess } from "@/lib/analytics";
 
 const AuthCallback = () => {
   const navigate = useNavigate();
@@ -24,6 +25,9 @@ const AuthCallback = () => {
         navigate("/login");
         return;
       }
+
+      // ✅ Track login_success
+      trackLoginSuccess({ draft_id: pendingDraftId || undefined });
 
       // ✅ users 테이블 보장 (신규 유저일 경우 생성)
       const { data: { user } } = await supabase.auth.getUser();
