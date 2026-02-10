@@ -216,6 +216,19 @@ serve(async (req) => {
         const bytes = new Uint8Array(binaryStr.length);
         for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
 
+        // Guard: reject empty or too-short audio
+        if (bytes.byteLength < 5000) {
+          const errMsg = `Audio too short or empty (${bytes.byteLength} bytes)`;
+          console.error(errMsg);
+          if (draftId) {
+            await updateDraftStatus(supabaseAdmin, draftId, "failed", undefined, "empty_or_too_short_audio");
+          }
+          return new Response(
+            JSON.stringify({ error: errMsg }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
         resolvedAudioFile = new File([bytes], `recording.${ext}`, { type: mime });
         console.log('Converted audioBase64 to File:', resolvedAudioFile.name, 'Size:', resolvedAudioFile.size, 'MIME:', mime);
       } catch (e) {
