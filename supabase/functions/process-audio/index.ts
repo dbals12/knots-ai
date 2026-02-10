@@ -192,6 +192,7 @@ serve(async (req) => {
     const sessionId = formData.get('session_id') as string | null;
 
     let transcript = '';
+    const audioBase64 = formData.get('audio_base64') as string | null;
 
     // ✅ 재생성 요청 시 즉시 processing 상태로 전환 + result_data 초기화
     if (draftId) {
@@ -199,17 +200,50 @@ serve(async (req) => {
       console.log('Draft status set to processing:', draftId);
     }
 
+    // Resolve audio source: FormData file, base64 data URL, or raw text
+    let resolvedAudioFile: File | null = audioFile;
+
+    if (!resolvedAudioFile && audioBase64 && audioBase64.startsWith('data:')) {
+      try {
+        const commaIdx = audioBase64.indexOf(',');
+        const header = audioBase64.slice(0, commaIdx);
+        const mimeMatch = header.match(/data:(.*?);base64/);
+        const mime = mimeMatch?.[1] ?? 'audio/webm';
+        const ext = mime.split('/')[1] || 'webm';
+
+        const base64Body = audioBase64.slice(commaIdx + 1);
+        const binaryStr = atob(base64Body);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+
+        resolvedAudioFile = new File([bytes], `recording.${ext}`, { type: mime });
+        console.log('Converted audioBase64 to File:', resolvedAudioFile.name, 'Size:', resolvedAudioFile.size, 'MIME:', mime);
+      } catch (e) {
+        const errMsg = `Failed to decode audioBase64: ${e instanceof Error ? e.message : String(e)}`;
+        console.error(errMsg);
+        if (draftId) {
+          await updateDraftStatus(supabaseAdmin, draftId, "failed", undefined, errMsg);
+        }
+        return new Response(
+          JSON.stringify({ error: errMsg }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     // Check if raw_text is provided (text-only mode, skip STT)
     if (rawTextInput && rawTextInput.trim().length > 0) {
       console.log('Using raw_text input directly, skipping Whisper STT');
       transcript = rawTextInput.trim();
-    } else if (audioFile) {
+    } else if (resolvedAudioFile) {
       // Audio mode: Use Whisper STT
-      console.log('Received audio file:', audioFile.name, 'Size:', audioFile.size);
+      const filename = resolvedAudioFile.name;
+      const mimeType = resolvedAudioFile.type || 'audio/webm';
+      console.log('Sending to Whisper:', filename, 'Size:', resolvedAudioFile.size, 'MIME:', mimeType);
       console.log('Step 1: Starting Whisper transcription...');
       
       const whisperFormData = new FormData();
-      whisperFormData.append('file', audioFile, 'audio.webm');
+      whisperFormData.append('file', resolvedAudioFile, filename);
       whisperFormData.append('model', 'whisper-1');
 
       const whisperResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
@@ -224,13 +258,14 @@ serve(async (req) => {
         const errorText = await whisperResponse.text();
         console.error('Whisper API error:', whisperResponse.status, errorText);
         
-        // Update draft status to failed
+        // Update draft status to failed with file info
+        const failMsg = `Whisper transcription failed (file: ${filename}, mime: ${mimeType}): ${errorText}`;
         if (draftId) {
-          await updateDraftStatus(supabaseAdmin, draftId, "failed", undefined, `Whisper transcription failed: ${errorText}`);
+          await updateDraftStatus(supabaseAdmin, draftId, "failed", undefined, failMsg);
         }
         
         return new Response(
-          JSON.stringify({ error: `Whisper transcription failed: ${errorText}` }),
+          JSON.stringify({ error: failMsg }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -240,14 +275,14 @@ serve(async (req) => {
       
       console.log('Whisper transcription completed. Transcript length:', transcript.length);
     } else {
-      console.error('No audio file or raw_text provided');
+      console.error('No audio file, audioBase64, or raw_text provided');
       
       if (draftId) {
-        await updateDraftStatus(supabaseAdmin, draftId, "failed", undefined, "No audio file or raw_text provided");
+        await updateDraftStatus(supabaseAdmin, draftId, "failed", undefined, "No audio file, audioBase64, or raw_text provided");
       }
       
       return new Response(
-        JSON.stringify({ error: 'No audio file or raw_text provided' }),
+        JSON.stringify({ error: 'No audio file, audioBase64, or raw_text provided' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
