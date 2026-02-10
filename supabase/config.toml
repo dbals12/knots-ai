@@ -1,19 +1,1 @@
 project_id = "qdzhwrcanenolbocysmx"
-
-[functions.process-audio]
-verify_jwt = false
-
-[functions.refine-output]
-verify_jwt = false
-
-[functions.update-and-regenerate]
-verify_jwt = false
-
-[functions.promote-draft]
-verify_jwt = false
-
-[functions.regenerate-session]
-verify_jwt = false
-
-[functions.log-event]
-verify_jwt = false
