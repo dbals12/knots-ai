@@ -80,13 +80,28 @@ const InputPage = () => {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioStreamRef.current = stream;
       audioChunksRef.current = [];
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+
+      const mimeOptions = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
+      const selectedMime = mimeOptions.find(m => MediaRecorder.isTypeSupported(m)) || '';
+      console.log('[Recording] Selected mimeType:', selectedMime || 'browser default');
+
+      const recorderOptions: MediaRecorderOptions = selectedMime ? { mimeType: selectedMime } : {};
+      const mediaRecorder = new MediaRecorder(stream, recorderOptions);
       mediaRecorderRef.current = mediaRecorder;
+
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) audioChunksRef.current.push(event.data);
       };
       mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        const actualMime = mediaRecorder.mimeType || selectedMime || 'audio/webm';
+        const audioBlob = new Blob(audioChunksRef.current, { type: actualMime });
+        console.log('[Recording] Blob created - size:', audioBlob.size, 'type:', audioBlob.type, 'chunks:', audioChunksRef.current.length);
+
+        if (audioChunksRef.current.length === 0 || audioBlob.size < 5000) {
+          toast({ title: "녹음 실패", description: "녹음이 너무 짧거나 실패했습니다. 다시 시도해주세요.", variant: "destructive" });
+          setRecordedBlob(null);
+          return;
+        }
         setRecordedBlob(audioBlob);
       };
       mediaRecorder.start(1000);
