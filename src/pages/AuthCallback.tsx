@@ -3,12 +3,98 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { trackLoginSuccess } from "@/lib/analytics";
+import { Button } from "@/components/ui/button";
+
+// Promote lock helpers
+const LOCK_PREFIX = "promote_lock_";
+const LOCK_TTL_MS = 30_000;
+
+const acquireLock = (draftId: string): boolean => {
+  const key = LOCK_PREFIX + draftId;
+  const existing = localStorage.getItem(key);
+  if (existing) {
+    const ts = parseInt(existing, 10);
+    if (Date.now() - ts < LOCK_TTL_MS) return false; // still locked
+  }
+  localStorage.setItem(key, Date.now().toString());
+  return true;
+};
+
+const releaseLock = (draftId: string) => {
+  localStorage.removeItem(LOCK_PREFIX + draftId);
+};
+
+// Poll drafts.session_id with retries
+const pollDraftSessionId = async (draftId: string, retries = 3, delayMs = 800): Promise<string | null> => {
+  for (let i = 0; i < retries; i++) {
+    await new Promise((r) => setTimeout(r, delayMs));
+    const { data } = await supabase
+      .from("drafts")
+      .select("session_id")
+      .eq("id", draftId)
+      .single();
+    if (data?.session_id) return data.session_id;
+  }
+  return null;
+};
 
 const AuthCallback = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
   const [message, setMessage] = useState("로그인 완료! 결과 불러오는 중...");
+  const [failState, setFailState] = useState<{ draftId: string; next: string | null } | null>(null);
+
+  const logPromoteEvent = async (eventType: string, userId: string | undefined, draftId: string, extra?: Record<string, any>) => {
+    try {
+      if (!userId) return;
+      await supabase.from("events").insert({
+        event_type: eventType,
+        user_id: userId,
+        metadata: { draft_id: draftId, ...extra },
+      });
+    } catch (e) {
+      console.warn("[AuthCallback] event log failed:", e);
+    }
+  };
+
+  const attemptPromote = async (draftId: string, accessToken: string, userId: string): Promise<{ success: boolean; sessionId?: string }> => {
+    console.log("[AuthCallback] promote_start draft_id=", draftId);
+    await logPromoteEvent("promote_start", userId, draftId);
+
+    const { data, error } = await supabase.functions.invoke("promote-draft", {
+      body: { draft_id: draftId },
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    // Already promoted
+    if (!error && data?.already_promoted && data?.session_id) {
+      console.log("[AuthCallback] promote_already session_id=", data.session_id);
+      await logPromoteEvent("promote_already", userId, draftId, { session_id: data.session_id });
+      return { success: true, sessionId: data.session_id };
+    }
+
+    // Success
+    if (!error && data?.session_id) {
+      console.log("[AuthCallback] promote_success session_id=", data.session_id);
+      await logPromoteEvent("promote_success", userId, draftId, { session_id: data.session_id });
+      return { success: true, sessionId: data.session_id };
+    }
+
+    // Failed - poll drafts.session_id as fallback
+    console.error("[AuthCallback] promote-draft invoke failed:", error, data);
+    const polledSessionId = await pollDraftSessionId(draftId);
+    if (polledSessionId) {
+      console.log("[AuthCallback] promote recovered via poll session_id=", polledSessionId);
+      await logPromoteEvent("promote_success", userId, draftId, { session_id: polledSessionId, recovered: true });
+      return { success: true, sessionId: polledSessionId };
+    }
+
+    await logPromoteEvent("promote_fail", userId, draftId, {
+      error: error?.message || data?.error || "unknown",
+    });
+    return { success: false };
+  };
 
   useEffect(() => {
     const handleRedirect = async () => {
@@ -16,7 +102,7 @@ const AuthCallback = () => {
       const next = searchParams.get("next");
       const pendingDraftId = localStorage.getItem("pending_draft_id");
 
-      // ✅ 세션 가져오기
+      // Get session
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token;
 
@@ -26,10 +112,10 @@ const AuthCallback = () => {
         return;
       }
 
-      // ✅ Track login_success
+      // Track login_success
       trackLoginSuccess({ draft_id: pendingDraftId || undefined });
 
-      // ✅ users 테이블 보장 (신규 유저일 경우 생성)
+      // Ensure users table entry
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data: userData } = await supabase
@@ -37,7 +123,6 @@ const AuthCallback = () => {
           .select("id")
           .eq("id", user.id)
           .single();
-
         if (!userData) {
           await supabase.from("users").insert({
             id: user.id,
@@ -47,74 +132,140 @@ const AuthCallback = () => {
         }
       }
 
+      const userId = user?.id;
+
       try {
-        // ✅ 케이스 A: next URL에서 draft_id 추출 → 자동 승격
+        // Case A: next URL contains draft_id
         if (next && next.includes("/result/") && next.includes("type=draft")) {
           const m = next.match(/\/result\/([^?]+)/);
           const draftIdFromNext = m?.[1];
 
           if (draftIdFromNext) {
-            setMessage("결과를 저장하는 중...");
-
-            const { data, error } = await supabase.functions.invoke("promote-draft", {
-              body: { draft_id: draftIdFromNext },
-              headers: { Authorization: `Bearer ${accessToken}` },
-            });
-
-            if (!error && data?.session_id) {
-              localStorage.removeItem("pending_draft_id");
-              // ✅ 세션 기반 URL로 즉시 이동
-              navigate(`/result/${data.session_id}?type=session`, { replace: true });
-              return;
-            } else {
-              console.error("[AuthCallback] promote-draft failed:", error, data);
-              toast({ title: "승격 실패", description: "결과 저장에 실패했습니다. 다시 시도해주세요.", variant: "destructive" });
-              // 승격 실패해도 draft 결과로는 보내줌
-              navigate(next, { replace: true });
+            if (!acquireLock(draftIdFromNext)) {
+              console.log("[AuthCallback] lock active, skipping promote for", draftIdFromNext);
+              // Poll to see if already promoted
+              const polledId = await pollDraftSessionId(draftIdFromNext);
+              if (polledId) {
+                navigate(`/result/${polledId}?type=session`, { replace: true });
+              } else {
+                navigate(next, { replace: true });
+              }
               return;
             }
+
+            setMessage("결과를 저장하는 중...");
+            const result = await attemptPromote(draftIdFromNext, accessToken, userId!);
+            releaseLock(draftIdFromNext);
+
+            if (result.success && result.sessionId) {
+              localStorage.removeItem("pending_draft_id");
+              navigate(`/result/${result.sessionId}?type=session`, { replace: true });
+            } else {
+              setFailState({ draftId: draftIdFromNext, next });
+            }
+            return;
           }
         }
 
-        // ✅ 케이스 B: next 없지만 pendingDraftId가 있으면 승격 시도
+        // Case B: no next but pendingDraftId
         if (!next && pendingDraftId) {
-          setMessage("결과를 저장하는 중...");
-
-          const { data, error } = await supabase.functions.invoke("promote-draft", {
-            body: { draft_id: pendingDraftId },
-            headers: { Authorization: `Bearer ${accessToken}` },
-          });
-
-          if (!error && data?.session_id) {
-            localStorage.removeItem("pending_draft_id");
-            navigate(`/result/${data.session_id}?type=session`, { replace: true });
-            return;
-          } else {
-            console.error("[AuthCallback] promote-draft failed:", error, data);
-            toast({ title: "승격 실패", description: "결과 저장에 실패했습니다.", variant: "destructive" });
-            // 승격 실패 시 draft 결과로
-            navigate(`/result/${pendingDraftId}?type=draft`, { replace: true });
+          if (!acquireLock(pendingDraftId)) {
+            console.log("[AuthCallback] lock active, skipping promote for", pendingDraftId);
+            const polledId = await pollDraftSessionId(pendingDraftId);
+            if (polledId) {
+              navigate(`/result/${polledId}?type=session`, { replace: true });
+            } else {
+              navigate(`/result/${pendingDraftId}?type=draft`, { replace: true });
+            }
             return;
           }
+
+          setMessage("결과를 저장하는 중...");
+          const result = await attemptPromote(pendingDraftId, accessToken, userId!);
+          releaseLock(pendingDraftId);
+
+          if (result.success && result.sessionId) {
+            localStorage.removeItem("pending_draft_id");
+            navigate(`/result/${result.sessionId}?type=session`, { replace: true });
+          } else {
+            setFailState({ draftId: pendingDraftId, next: null });
+          }
+          return;
         }
 
-        // ✅ 일반 로그인 흐름 (next가 있으면 해당 위치로)
+        // Normal login flow
         if (next) {
           navigate(next, { replace: true });
         } else {
           navigate("/input", { replace: true });
         }
       } catch (e) {
-        console.error("[AuthCallback] promote failed:", e);
-        toast({ title: "오류 발생", description: "잠시 후 다시 시도해주세요.", variant: "destructive" });
-        // 승격 실패해도 next로는 보내주기
-        if (next) navigate(next, { replace: true });
-        else navigate("/input", { replace: true });
+        console.error("[AuthCallback] unexpected error:", e);
+        const fallbackDraftId = pendingDraftId || (next?.match(/\/result\/([^?]+)/)?.[1]);
+        if (fallbackDraftId) {
+          setFailState({ draftId: fallbackDraftId, next });
+        } else {
+          toast({ title: "오류 발생", description: "잠시 후 다시 시도해주세요.", variant: "destructive" });
+          navigate(next || "/input", { replace: true });
+        }
       }
     };
 
     handleRedirect();
   }, [navigate, location, toast]);
+
+  // Retry handler
+  const handleRetry = async () => {
+    if (!failState) return;
+    setFailState(null);
+    setMessage("다시 시도하는 중...");
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData?.session?.access_token;
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!accessToken || !user) {
+      toast({ title: "로그인이 필요합니다", variant: "destructive" });
+      navigate("/login");
+      return;
+    }
+
+    releaseLock(failState.draftId); // clear old lock
+    const result = await attemptPromote(failState.draftId, accessToken, user.id);
+
+    if (result.success && result.sessionId) {
+      localStorage.removeItem("pending_draft_id");
+      navigate(`/result/${result.sessionId}?type=session`, { replace: true });
+    } else {
+      setFailState(failState); // show fail UI again
+    }
+  };
+
+  const handleViewAsDraft = () => {
+    if (!failState) return;
+    navigate(`/result/${failState.draftId}?type=draft`, { replace: true });
+  };
+
+  // Fail state UI
+  if (failState) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-6">
+        <div className="text-center space-y-4 max-w-sm">
+          <p className="text-muted-foreground text-sm">
+            연결이 불안정할 수 있어요.
+          </p>
+          <div className="space-y-2">
+            <Button onClick={handleRetry} className="w-full">
+              다시 시도
+            </Button>
+            <Button variant="outline" onClick={handleViewAsDraft} className="w-full">
+              그냥 결과 보기 (게스트)
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
