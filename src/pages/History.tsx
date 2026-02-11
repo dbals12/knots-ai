@@ -75,17 +75,53 @@ const History = () => {
       if (!user) return;
 
       setLoading(true);
-      const { data, error } = await supabase
-        .from("drafts")
-        .select("*")
+
+      // sessions 테이블에서 raw_text 포함하여 조회
+      const { data: sessionsData, error: sessionsError } = await supabase
+        .from("sessions")
+        .select("id, created_at, raw_text, input_type, session_purpose, keyword")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
-      if (error) {
-        console.error("Error fetching history:", error);
-      } else if (data) {
-        setSessions(data as any[]);
+      if (sessionsError) {
+        console.error("Error fetching sessions:", sessionsError);
       }
+
+      // drafts도 함께 조회 (session_id로 연결 가능)
+      const { data: draftsData, error: draftsError } = await supabase
+        .from("drafts")
+        .select("id, created_at, input_data, result_data, session_id, status")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (draftsError) {
+        console.error("Error fetching drafts:", draftsError);
+      }
+
+      // sessions 기반으로 매핑, drafts fallback 포함
+      const draftsBySessionId = new Map<string, any>();
+      (draftsData || []).forEach((d: any) => {
+        if (d.session_id) draftsBySessionId.set(d.session_id, d);
+      });
+
+      const merged: Session[] = (sessionsData || []).map((s: any) => {
+        const linkedDraft = draftsBySessionId.get(s.id);
+        const draftInput = linkedDraft?.input_data || {};
+        const draftResult = linkedDraft?.result_data || {};
+
+        return {
+          id: s.id,
+          created_at: s.created_at,
+          input_data: {
+            textInput: s.raw_text || draftInput.textInput || draftResult.transcript || undefined,
+            sessionPurpose: s.session_purpose || draftInput.sessionPurpose || undefined,
+            keyword: s.keyword || draftInput.keyword || undefined,
+          },
+          result_data: draftResult,
+        };
+      });
+
+      setSessions(merged);
       setLoading(false);
     };
 
@@ -167,7 +203,9 @@ const History = () => {
                 {session.input_data?.sessionPurpose && (
                   <p className="text-xs text-muted-foreground mb-1">목적: {session.input_data.sessionPurpose}</p>
                 )}
-                <p className="text-sm text-foreground line-clamp-2">{session.input_data?.textInput || "음성 기록"}</p>
+                <p className="text-sm text-foreground line-clamp-2">
+                  {session.input_data?.textInput || "(입력 데이터 없음)"}
+                </p>
               </button>
             ))}
           </div>
@@ -190,7 +228,7 @@ const History = () => {
               <div className="bg-muted/50 rounded-xl p-4">
                 <h3 className="text-xs font-semibold mb-2">원본 기록</h3>
                 <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
-                  {selectedSession.input_data?.textInput || "(음성 입력 데이터)"}
+                  {selectedSession.input_data?.textInput || "(입력 데이터 없음)"}
                 </p>
               </div>
               {outputs.length > 0 && (
