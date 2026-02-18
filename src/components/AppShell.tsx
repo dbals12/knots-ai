@@ -10,9 +10,7 @@ interface AppShellProps {
 
 const AppShell = ({ children, className = '', showHeader = true, isGuest = false }: AppShellProps) => {
   return (
-    // 바깥: 연한 그레이 배경, 중앙 정렬
     <div className="min-h-[100dvh] bg-[#EFEFEF] md:flex md:items-center md:justify-center md:p-6">
-      {/* 카드: 모바일은 화면 꽉 차되 약간의 여백, md는 고정폭 카드 */}
       <div
         className={`
           relative w-full bg-white
@@ -24,9 +22,12 @@ const AppShell = ({ children, className = '', showHeader = true, isGuest = false
         `}
       >
         {showHeader && <Header isGuest={isGuest} />}
-        {/* 내부 콘텐츠는 스크롤 가능 */}
         <div className="flex-1 flex flex-col overflow-y-auto">
           {children}
+        </div>
+        {/* BUILD MARKER — 임시, 확인 후 제거 */}
+        <div className="text-center py-1 text-[9px] text-muted-foreground/40 select-none pointer-events-none">
+          BUILD_MARKER: 2026-02-18-v3
         </div>
       </div>
     </div>
