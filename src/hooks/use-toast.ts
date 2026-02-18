@@ -2,14 +2,19 @@ import * as React from "react";
 
 import type { ToastActionElement, ToastProps } from "@/components/ui/toast";
 
-const TOAST_LIMIT = 1;
+const TOAST_LIMIT = 3;
 const TOAST_REMOVE_DELAY = 1000000;
+
+// 기본 duration: 성공/안내 2500ms, 에러 6000ms
+const DEFAULT_DURATION = 2500;
+const ERROR_DURATION = 6000;
 
 type ToasterToast = ToastProps & {
   id: string;
   title?: React.ReactNode;
   description?: React.ReactNode;
   action?: ToastActionElement;
+  duration?: number;
 };
 
 const actionTypes = {
@@ -52,7 +57,11 @@ interface State {
 
 const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 
-const addToRemoveQueue = (toastId: string) => {
+// 중복 방지: 동일 title+variant 조합의 최근 표시 시각 추적
+const recentToastKeys = new Map<string, number>();
+const DEDUP_WINDOW_MS = 3000;
+
+const addToRemoveQueue = (toastId: string, duration?: number) => {
   if (toastTimeouts.has(toastId)) {
     return;
   }
@@ -63,7 +72,7 @@ const addToRemoveQueue = (toastId: string) => {
       type: "REMOVE_TOAST",
       toastId: toastId,
     });
-  }, TOAST_REMOVE_DELAY);
+  }, duration ?? TOAST_REMOVE_DELAY);
 
   toastTimeouts.set(toastId, timeout);
 };
@@ -85,8 +94,6 @@ export const reducer = (state: State, action: Action): State => {
     case "DISMISS_TOAST": {
       const { toastId } = action;
 
-      // ! Side effects ! - This could be extracted into a dismissToast() action,
-      // but I'll keep it here for simplicity
       if (toastId) {
         addToRemoveQueue(toastId);
       } else {
@@ -137,6 +144,18 @@ type Toast = Omit<ToasterToast, "id">;
 function toast({ ...props }: Toast) {
   const id = genId();
 
+  // 중복 방지: 같은 title + variant 조합이 DEDUP_WINDOW_MS 이내면 무시
+  const dedupKey = `${String(props.title ?? "")}_${props.variant ?? "default"}`;
+  const lastShown = recentToastKeys.get(dedupKey);
+  const now = Date.now();
+  if (lastShown && now - lastShown < DEDUP_WINDOW_MS) {
+    return { id, dismiss: () => {}, update: () => {} };
+  }
+  recentToastKeys.set(dedupKey, now);
+
+  // duration: 에러는 6초, 그 외 2.5초 (명시적으로 넘기면 우선)
+  const duration = props.duration ?? (props.variant === "destructive" ? ERROR_DURATION : DEFAULT_DURATION);
+
   const update = (props: ToasterToast) =>
     dispatch({
       type: "UPDATE_TOAST",
@@ -150,11 +169,17 @@ function toast({ ...props }: Toast) {
       ...props,
       id,
       open: true,
+      duration,
       onOpenChange: (open) => {
         if (!open) dismiss();
       },
     },
   });
+
+  // 자동 dismiss 타이머 설정
+  setTimeout(() => {
+    dismiss();
+  }, duration);
 
   return {
     id: id,
