@@ -469,9 +469,9 @@ const Home = ({ isGuest = false }: HomeProps) => {
             <div className="flex flex-col items-center gap-3 pb-2">
               <button
                 onClick={toggleRecording}
-              className={`w-28 h-28 md:w-32 md:h-32 rounded-full bg-foreground flex items-center justify-center transition-all shadow-[0_8px_32px_rgba(0,0,0,0.18)] ${isRecording ? "animate-pulse scale-95" : "hover:scale-105 active:scale-95"}`}
+              className={`w-24 h-24 md:w-28 md:h-28 rounded-full bg-foreground flex items-center justify-center transition-all shadow-[0_6px_24px_rgba(0,0,0,0.15)] ${isRecording ? "animate-pulse scale-95" : "hover:scale-105 active:scale-95"}`}
             >
-              <Mic className="w-12 h-12 md:w-14 md:h-14 text-background" strokeWidth={2} />
+              <Mic className="w-10 h-10 md:w-12 md:h-12 text-background" strokeWidth={2} />
               </button>
               <p className="text-sm text-muted-foreground text-center">
                 {isRecording ? "녹음 중... 탭하여 중지" : "버튼을 누르고 자유롭게 이야기해주세요"}
