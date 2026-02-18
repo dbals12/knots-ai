@@ -340,7 +340,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
   return (
     <AppShell isGuest={isGuest}>
       {/* 컨텐츠 영역: 모바일은 컴팩트, 데스크탑은 여유 있는 간격 */}
-      <div className="flex-1 px-4 md:px-6 pt-3 md:pt-5 pb-safe-or-6 space-y-3 md:space-y-5">
+      <div className="flex-1 px-5 md:px-6 pt-6 md:pt-8 pb-14 md:pb-8 space-y-6 md:space-y-7">
         {/* ... (기존 UI 유지) ... */}
         {!isLoadingUserStatus && isReturningUser && (
           <div className="space-y-2">
@@ -466,14 +466,14 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
         {/* 음성 입력: 마이크 버튼 — 모바일에서 w-16/h-16으로 컴팩트하게 */}
         {inputMode === "voice" ? (
-          <div className="flex flex-col items-center gap-2 py-2 md:py-4">
+          <div className="flex flex-col items-center gap-4 py-6 md:py-8">
             <button
               onClick={toggleRecording}
-              className={`w-16 h-16 md:w-24 md:h-24 rounded-full bg-foreground flex items-center justify-center transition-all shadow-lg ${isRecording ? "animate-pulse scale-95" : "hover:scale-105"}`}
+              className={`w-20 h-20 md:w-24 md:h-24 rounded-full bg-foreground flex items-center justify-center transition-all shadow-lg ${isRecording ? "animate-pulse scale-95" : "hover:scale-105"}`}
             >
-              <Mic className="w-7 h-7 md:w-11 md:h-11 text-background" strokeWidth={2.5} />
+              <Mic className="w-9 h-9 md:w-11 md:h-11 text-background" strokeWidth={2.5} />
             </button>
-            <p className="text-xs text-muted-foreground text-center">
+            <p className="text-sm text-muted-foreground text-center">
               {isRecording ? "녹음 중... 탭하여 중지" : "버튼을 누르고 자유롭게 이야기해주세요"}
             </p>
           </div>
