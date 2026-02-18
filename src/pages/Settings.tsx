@@ -125,30 +125,28 @@ const Settings = () => {
   }
 
   return (
-    <AppShell className="min-h-[700px]">
+    <AppShell>
       {/* Main Content */}
-      <div className="flex-1 px-6 py-6 space-y-6 overflow-y-auto">
+      <div className="flex-1 px-4 md:px-6 py-4 md:py-6 space-y-4 md:space-y-6 overflow-y-auto pb-4">
         <div>
-          <h2 className="text-xl font-bold text-foreground">프로필 설정</h2>
-          <p className="text-sm text-muted-foreground mt-1">
+          <h2 className="text-lg md:text-xl font-bold text-foreground">프로필 설정</h2>
+          <p className="text-xs md:text-sm text-muted-foreground mt-1">
             이 서비스가 기억해야 할 기본 설정을 수정할 수 있습니다.
           </p>
         </div>
 
         {/* Section 1: Usage Purpose */}
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-foreground">
-            서비스 이용 목적
-          </h3>
-          <div className="space-y-2">
+        <div className="space-y-2 md:space-y-3">
+          <h3 className="text-sm font-semibold text-foreground">서비스 이용 목적</h3>
+          <div className="space-y-1.5 md:space-y-2">
             {usagePurposes.map((purpose) => (
               <button
                 key={purpose.value}
                 onClick={() => setSelectedPurpose(purpose.value)}
-                className={`w-full p-3 rounded-xl border-2 text-left transition-all text-sm ${
+                className={`w-full p-2.5 md:p-3 rounded-xl border-2 text-left transition-all text-sm ${
                   selectedPurpose === purpose.value
                     ? "border-foreground bg-foreground text-background"
-                    : "border-border bg-[#F8F8F8] hover:border-foreground/30"
+                    : "border-border bg-secondary hover:border-foreground/30"
                 }`}
               >
                 {purpose.label}
@@ -158,19 +156,17 @@ const Settings = () => {
         </div>
 
         {/* Section 2: Job Role */}
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-foreground">
-            직업 선택
-          </h3>
-          <div className="space-y-2">
+        <div className="space-y-2 md:space-y-3">
+          <h3 className="text-sm font-semibold text-foreground">직업 선택</h3>
+          <div className="space-y-1.5 md:space-y-2">
             {jobRoleOptions.map((job) => (
               <button
                 key={job.value}
                 onClick={() => setSelectedJobRole(job.value)}
-                className={`w-full p-3 rounded-xl border-2 text-left transition-all text-sm ${
+                className={`w-full p-2.5 md:p-3 rounded-xl border-2 text-left transition-all text-sm ${
                   selectedJobRole === job.value
                     ? "border-foreground bg-foreground text-background"
-                    : "border-border bg-[#F8F8F8] hover:border-foreground/30"
+                    : "border-border bg-secondary hover:border-foreground/30"
                 }`}
               >
                 {job.label}
@@ -180,24 +176,22 @@ const Settings = () => {
         </div>
 
         {/* Section 3: Preferred Tone */}
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-foreground">
-            선호하는 페르소나
-          </h3>
-          <div className="space-y-2">
+        <div className="space-y-2 md:space-y-3">
+          <h3 className="text-sm font-semibold text-foreground">선호하는 페르소나</h3>
+          <div className="space-y-1.5 md:space-y-2">
             {personaOptions.map((persona) => (
               <button
                 key={persona.value}
                 onClick={() => setSelectedPersona(persona.value)}
-                className={`w-full p-3 rounded-xl border-2 text-left transition-all ${
+                className={`w-full p-2.5 md:p-3 rounded-xl border-2 text-left transition-all ${
                   selectedPersona === persona.value
                     ? "border-foreground bg-foreground text-background"
-                    : "border-border bg-[#F8F8F8] hover:border-foreground/30"
+                    : "border-border bg-secondary hover:border-foreground/30"
                 }`}
               >
                 <div className="font-semibold text-sm">{persona.label}</div>
                 <div
-                  className={`text-xs mt-1 ${
+                  className={`text-xs mt-0.5 ${
                     selectedPersona === persona.value ? "text-background/70" : "text-muted-foreground"
                   }`}
                 >
@@ -212,7 +206,7 @@ const Settings = () => {
         <Button
           onClick={handleSave}
           disabled={!selectedPurpose || !selectedJobRole || !selectedPersona || loading}
-          className="w-full h-11 rounded-xl bg-foreground text-background hover:bg-foreground/90"
+          className="w-full h-10 md:h-11 rounded-xl bg-foreground text-background hover:bg-foreground/90"
         >
           {loading ? '저장 중...' : '저장하기'}
         </Button>

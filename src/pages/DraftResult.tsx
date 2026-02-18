@@ -551,7 +551,7 @@ const DraftResult = () => {
 
   // ✅ [결과 화면]
   return (
-    <AppShell className="h-[100dvh] flex flex-col overflow-hidden">
+    <AppShell className="flex flex-col">
       <div className="flex-1 overflow-y-auto px-4 md:px-5 py-4 md:py-6 space-y-4 md:space-y-5 pb-6">
         <h2 className="text-lg md:text-xl font-bold text-foreground">오늘의 결과</h2>
 

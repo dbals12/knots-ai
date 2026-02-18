@@ -338,8 +338,8 @@ const Home = ({ isGuest = false }: HomeProps) => {
   };
 
   return (
-    <AppShell className="min-h-[700px] flex flex-col" isGuest={isGuest}>
-      <div className="flex-1 px-6 py-6 space-y-6 overflow-y-auto">
+    <AppShell className="flex flex-col" isGuest={isGuest}>
+      <div className="flex-1 px-4 md:px-6 py-4 md:py-6 space-y-4 md:space-y-6 overflow-y-auto pb-8">
         {/* ... (기존 UI 유지) ... */}
         {!isLoadingUserStatus && isReturningUser && (
           <div className="space-y-3">
@@ -443,49 +443,49 @@ const Home = ({ isGuest = false }: HomeProps) => {
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
             placeholder="예: 클라이언트 미팅, 런칭, 실수"
-            className="h-11 rounded-xl border-border bg-background"
+            className="h-10 md:h-11 rounded-xl border-border bg-background"
           />
         </div>
 
-        <div className="flex items-center justify-center gap-2 py-2">
+        <div className="flex items-center justify-center gap-2 py-1">
           <button
             onClick={() => setInputMode("voice")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${inputMode === "voice" ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 rounded-full text-sm font-medium transition-all ${inputMode === "voice" ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
           >
-            <Mic className="w-4 h-4" /> 음성
+            <Mic className="w-3.5 h-3.5 md:w-4 md:h-4" /> 음성
           </button>
           <button
             onClick={() => setInputMode("text")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${inputMode === "text" ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 rounded-full text-sm font-medium transition-all ${inputMode === "text" ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
           >
-            <Type className="w-4 h-4" /> 텍스트
+            <Type className="w-3.5 h-3.5 md:w-4 md:h-4" /> 텍스트
           </button>
         </div>
 
         {inputMode === "voice" ? (
-          <div className="flex flex-col items-center space-y-4 py-6">
+          <div className="flex flex-col items-center space-y-3 py-4 md:py-6">
             <button
               onClick={toggleRecording}
-              className={`w-28 h-28 rounded-full bg-foreground flex items-center justify-center transition-all shadow-xl ${isRecording ? "animate-pulse scale-95" : "hover:scale-105"}`}
+              className={`w-20 h-20 md:w-28 md:h-28 rounded-full bg-foreground flex items-center justify-center transition-all shadow-xl ${isRecording ? "animate-pulse scale-95" : "hover:scale-105"}`}
             >
-              <Mic className="w-12 h-12 text-background" strokeWidth={2.5} />
+              <Mic className="w-9 h-9 md:w-12 md:h-12 text-background" strokeWidth={2.5} />
             </button>
-            <p className="text-sm text-muted-foreground text-center">
+            <p className="text-xs md:text-sm text-muted-foreground text-center">
               {isRecording ? "녹음 중... 탭하여 중지" : "버튼을 누르고 자유롭게 이야기해주세요"}
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             <Textarea
               value={textInput}
               onChange={(e) => setTextInput(e.target.value)}
               placeholder="오늘 있었던 일이나 배운 점을 자유롭게 작성해주세요..."
-              className="min-h-[200px] rounded-xl border-border bg-background resize-none"
+              className="min-h-[160px] md:min-h-[200px] rounded-xl border-border bg-background resize-none"
             />
             <Button
               onClick={handleTextSubmit}
               disabled={isSubmitting}
-              className="w-full h-12 rounded-xl bg-foreground text-background hover:bg-foreground/90"
+              className="w-full h-10 md:h-12 rounded-xl bg-foreground text-background hover:bg-foreground/90"
             >
               {isSubmitting ? "저장 중..." : "완료"}
             </Button>
@@ -514,12 +514,12 @@ const Home = ({ isGuest = false }: HomeProps) => {
       </Sheet>
 
       {isSubmitting && (
-        <div className="fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center">
+        <div className="fixed inset-0 z-[9999] bg-background flex flex-col items-center justify-center">
           <div className="flex flex-col items-center gap-6">
             <Loader2 className="w-12 h-12 text-foreground animate-spin" />
             <div className="text-center space-y-2">
-              <p className="text-lg font-medium text-foreground text-black">AI가 당신의 기록을 분석 중입니다...</p>
-              <p className="text-sm text-muted-foreground text-gray-500">
+              <p className="text-lg font-medium text-foreground">AI가 당신의 기록을 분석 중입니다...</p>
+              <p className="text-sm text-muted-foreground">
                 {inputMode === "voice" ? "음성을 텍스트로 변환하고" : "텍스트를 분석하고"}
                 <br />
                 4개 채널용 콘텐츠를 생성하는 중이에요.
