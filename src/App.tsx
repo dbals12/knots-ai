@@ -33,7 +33,11 @@ function App() {
       <AuthProvider>
         <TooltipProvider>
           <BrowserRouter>
-            {/* Sonner Toaster — BrowserRouter 안, Routes 밖에서 단 1회 렌더 */}
+            {/* ✅ Sonner Toaster — 단 1곳, Radix ToastProvider 완전 제거됨 */}
+            {/* ACTIVE_TOASTER_RENDERED */}
+            <div style={{ fontSize: '9px', textAlign: 'center', color: '#aaa', padding: '1px', pointerEvents: 'none', userSelect: 'none' }}>
+              ACTIVE_TOASTER_RENDERED · sonner only
+            </div>
             <Toaster />
             <AnalyticsProvider>
               <Routes>

@@ -1,24 +1,5 @@
-import { useToast } from "@/hooks/use-toast";
-import { Toast, ToastClose, ToastDescription, ToastProvider, ToastTitle, ToastViewport } from "@/components/ui/toast";
-
+// Radix Toast Toaster — 사용 중지 (Sonner로 교체됨)
+// 이 파일은 빌드 오류 방지를 위해 빈 컴포넌트를 export합니다.
 export function Toaster() {
-  const { toasts } = useToast();
-
-  return (
-    <ToastProvider>
-      {toasts.map(function ({ id, title, description, action, ...props }) {
-        return (
-          <Toast key={id} {...props}>
-            <div className="grid gap-1">
-              {title && <ToastTitle>{title}</ToastTitle>}
-              {description && <ToastDescription>{description}</ToastDescription>}
-            </div>
-            {action}
-            <ToastClose />
-          </Toast>
-        );
-      })}
-      <ToastViewport />
-    </ToastProvider>
-  );
+  return null;
 }
