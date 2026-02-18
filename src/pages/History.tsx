@@ -184,7 +184,7 @@ const History = () => {
 
   return (
     <AppShell>
-      <div className="flex-1 px-4 md:px-6 py-4 md:py-6 space-y-3 md:space-y-5 overflow-y-auto">
+      <div className="flex-1 px-4 md:px-6 py-4 md:py-6 space-y-3 md:space-y-5">
         <h2 className="text-lg md:text-xl font-semibold text-foreground">내 기록 보기</h2>
 
         {sessions.length === 0 ? (

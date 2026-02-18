@@ -144,6 +144,14 @@ type Toast = Omit<ToasterToast, "id">;
 function toast({ ...props }: Toast) {
   const id = genId();
 
+  // 🚫 빈 토스트 완전 차단: title도 description도 없으면 무시
+  const hasTitle = props.title !== undefined && props.title !== null && String(props.title).trim() !== "";
+  const hasDescription =
+    props.description !== undefined && props.description !== null && String(props.description).trim() !== "";
+  if (!hasTitle && !hasDescription) {
+    return { id, dismiss: () => {}, update: () => {} };
+  }
+
   // 중복 방지: 같은 title + variant 조합이 DEDUP_WINDOW_MS 이내면 무시
   const dedupKey = `${String(props.title ?? "")}_${props.variant ?? "default"}`;
   const lastShown = recentToastKeys.get(dedupKey);
