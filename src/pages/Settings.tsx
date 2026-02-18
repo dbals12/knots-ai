@@ -211,28 +211,6 @@ const Settings = () => {
           {loading ? '저장 중...' : '저장하기'}
         </Button>
 
-        {/* ── TOAST 테스트 버튼 (임시) ── */}
-        <div className="mt-4 p-3 rounded-xl border border-dashed border-border bg-muted/30 space-y-2">
-          <p className="text-[10px] text-muted-foreground font-mono text-center">[ TOAST TEST — 확인 후 삭제 ]</p>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => toast({ title: '', description: '' })}
-              className="flex-1 py-2 text-xs rounded-lg border border-border bg-background text-foreground hover:bg-muted transition-colors"
-            >
-              빈 토스트 테스트
-              <span className="block text-[10px] text-muted-foreground">→ 아무것도 안 떠야 함</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => toast({ title: '성공!', description: 'X 없이 2.5초 후 자동 소멸' })}
-              className="flex-1 py-2 text-xs rounded-lg border border-border bg-background text-foreground hover:bg-muted transition-colors"
-            >
-              성공 토스트 테스트
-              <span className="block text-[10px] text-muted-foreground">→ X 없이 자동 소멸</span>
-            </button>
-          </div>
-        </div>
       </div>
     </AppShell>
   );
