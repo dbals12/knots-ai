@@ -1,9 +1,11 @@
 import { useTheme } from "next-themes";
-import { Toaster as Sonner, toast } from "sonner";
+import { Toaster as Sonner } from "sonner";
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
-const Toaster = ({ ...props }: ToasterProps) => {
+// ⚠️ toast는 절대 여기서 export하지 않음.
+// 모든 toast 호출은 반드시 @/hooks/use-toast 경유 (빈 toast 가드 적용됨)
+const Toaster = () => {
   const { theme = "system" } = useTheme();
 
   return (
@@ -23,9 +25,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
           cancelButton: "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground",
         },
       }}
-      {...props}
     />
   );
 };
 
-export { Toaster, toast };
+export { Toaster };

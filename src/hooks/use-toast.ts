@@ -32,11 +32,14 @@ function toast(options: ToastOptions | string) {
 
   const { title, description, variant, duration } = options;
 
-  // 🚫 빈 토스트 완전 차단
+  // 🚫 빈 토스트 완전 차단 + 호출 스택 출력 (디버깅용)
   const hasTitle = title !== undefined && title !== null && String(title).trim() !== "";
   const hasDescription =
     description !== undefined && description !== null && String(description).trim() !== "";
-  if (!hasTitle && !hasDescription) return;
+  if (!hasTitle && !hasDescription) {
+    console.warn("EMPTY_TOAST_BLOCKED", new Error().stack);
+    return;
+  }
 
   // 중복 방지
   const dedupKey = `${String(title ?? "")}_${variant ?? "default"}`;
