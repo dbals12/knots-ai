@@ -1,219 +1,69 @@
-import * as React from "react";
+/**
+ * use-toast.ts — Sonner 기반 단일 토스트 시스템
+ *
+ * 이전: Radix UI Toast (ToastProvider/ToastViewport/ToastClose → 검은 X 버튼 버그)
+ * 현재: Sonner toast 얇은 래퍼
+ *
+ * 모든 페이지에서 import { useToast } from "@/hooks/use-toast" 로 그대로 사용 가능.
+ */
 
-import type { ToastActionElement, ToastProps } from "@/components/ui/toast";
+import { toast as sonnerToast } from "sonner";
 
-const TOAST_LIMIT = 3;
-const TOAST_REMOVE_DELAY = 1000000;
-
-// 기본 duration: 성공/안내 2500ms, 에러 6000ms
+// 중복 방지: 같은 title+variant 3초 이내 재호출 차단
+const recentToastKeys = new Map<string, number>();
+const DEDUP_WINDOW_MS = 3000;
 const DEFAULT_DURATION = 2500;
 const ERROR_DURATION = 6000;
 
-type ToasterToast = ToastProps & {
-  id: string;
-  title?: React.ReactNode;
-  description?: React.ReactNode;
-  action?: ToastActionElement;
+interface ToastOptions {
+  title?: string;
+  description?: string;
+  variant?: "default" | "destructive";
   duration?: number;
-};
-
-const actionTypes = {
-  ADD_TOAST: "ADD_TOAST",
-  UPDATE_TOAST: "UPDATE_TOAST",
-  DISMISS_TOAST: "DISMISS_TOAST",
-  REMOVE_TOAST: "REMOVE_TOAST",
-} as const;
-
-let count = 0;
-
-function genId() {
-  count = (count + 1) % Number.MAX_SAFE_INTEGER;
-  return count.toString();
 }
 
-type ActionType = typeof actionTypes;
-
-type Action =
-  | {
-      type: ActionType["ADD_TOAST"];
-      toast: ToasterToast;
-    }
-  | {
-      type: ActionType["UPDATE_TOAST"];
-      toast: Partial<ToasterToast>;
-    }
-  | {
-      type: ActionType["DISMISS_TOAST"];
-      toastId?: ToasterToast["id"];
-    }
-  | {
-      type: ActionType["REMOVE_TOAST"];
-      toastId?: ToasterToast["id"];
-    };
-
-interface State {
-  toasts: ToasterToast[];
-}
-
-const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
-
-// 중복 방지: 동일 title+variant 조합의 최근 표시 시각 추적
-const recentToastKeys = new Map<string, number>();
-const DEDUP_WINDOW_MS = 3000;
-
-const addToRemoveQueue = (toastId: string, duration?: number) => {
-  if (toastTimeouts.has(toastId)) {
+function toast(options: ToastOptions | string) {
+  // 문자열 단축 형태 지원
+  if (typeof options === "string") {
+    if (!options.trim()) return;
+    sonnerToast(options, { duration: DEFAULT_DURATION });
     return;
   }
 
-  const timeout = setTimeout(() => {
-    toastTimeouts.delete(toastId);
-    dispatch({
-      type: "REMOVE_TOAST",
-      toastId: toastId,
-    });
-  }, duration ?? TOAST_REMOVE_DELAY);
+  const { title, description, variant, duration } = options;
 
-  toastTimeouts.set(toastId, timeout);
-};
-
-export const reducer = (state: State, action: Action): State => {
-  switch (action.type) {
-    case "ADD_TOAST":
-      return {
-        ...state,
-        toasts: [action.toast, ...state.toasts].slice(0, TOAST_LIMIT),
-      };
-
-    case "UPDATE_TOAST":
-      return {
-        ...state,
-        toasts: state.toasts.map((t) => (t.id === action.toast.id ? { ...t, ...action.toast } : t)),
-      };
-
-    case "DISMISS_TOAST": {
-      const { toastId } = action;
-
-      if (toastId) {
-        addToRemoveQueue(toastId);
-      } else {
-        state.toasts.forEach((toast) => {
-          addToRemoveQueue(toast.id);
-        });
-      }
-
-      return {
-        ...state,
-        toasts: state.toasts.map((t) =>
-          t.id === toastId || toastId === undefined
-            ? {
-                ...t,
-                open: false,
-              }
-            : t,
-        ),
-      };
-    }
-    case "REMOVE_TOAST":
-      if (action.toastId === undefined) {
-        return {
-          ...state,
-          toasts: [],
-        };
-      }
-      return {
-        ...state,
-        toasts: state.toasts.filter((t) => t.id !== action.toastId),
-      };
-  }
-};
-
-const listeners: Array<(state: State) => void> = [];
-
-let memoryState: State = { toasts: [] };
-
-function dispatch(action: Action) {
-  memoryState = reducer(memoryState, action);
-  listeners.forEach((listener) => {
-    listener(memoryState);
-  });
-}
-
-type Toast = Omit<ToasterToast, "id">;
-
-function toast({ ...props }: Toast) {
-  const id = genId();
-
-  // 🚫 빈 토스트 완전 차단: title도 description도 없으면 무시
-  const hasTitle = props.title !== undefined && props.title !== null && String(props.title).trim() !== "";
+  // 🚫 빈 토스트 완전 차단
+  const hasTitle = title !== undefined && title !== null && String(title).trim() !== "";
   const hasDescription =
-    props.description !== undefined && props.description !== null && String(props.description).trim() !== "";
-  if (!hasTitle && !hasDescription) {
-    return { id, dismiss: () => {}, update: () => {} };
-  }
+    description !== undefined && description !== null && String(description).trim() !== "";
+  if (!hasTitle && !hasDescription) return;
 
-  // 중복 방지: 같은 title + variant 조합이 DEDUP_WINDOW_MS 이내면 무시
-  const dedupKey = `${String(props.title ?? "")}_${props.variant ?? "default"}`;
+  // 중복 방지
+  const dedupKey = `${String(title ?? "")}_${variant ?? "default"}`;
   const lastShown = recentToastKeys.get(dedupKey);
   const now = Date.now();
-  if (lastShown && now - lastShown < DEDUP_WINDOW_MS) {
-    return { id, dismiss: () => {}, update: () => {} };
-  }
+  if (lastShown && now - lastShown < DEDUP_WINDOW_MS) return;
   recentToastKeys.set(dedupKey, now);
 
-  // duration: 에러는 6초, 그 외 2.5초 (명시적으로 넘기면 우선)
-  const duration = props.duration ?? (props.variant === "destructive" ? ERROR_DURATION : DEFAULT_DURATION);
+  const finalDuration = duration ?? (variant === "destructive" ? ERROR_DURATION : DEFAULT_DURATION);
+  const message = title || description || "";
+  const descriptionText = title && description ? description : undefined;
 
-  const update = (props: ToasterToast) =>
-    dispatch({
-      type: "UPDATE_TOAST",
-      toast: { ...props, id },
+  if (variant === "destructive") {
+    sonnerToast.error(message, {
+      description: descriptionText,
+      duration: finalDuration,
     });
-  const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id });
-
-  dispatch({
-    type: "ADD_TOAST",
-    toast: {
-      ...props,
-      id,
-      open: true,
-      duration,
-      onOpenChange: (open) => {
-        if (!open) dismiss();
-      },
-    },
-  });
-
-  // 자동 dismiss 타이머 설정
-  setTimeout(() => {
-    dismiss();
-  }, duration);
-
-  return {
-    id: id,
-    dismiss,
-    update,
-  };
+  } else {
+    sonnerToast(message, {
+      description: descriptionText,
+      duration: finalDuration,
+    });
+  }
 }
 
 function useToast() {
-  const [state, setState] = React.useState<State>(memoryState);
-
-  React.useEffect(() => {
-    listeners.push(setState);
-    return () => {
-      const index = listeners.indexOf(setState);
-      if (index > -1) {
-        listeners.splice(index, 1);
-      }
-    };
-  }, [state]);
-
-  return {
-    ...state,
-    toast,
-    dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
-  };
+  return { toast };
 }
 
 export { useToast, toast };
