@@ -306,10 +306,10 @@ const Results = () => {
   };
 
   return (
-    <AppShell className="min-h-[700px]">
+    <AppShell>
       {/* Regenerating Overlay */}
       {isRegenerating && (
-        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center rounded-[32px]">
+        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center rounded-[28px]">
           <Loader2 className="w-10 h-10 md:w-12 md:h-12 animate-spin text-foreground mb-4" />
           <p className="text-base md:text-lg font-medium text-foreground text-center px-4">
             수정한 내용을 기반으로 다시 생성 중입니다...
@@ -317,7 +317,7 @@ const Results = () => {
         </div>
       )}
       
-      <div className="flex-1 px-4 md:px-6 py-4 md:py-6 space-y-4 md:space-y-5 overflow-y-auto">
+      <div className="flex-1 px-4 md:px-6 py-4 md:py-6 space-y-4 md:space-y-5">
         <h2 className="text-lg md:text-xl font-semibold text-foreground">오늘의 결과</h2>
 
         {/* 원문 카드: 모바일 접힘/더보기 지원 */}

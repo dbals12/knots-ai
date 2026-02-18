@@ -127,7 +127,7 @@ const Settings = () => {
   return (
     <AppShell>
       {/* Main Content */}
-      <div className="flex-1 px-4 md:px-6 py-4 md:py-6 space-y-4 md:space-y-6 overflow-y-auto pb-4">
+      <div className="flex-1 px-4 md:px-6 py-4 md:py-6 space-y-4 md:space-y-6 pb-4">
         <div>
           <h2 className="text-lg md:text-xl font-bold text-foreground">프로필 설정</h2>
           <p className="text-xs md:text-sm text-muted-foreground mt-1">

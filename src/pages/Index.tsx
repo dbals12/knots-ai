@@ -80,7 +80,7 @@ const Index = () => {
   if (hasPreviousSession) {
     return (
       <AppShell showHeader={false}>
-        <div className="px-6 py-10 flex flex-col flex-1 justify-between min-h-full">
+        <div className="px-6 py-8 flex flex-col flex-1 justify-between">
           {/* Top Content Section */}
           <div>
             <div className="text-center mb-8">
