@@ -7,6 +7,7 @@ import { FcGoogle } from "react-icons/fc";
 import { RiKakaoTalkFill } from "react-icons/ri";
 import { getPendingSubmission } from "@/lib/pendingSubmission";
 import { getGuestPendingSubmission } from "@/lib/guestPendingSubmission";
+import AppShell from "@/components/AppShell";
 
 const Auth = () => {
   const [loading, setLoading] = useState(false);
@@ -104,49 +105,54 @@ const Auth = () => {
 
   if (isCheckingAuth) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <p className="text-muted-foreground">로딩 중...</p>
-      </div>
+      <AppShell showHeader={false}>
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-muted-foreground">로딩 중...</p>
+        </div>
+      </AppShell>
     );
   }
 
   return (
-    <div className="flex-1 flex items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-8">
-        <div className="text-center">
-          <h1 className="text-2xl font-normal italic text-foreground tracking-tight font-bodoni">knots</h1>
-          <p className="text-muted-foreground whitespace-pre-line mt-2">
-            {"3초 만에 시작하고\n나만의 콘텐츠를 만드세요"}
-          </p>
-        </div>
+    <AppShell showHeader={false}>
+      {/* 카드 세로 중앙 정렬 — flex-1로 남은 공간 채우고 justify-center */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-8">
+        <div className="w-full space-y-8">
+          <div className="text-center">
+            <h1 className="text-2xl font-normal italic text-foreground tracking-tight font-bodoni">knots</h1>
+            <p className="text-muted-foreground whitespace-pre-line mt-2">
+              {"3초 만에 시작하고\n나만의 콘텐츠를 만드세요"}
+            </p>
+          </div>
 
-        <div className="bg-card rounded-2xl p-8 shadow-sm border flex flex-col items-center justify-center">
-          <div className="space-y-3 w-full">
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full h-12 bg-white hover:bg-gray-50 text-gray-900 border-gray-300 flex items-center justify-center gap-2"
-              onClick={() => handleSocialLogin("google")}
-              disabled={loading}
-            >
-              <FcGoogle className="w-5 h-5" />
-              Google로 계속하기
-            </Button>
+          <div className="bg-card rounded-2xl p-8 shadow-sm border flex flex-col items-center justify-center">
+            <div className="space-y-3 w-full">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full h-12 flex items-center justify-center gap-2"
+                onClick={() => handleSocialLogin("google")}
+                disabled={loading}
+              >
+                <FcGoogle className="w-5 h-5" />
+                Google로 계속하기
+              </Button>
 
-            <Button
-              type="button"
-              className="w-full h-12 text-black hover:bg-[#FEE500]/90 font-medium flex items-center justify-center gap-2"
-              style={{ backgroundColor: "#FEE500" }}
-              onClick={() => handleSocialLogin("kakao")}
-              disabled={loading}
-            >
-              <RiKakaoTalkFill className="w-5 h-5 text-black" />
-              Kakao로 계속하기
-            </Button>
+              <Button
+                type="button"
+                className="w-full h-12 font-medium flex items-center justify-center gap-2"
+                style={{ backgroundColor: "#FEE500", color: "#000" }}
+                onClick={() => handleSocialLogin("kakao")}
+                disabled={loading}
+              >
+                <RiKakaoTalkFill className="w-5 h-5" />
+                Kakao로 계속하기
+              </Button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </AppShell>
   );
 };
 
