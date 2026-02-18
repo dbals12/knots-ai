@@ -19,10 +19,7 @@ interface AppShellProps {
  */
 const AppShell = ({ children, className = '', showHeader = true, isGuest = false }: AppShellProps) => {
   return (
-    <div
-      className="min-h-[100dvh] bg-[#EFEFEF] px-4 pt-4 pb-6 md:px-6 md:py-8 md:flex md:items-center md:justify-center"
-      style={{ outline: '2px solid rgba(255,0,0,0.35)' }}
-    >
+    <div className="min-h-[100dvh] bg-[#EFEFEF] px-4 pt-4 pb-6 md:px-6 md:py-8 md:flex md:items-center md:justify-center">
       <div
         className={`
           relative w-full bg-background
@@ -35,14 +32,10 @@ const AppShell = ({ children, className = '', showHeader = true, isGuest = false
           md:min-h-0 md:max-h-[88vh]
           ${className}
         `}
-        style={{ outline: '2px solid rgba(0,0,255,0.25)' }}
       >
         {showHeader && <Header isGuest={isGuest} />}
         <div className="flex-1 flex flex-col overflow-y-auto">
           {children}
-        </div>
-        <div className="text-center py-0.5 text-[8px] text-muted-foreground/30 select-none pointer-events-none">
-          LAYOUT: APPSHELL_SPACIOUS_v1
         </div>
       </div>
     </div>
