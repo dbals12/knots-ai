@@ -12,6 +12,7 @@ import Settings from "./pages/Settings";
 import Home from "./pages/Home";
 import DraftResult from "./pages/DraftResult";
 import History from "./pages/History";
+// cache-bust: 2026-02-18-v4
 
 const queryClient = new QueryClient();
 
