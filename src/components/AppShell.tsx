@@ -25,10 +25,6 @@ const AppShell = ({ children, className = '', showHeader = true, isGuest = false
         <div className="flex-1 flex flex-col overflow-y-auto">
           {children}
         </div>
-        {/* BUILD MARKER — 임시, 확인 후 제거 */}
-        <div className="text-center py-1 text-[9px] text-muted-foreground/40 select-none pointer-events-none">
-          BUILD_MARKER: 2026-02-18-v3
-        </div>
       </div>
     </div>
   );

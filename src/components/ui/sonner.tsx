@@ -1,10 +1,16 @@
+/**
+ * sonner.tsx — Toaster 렌더 전용 (단순 마운트 컴포넌트)
+ *
+ * ⚠️ toast 함수는 절대 이 파일에서 export하지 않음.
+ *    모든 toast 호출은 반드시 @/hooks/use-toast 경유할 것.
+ *    직접 `import { toast } from "sonner"` 사용 금지.
+ */
+
 import { useTheme } from "next-themes";
 import { Toaster as Sonner } from "sonner";
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
-// ⚠️ toast는 절대 여기서 export하지 않음.
-// 모든 toast 호출은 반드시 @/hooks/use-toast 경유 (빈 toast 가드 적용됨)
 const Toaster = () => {
   const { theme = "system" } = useTheme();
 
@@ -29,4 +35,5 @@ const Toaster = () => {
   );
 };
 
+// Toaster만 export. toast는 절대 export하지 않음.
 export { Toaster };

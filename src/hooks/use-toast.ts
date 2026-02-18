@@ -1,10 +1,13 @@
 /**
  * use-toast.ts — Sonner 기반 단일 토스트 시스템
  *
- * 이전: Radix UI Toast (ToastProvider/ToastViewport/ToastClose → 검은 X 버튼 버그)
- * 현재: Sonner toast 얇은 래퍼
+ * ⚠️ 프로젝트 전체에서 toast를 쓸 때 반드시 이 파일만 import할 것.
+ *    `import { toast } from "sonner"` 직접 호출 금지.
  *
- * 모든 페이지에서 import { useToast } from "@/hooks/use-toast" 로 그대로 사용 가능.
+ * 사용법:
+ *   import { useToast } from "@/hooks/use-toast";
+ *   const { toast } = useToast();
+ *   toast({ title: "완료!", description: "..." });
  */
 
 import { toast as sonnerToast } from "sonner";
@@ -32,12 +35,15 @@ function toast(options: ToastOptions | string) {
 
   const { title, description, variant, duration } = options;
 
-  // 🚫 빈 토스트 완전 차단 + 호출 스택 출력 (디버깅용)
+  // 🚫 빈 토스트 완전 차단
   const hasTitle = title !== undefined && title !== null && String(title).trim() !== "";
   const hasDescription =
     description !== undefined && description !== null && String(description).trim() !== "";
   if (!hasTitle && !hasDescription) {
-    console.warn("EMPTY_TOAST_BLOCKED", new Error().stack);
+    // DEV 환경에서만 호출 스택 출력 (프로덕션 콘솔 스팸 방지)
+    if (import.meta.env.DEV) {
+      console.warn("[use-toast] EMPTY_TOAST_BLOCKED", new Error().stack);
+    }
     return;
   }
 

@@ -33,11 +33,7 @@ function App() {
       <AuthProvider>
         <TooltipProvider>
           <BrowserRouter>
-            {/* ✅ Sonner Toaster — 단 1곳, Radix ToastProvider 완전 제거됨 */}
-            {/* ACTIVE_TOASTER_RENDERED */}
-            <div style={{ fontSize: '9px', textAlign: 'center', color: '#aaa', padding: '1px', pointerEvents: 'none', userSelect: 'none' }}>
-              ACTIVE_TOASTER_RENDERED · sonner only
-            </div>
+            {/* Sonner Toaster — 앱 전체에서 단 1곳 렌더 (src/App.tsx) */}
             <Toaster />
             <AnalyticsProvider>
               <Routes>
