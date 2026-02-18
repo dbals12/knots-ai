@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import AppShell from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
 import { SiNaver, SiLinkedin, SiInstagram, SiThreads } from "react-icons/si";
 import ResultDetailModal from "@/components/ResultDetailModal";
 import {
@@ -26,6 +26,57 @@ import {
   trackClickGoHome,
   trackLoginStart,
 } from "@/lib/analytics";
+
+// ─── 접힘/펼침 가능한 원문 카드 (DraftResult용) ───
+interface DraftInputCardProps {
+  inputText: string;
+  isEditing: boolean;
+  editedInput: string;
+  savingInput: boolean;
+  onEditClick: () => void;
+  onCancel: () => void;
+  onSave: () => void;
+  onEditedInputChange: (v: string) => void;
+}
+
+const DraftInputCard = ({
+  inputText, isEditing, editedInput, savingInput,
+  onEditClick, onCancel, onSave, onEditedInputChange,
+}: DraftInputCardProps) => {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div className="bg-muted/40 rounded-2xl p-3 md:p-5 border border-border/50">
+      <div className="flex items-center justify-between mb-2 md:mb-3">
+        <h3 className="font-bold text-foreground text-sm md:text-base">오늘 내가 기록한 내용</h3>
+        {!isEditing ? (
+          <Button variant="outline" size="sm" onClick={onEditClick} className="h-7 md:h-8 text-xs">수정하기</Button>
+        ) : (
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={onCancel} className="h-7 md:h-8 text-xs" disabled={savingInput}>취소</Button>
+            <Button size="sm" onClick={onSave} className="h-7 md:h-8 text-xs bg-foreground text-background hover:bg-foreground/90" disabled={savingInput || !editedInput.trim()}>
+              {savingInput ? "저장 중..." : "저장"}
+            </Button>
+          </div>
+        )}
+      </div>
+      {!isEditing ? (
+        <div>
+          <div className={`text-xs md:text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap overflow-hidden ${expanded ? "" : "line-clamp-3 md:line-clamp-4"}`}>
+            {inputText}
+          </div>
+          {inputText && inputText.length > 120 && (
+            <button onClick={() => setExpanded(!expanded)} className="mt-1.5 flex items-center gap-0.5 text-xs text-muted-foreground/70 hover:text-muted-foreground transition-colors">
+              {expanded ? <><ChevronUp className="w-3 h-3" /> 접기</> : <><ChevronDown className="w-3 h-3" /> 더보기</>}
+            </button>
+          )}
+        </div>
+      ) : (
+        <textarea value={editedInput} onChange={(e) => onEditedInputChange(e.target.value)}
+          className="w-full min-h-[140px] md:min-h-[160px] max-h-[240px] p-3 rounded-xl border border-border bg-background text-xs md:text-sm text-foreground leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-foreground/20" />
+      )}
+    </div>
+  );
+};
 
 interface ContentData {
   input_text: string;
@@ -500,62 +551,24 @@ const DraftResult = () => {
 
   // ✅ [결과 화면]
   return (
-    <AppShell className="h-[100dvh] flex flex-col overflow-hidden bg-white">
-      <div className="flex-1 overflow-y-auto px-5 py-6 space-y-5 pb-6">
-        <h2 className="text-xl font-bold text-gray-900">오늘의 결과</h2>
+    <AppShell className="h-[100dvh] flex flex-col overflow-hidden">
+      <div className="flex-1 overflow-y-auto px-4 md:px-5 py-4 md:py-6 space-y-4 md:space-y-5 pb-6">
+        <h2 className="text-lg md:text-xl font-bold text-foreground">오늘의 결과</h2>
 
-        {/* 원본 카드 */}
-        <div className="bg-[#F9F9F9] rounded-2xl p-5 border border-gray-100">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-bold text-gray-800">오늘 내가 기록한 내용</h3>
-            {/* ✅ 수정 버튼: 텍스트는 항상 "수정하기", 게스트는 클릭 시 로그인 모달 */}
-            {!isEditingInput ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleEditInputClick}
-                className="h-8 text-xs bg-white border-gray-200"
-              >
-                수정하기
-              </Button>
-            ) : (
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCancelEdit}
-                  className="h-8 text-xs bg-white border-gray-200"
-                  disabled={savingInput}
-                >
-                  취소
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleSaveEditedInput}
-                  className="h-8 text-xs bg-black text-white hover:bg-gray-800"
-                  disabled={savingInput || !editedInput.trim()}
-                >
-                  {savingInput ? "저장 중..." : "저장"}
-                </Button>
-              </div>
-            )}
-          </div>
-          {/* 내용 전체 보기 (스크롤) */}
-          {!isEditingInput ? (
-            <div className="max-h-[200px] overflow-y-auto text-sm text-gray-600 leading-relaxed whitespace-pre-wrap scrollbar-hide">
-              {data.input_text}
-            </div>
-          ) : (
-            <textarea
-              value={editedInput}
-              onChange={(e) => setEditedInput(e.target.value)}
-              className="w-full min-h-[160px] max-h-[240px] p-3 rounded-xl border border-gray-200 bg-white text-sm text-gray-800 leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-black/20"
-            />
-          )}
-        </div>
+        {/* 원본 카드 - 모바일 접힘/펼침 */}
+        <DraftInputCard
+          inputText={data.input_text}
+          isEditing={isEditingInput}
+          editedInput={editedInput}
+          savingInput={savingInput}
+          onEditClick={handleEditInputClick}
+          onCancel={handleCancelEdit}
+          onSave={handleSaveEditedInput}
+          onEditedInputChange={setEditedInput}
+        />
 
-        {/* 결과 카드 */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
+        {/* 반응형 그리드: 모바일 1열 / md 이상 2열 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
           {Object.keys(platformIcons).map((key) => {
             const meta = platformIcons[key as keyof typeof platformIcons];
             const Icon = meta.icon;
@@ -565,17 +578,17 @@ const DraftResult = () => {
               <button
                 key={key}
                 onClick={() => handleCardClick(key)}
-                className="bg-[#F9F9F9] rounded-2xl p-4 border border-gray-100 hover:bg-gray-100 transition-all text-left space-y-3 h-44 flex flex-col"
+                className="bg-muted/40 rounded-2xl p-3 md:p-4 border border-border/50 hover:bg-muted/60 transition-all text-left space-y-2 md:space-y-3 flex flex-col"
               >
                 <div
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm ${key === "reels" ? "bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af]" : ""}`}
+                  className={`w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm ${key === "reels" ? "bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af]" : ""}`}
                   style={{ backgroundColor: key === "reels" ? undefined : meta.color }}
                 >
-                  <Icon className="w-5 h-5 text-white" />
+                  <Icon className="w-4 h-4 md:w-5 md:h-5 text-white" />
                 </div>
                 <div className="flex-1 overflow-hidden w-full">
-                  <h3 className="font-bold text-gray-900 text-sm mb-1">{meta.title}</h3>
-                  <p className="text-xs text-gray-500 leading-relaxed line-clamp-3">{getSummary(content)}</p>
+                  <h3 className="font-bold text-foreground text-xs md:text-sm mb-1">{meta.title}</h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 md:line-clamp-3">{getSummary(content)}</p>
                 </div>
               </button>
             );
@@ -583,11 +596,11 @@ const DraftResult = () => {
         </div>
 
         {/* 하단 버튼 */}
-        <div className="flex flex-col gap-3 pt-2">
+        <div className="flex flex-col gap-2 md:gap-3 pt-1">
           {!user ? (
             <Button
               onClick={() => performLogin()}
-              className="w-full h-14 rounded-xl bg-black text-white hover:bg-gray-800 text-base font-bold shadow-lg"
+              className="w-full h-11 md:h-14 rounded-xl bg-foreground text-background hover:bg-foreground/90 text-sm md:text-base font-bold shadow-lg"
             >
               3초 만에 로그인하고 결과 저장하기
             </Button>
@@ -599,7 +612,7 @@ const DraftResult = () => {
                   trackClickNewRecord(params);
                   navigate("/input");
                 }}
-                className="w-full h-14 rounded-xl bg-black text-white hover:bg-gray-800 font-bold text-base shadow-lg"
+                className="w-full h-11 md:h-14 rounded-xl bg-foreground text-background hover:bg-foreground/90 font-bold text-sm md:text-base shadow-lg"
               >
                 새로운 기록 만들기
               </Button>
@@ -610,7 +623,7 @@ const DraftResult = () => {
                   trackClickGoHome(params);
                   navigate("/");
                 }}
-                className="w-full h-14 rounded-xl font-bold text-base border-gray-200 hover:bg-gray-50 text-gray-700"
+                className="w-full h-11 md:h-14 rounded-xl font-bold text-sm md:text-base"
               >
                 홈으로 돌아가기
               </Button>
