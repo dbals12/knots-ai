@@ -340,7 +340,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
   return (
     <AppShell isGuest={isGuest}>
       {/* 컨텐츠 영역: 모바일은 컴팩트, 데스크탑은 여유 있는 간격 */}
-      <div className="flex-1 px-5 md:px-6 pt-6 md:pt-8 pb-14 md:pb-8 space-y-6 md:space-y-7">
+      <div className="flex-1 flex flex-col px-5 md:px-6 pt-6 md:pt-8 pb-8 md:pb-8 space-y-6 md:space-y-7">
         {/* ... (기존 UI 유지) ... */}
         {!isLoadingUserStatus && isReturningUser && (
           <div className="space-y-2">
@@ -448,7 +448,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
           />
         </div>
 
-        {/* 입력 모드 탭 */}
         <div className="flex items-center justify-center gap-2">
           <button
             onClick={() => setInputMode("voice")}
@@ -464,38 +463,39 @@ const Home = ({ isGuest = false }: HomeProps) => {
           </button>
         </div>
 
-        {/* 음성 입력: 마이크 버튼 — 모바일에서 w-16/h-16으로 컴팩트하게 */}
-        {inputMode === "voice" ? (
-          <div className="flex flex-col items-center gap-4 py-6 md:py-8">
-            <button
-              onClick={toggleRecording}
-              className={`w-20 h-20 md:w-24 md:h-24 rounded-full bg-foreground flex items-center justify-center transition-all shadow-lg ${isRecording ? "animate-pulse scale-95" : "hover:scale-105"}`}
-            >
-              <Mic className="w-9 h-9 md:w-11 md:h-11 text-background" strokeWidth={2.5} />
-            </button>
-            <p className="text-sm text-muted-foreground text-center">
-              {isRecording ? "녹음 중... 탭하여 중지" : "버튼을 누르고 자유롭게 이야기해주세요"}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-2 pb-4">
-            <Textarea
-              value={textInput}
-              onChange={(e) => setTextInput(e.target.value)}
-              placeholder="오늘 있었던 일이나 배운 점을 자유롭게 작성해주세요..."
-              className="min-h-[140px] md:min-h-[180px] rounded-xl border-border bg-background resize-none"
-            />
-            <Button
-              onClick={handleTextSubmit}
-              disabled={isSubmitting}
-              className="w-full h-10 md:h-12 rounded-xl bg-foreground text-background hover:bg-foreground/90"
-            >
-              {isSubmitting ? "저장 중..." : "완료"}
-            </Button>
-          </div>
-        )}
+        {/* 음성/텍스트 입력 영역 — flex-1로 남은 공간 채우고 CTA를 하단 정렬 */}
+        <div className="flex-1 flex flex-col justify-end">
+          {inputMode === "voice" ? (
+            <div className="flex flex-col items-center gap-3 pb-2">
+              <button
+                onClick={toggleRecording}
+                className={`w-32 h-32 md:w-36 md:h-36 rounded-full bg-foreground flex items-center justify-center transition-all shadow-[0_8px_32px_rgba(0,0,0,0.18)] ${isRecording ? "animate-pulse scale-95" : "hover:scale-105 active:scale-95"}`}
+              >
+                <Mic className="w-14 h-14 md:w-16 md:h-16 text-background" strokeWidth={2} />
+              </button>
+              <p className="text-sm text-muted-foreground text-center">
+                {isRecording ? "녹음 중... 탭하여 중지" : "버튼을 누르고 자유롭게 이야기해주세요"}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2 pb-2">
+              <Textarea
+                value={textInput}
+                onChange={(e) => setTextInput(e.target.value)}
+                placeholder="오늘 있었던 일이나 배운 점을 자유롭게 작성해주세요..."
+                className="min-h-[140px] md:min-h-[180px] rounded-xl border-border bg-background resize-none"
+              />
+              <Button
+                onClick={handleTextSubmit}
+                disabled={isSubmitting}
+                className="w-full h-10 md:h-12 rounded-xl bg-foreground text-background hover:bg-foreground/90"
+              >
+                {isSubmitting ? "저장 중..." : "완료"}
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
-
       <Sheet open={showConfirmation} onOpenChange={setShowConfirmation}>
         <SheetContent side="bottom" className="h-auto rounded-t-3xl">
           <SheetHeader className="pb-6">
