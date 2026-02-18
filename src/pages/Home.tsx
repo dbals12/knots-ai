@@ -339,11 +339,12 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
   return (
     <AppShell isGuest={isGuest}>
-      <div className="flex-1 px-4 md:px-6 py-4 md:py-6 space-y-4 md:space-y-6 pb-8">
+      {/* 컨텐츠 영역: 모바일은 컴팩트, 데스크탑은 여유 있는 간격 */}
+      <div className="flex-1 px-4 md:px-6 pt-3 md:pt-5 pb-safe-or-6 space-y-3 md:space-y-5">
         {/* ... (기존 UI 유지) ... */}
         {!isLoadingUserStatus && isReturningUser && (
-          <div className="space-y-3">
-            <h2 className="text-base font-semibold text-foreground">오늘의 목적은 무엇인가요?</h2>
+          <div className="space-y-2">
+            <h2 className="text-sm font-semibold text-foreground">오늘의 목적은 무엇인가요?</h2>
             <div className="relative group">
               <button
                 onClick={() => scrollContainer(purposeScrollRef, "left")}
@@ -353,13 +354,13 @@ const Home = ({ isGuest = false }: HomeProps) => {
               </button>
               <div
                 ref={purposeScrollRef}
-                className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory"
+                className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide snap-x snap-mandatory"
               >
                 {sessionPurposes.map((purpose) => (
                   <button
                     key={purpose.value}
                     onClick={() => setSessionPurpose(sessionPurpose === purpose.value ? "" : purpose.value)}
-                    className={`flex-shrink-0 px-4 py-2 rounded-full border-2 text-sm font-medium transition-all whitespace-nowrap snap-start ${sessionPurpose === purpose.value ? "border-foreground bg-foreground text-background" : "border-border bg-background text-foreground hover:border-foreground/30"}`}
+                    className={`flex-shrink-0 px-3 py-1.5 rounded-full border-2 text-sm font-medium transition-all whitespace-nowrap snap-start ${sessionPurpose === purpose.value ? "border-foreground bg-foreground text-background" : "border-border bg-background text-foreground hover:border-foreground/30"}`}
                   >
                     {purpose.label}
                   </button>
@@ -375,8 +376,8 @@ const Home = ({ isGuest = false }: HomeProps) => {
           </div>
         )}
 
-        <div className="space-y-3">
-          <h2 className="text-base font-semibold text-foreground">오늘 하루 어땠나요?</h2>
+        <div className="space-y-2">
+          <h2 className="text-sm font-semibold text-foreground">오늘 하루 어땠나요?</h2>
           <div className="relative group">
             <button
               onClick={() => scrollContainer(moodScrollRef, "left")}
@@ -384,14 +385,14 @@ const Home = ({ isGuest = false }: HomeProps) => {
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <div ref={moodScrollRef} className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory">
+            <div ref={moodScrollRef} className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide snap-x snap-mandatory">
               {moods.map((mood) => (
                 <button
                   key={mood.value}
                   onClick={() => setSelectedMood(mood.value)}
-                  className={`flex-shrink-0 px-4 py-2.5 rounded-xl border-2 transition-all whitespace-nowrap snap-start ${selectedMood === mood.value ? "border-foreground bg-background shadow-sm" : "border-border bg-background hover:border-foreground/30"}`}
+                  className={`flex-shrink-0 px-3 py-2 rounded-xl border-2 transition-all whitespace-nowrap snap-start text-sm ${selectedMood === mood.value ? "border-foreground bg-background shadow-sm" : "border-border bg-background hover:border-foreground/30"}`}
                 >
-                  <span className="text-sm font-medium text-foreground">{mood.label}</span>
+                  <span className="font-medium text-foreground">{mood.label}</span>
                 </button>
               ))}
             </div>
@@ -404,8 +405,8 @@ const Home = ({ isGuest = false }: HomeProps) => {
           </div>
         </div>
 
-        <div className="space-y-3">
-          <h2 className="text-base font-semibold text-foreground">오늘은 어떤 나로 정리할까요?</h2>
+        <div className="space-y-2">
+          <h2 className="text-sm font-semibold text-foreground">오늘은 어떤 나로 정리할까요?</h2>
           <div className="relative group">
             <button
               onClick={() => scrollContainer(personaScrollRef, "left")}
@@ -415,13 +416,13 @@ const Home = ({ isGuest = false }: HomeProps) => {
             </button>
             <div
               ref={personaScrollRef}
-              className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory"
+              className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide snap-x snap-mandatory"
             >
               {personas.map((persona) => (
                 <button
                   key={persona.value}
                   onClick={() => setSelectedPersona(persona.value)}
-                  className={`flex-shrink-0 px-4 py-2.5 rounded-xl border-2 transition-all snap-start ${selectedPersona === persona.value ? "border-foreground bg-background shadow-sm" : "border-border bg-background hover:border-foreground/30"}`}
+                  className={`flex-shrink-0 px-3 py-2 rounded-xl border-2 transition-all snap-start ${selectedPersona === persona.value ? "border-foreground bg-background shadow-sm" : "border-border bg-background hover:border-foreground/30"}`}
                 >
                   <div className="text-sm font-medium text-foreground whitespace-nowrap">{persona.label}</div>
                   <div className="text-xs text-muted-foreground mt-0.5 whitespace-nowrap">{persona.desc}</div>
@@ -437,50 +438,52 @@ const Home = ({ isGuest = false }: HomeProps) => {
           </div>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <label className="text-sm text-muted-foreground">오늘의 키워드 (한두 단어로 정리해볼까요?)</label>
           <Input
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
             placeholder="예: 클라이언트 미팅, 런칭, 실수"
-            className="h-10 md:h-11 rounded-xl border-border bg-background"
+            className="h-9 md:h-10 rounded-xl border-border bg-background"
           />
         </div>
 
-        <div className="flex items-center justify-center gap-2 py-1">
+        {/* 입력 모드 탭 */}
+        <div className="flex items-center justify-center gap-2">
           <button
             onClick={() => setInputMode("voice")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 rounded-full text-sm font-medium transition-all ${inputMode === "voice" ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${inputMode === "voice" ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
           >
-            <Mic className="w-3.5 h-3.5 md:w-4 md:h-4" /> 음성
+            <Mic className="w-3.5 h-3.5" /> 음성
           </button>
           <button
             onClick={() => setInputMode("text")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 rounded-full text-sm font-medium transition-all ${inputMode === "text" ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${inputMode === "text" ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
           >
-            <Type className="w-3.5 h-3.5 md:w-4 md:h-4" /> 텍스트
+            <Type className="w-3.5 h-3.5" /> 텍스트
           </button>
         </div>
 
+        {/* 음성 입력: 마이크 버튼 — 모바일에서 w-16/h-16으로 컴팩트하게 */}
         {inputMode === "voice" ? (
-          <div className="flex flex-col items-center space-y-3 py-4 md:py-6">
+          <div className="flex flex-col items-center gap-2 py-2 md:py-4">
             <button
               onClick={toggleRecording}
-              className={`w-20 h-20 md:w-28 md:h-28 rounded-full bg-foreground flex items-center justify-center transition-all shadow-xl ${isRecording ? "animate-pulse scale-95" : "hover:scale-105"}`}
+              className={`w-16 h-16 md:w-24 md:h-24 rounded-full bg-foreground flex items-center justify-center transition-all shadow-lg ${isRecording ? "animate-pulse scale-95" : "hover:scale-105"}`}
             >
-              <Mic className="w-9 h-9 md:w-12 md:h-12 text-background" strokeWidth={2.5} />
+              <Mic className="w-7 h-7 md:w-11 md:h-11 text-background" strokeWidth={2.5} />
             </button>
-            <p className="text-xs md:text-sm text-muted-foreground text-center">
+            <p className="text-xs text-muted-foreground text-center">
               {isRecording ? "녹음 중... 탭하여 중지" : "버튼을 누르고 자유롭게 이야기해주세요"}
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2 pb-4">
             <Textarea
               value={textInput}
               onChange={(e) => setTextInput(e.target.value)}
               placeholder="오늘 있었던 일이나 배운 점을 자유롭게 작성해주세요..."
-              className="min-h-[160px] md:min-h-[200px] rounded-xl border-border bg-background resize-none"
+              className="min-h-[140px] md:min-h-[180px] rounded-xl border-border bg-background resize-none"
             />
             <Button
               onClick={handleTextSubmit}
