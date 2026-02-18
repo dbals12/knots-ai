@@ -1,4 +1,4 @@
-import { Toaster as Sonner } from "@/components/ui/sonner";
+import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
@@ -9,8 +9,7 @@ import Auth from "./pages/Auth";
 import AuthCallback from "./pages/AuthCallback";
 import Onboarding from "./pages/Onboarding";
 import Settings from "./pages/Settings";
-// import InputPage from "./pages/InputPage"; // ❌ 구버전 파일 연결 해제
-import Home from "./pages/Home"; // ✅ 신버전 파일로 통일
+import Home from "./pages/Home";
 import DraftResult from "./pages/DraftResult";
 import History from "./pages/History";
 
@@ -32,8 +31,9 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <TooltipProvider>
-          <Sonner />
           <BrowserRouter>
+            {/* Sonner Toaster — BrowserRouter 안, Routes 밖에서 단 1회 렌더 */}
+            <Toaster />
             <AnalyticsProvider>
               <Routes>
                 {/* Public routes */}
@@ -41,7 +41,6 @@ function App() {
                 <Route path="/login" element={<Auth />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
 
-                {/* ✅ [핵심 수정] 로그인 유저의 '/input' 경로도 'Home' 컴포넌트(신규 디자인)를 사용 */}
                 <Route path="/input" element={<Home isGuest={false} />} />
 
                 {/* Result Page */}
