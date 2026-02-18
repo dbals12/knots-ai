@@ -183,23 +183,23 @@ const History = () => {
   }
 
   return (
-    <AppShell className="min-h-[700px]">
-      <div className="flex-1 px-6 py-6 space-y-5 overflow-y-auto">
-        <h2 className="text-xl font-semibold text-foreground">내 기록 보기</h2>
+    <AppShell>
+      <div className="flex-1 px-4 md:px-6 py-4 md:py-6 space-y-3 md:space-y-5 overflow-y-auto">
+        <h2 className="text-lg md:text-xl font-semibold text-foreground">내 기록 보기</h2>
 
         {sessions.length === 0 ? (
-          <div className="bg-muted/50 rounded-2xl p-6 text-center">
+          <div className="bg-muted/50 rounded-2xl p-5 text-center">
             <p className="text-muted-foreground text-sm">아직 기록이 없습니다.</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2 md:space-y-3">
             {sessions.map((session) => (
               <button
                 key={session.id}
                 onClick={() => handleSessionClick(session)}
-                className="w-full bg-muted/50 rounded-2xl p-4 hover:bg-muted/70 transition-all text-left"
+                className="w-full bg-muted/50 rounded-xl md:rounded-2xl p-3 md:p-4 hover:bg-muted/70 transition-all text-left"
               >
-                <p className="text-xs text-muted-foreground mb-2">{formatDate(session.created_at)}</p>
+                <p className="text-xs text-muted-foreground mb-1">{formatDate(session.created_at)}</p>
                 {session.input_data?.sessionPurpose && (
                   <p className="text-xs text-muted-foreground mb-1">목적: {session.input_data.sessionPurpose}</p>
                 )}

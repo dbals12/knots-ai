@@ -254,16 +254,16 @@ const InputPage = () => {
   };
 
   return (
-    <AppShell className="min-h-[700px] flex flex-col" isGuest={!user}>
+    <AppShell className="flex flex-col" isGuest={!user}>
       {/* 헤더: 뒤로가기 버튼 */}
-      <div className="px-4 py-3 bg-white border-b border-gray-100 flex items-center gap-2 sticky top-0 z-10">
-        <button onClick={() => navigate("/")} className="p-2 hover:bg-gray-100 rounded-full">
-          <ArrowLeft size={20} className="text-gray-700" />
+      <div className="px-4 py-3 bg-background border-b border-border flex items-center gap-2 sticky top-0 z-10">
+        <button onClick={() => navigate("/")} className="p-1.5 hover:bg-muted rounded-full">
+          <ArrowLeft size={18} className="text-foreground" />
         </button>
-        <span className="font-bold text-lg">기록하기</span>
+        <span className="font-semibold text-base text-foreground">기록하기</span>
       </div>
 
-      <div className="flex-1 px-6 py-6 space-y-6 overflow-y-auto pb-32">
+      <div className="flex-1 px-4 md:px-6 py-4 md:py-6 space-y-4 md:space-y-6 overflow-y-auto pb-8">
         {/* 목적 선택 */}
         <div className="space-y-3">
           <h2 className="text-base font-semibold text-foreground">오늘의 목적은 무엇인가요?</h2>
@@ -393,14 +393,14 @@ const InputPage = () => {
 
         {/* 음성 입력 */}
         {inputMode === "voice" && (
-          <div className="flex flex-col items-center space-y-4 py-8">
+          <div className="flex flex-col items-center space-y-3 py-4 md:py-6">
             <button
               onClick={toggleRecording}
-              className={`w-24 h-24 rounded-full flex items-center justify-center transition-all shadow-lg ${isRecording ? "bg-red-500 animate-pulse text-white" : "bg-black text-white hover:scale-105"}`}
+              className={`w-20 h-20 md:w-24 md:h-24 rounded-full flex items-center justify-center transition-all shadow-lg ${isRecording ? "bg-destructive animate-pulse text-destructive-foreground" : "bg-foreground text-background hover:scale-105"}`}
             >
-              <Mic className="w-10 h-10" />
+              <Mic className="w-8 h-8 md:w-10 md:h-10" />
             </button>
-            <p className="text-sm text-gray-500">{isRecording ? "녹음 중... (터치해서 중지)" : "터치해서 녹음 시작"}</p>
+            <p className="text-xs md:text-sm text-muted-foreground">{isRecording ? "녹음 중... (터치해서 중지)" : "터치해서 녹음 시작"}</p>
           </div>
         )}
       </div>

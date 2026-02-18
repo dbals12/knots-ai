@@ -10,8 +10,8 @@ interface AppShellProps {
 
 const AppShell = ({ children, className = '', showHeader = true, isGuest = false }: AppShellProps) => {
   return (
-    <div className="min-h-screen bg-[#F5F5F5] flex items-center justify-center p-4">
-      <div className={`w-full max-w-[420px] bg-white rounded-[32px] shadow-[0_8px_40px_rgba(0,0,0,0.08)] overflow-hidden min-h-[600px] flex flex-col ${className}`}>
+    <div className="min-h-[100dvh] bg-[#F5F5F5] md:flex md:items-center md:justify-center md:p-4">
+      <div className={`w-full md:max-w-[420px] bg-white md:rounded-[32px] md:shadow-[0_8px_40px_rgba(0,0,0,0.08)] min-h-[100dvh] md:min-h-[600px] flex flex-col ${className}`}>
         {showHeader && <Header isGuest={isGuest} />}
         {children}
       </div>
