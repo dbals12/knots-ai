@@ -9,7 +9,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import AppShell from '@/components/AppShell';
 import { Loader2, ChevronDown, ChevronUp } from 'lucide-react';
-import { trackViewResult, trackClickCopy } from '@/lib/analytics';
+import track from '@/lib/track';
+import { getSessionId } from '@/lib/session';
 import { getAccessToken } from '@/lib/edgeFunctionAuth';
 
 const platformIcons = {
@@ -167,7 +168,10 @@ const Results = () => {
           if (outputsError) throw outputsError;
           
           setOutputs(outputsData || []);
-          trackViewResult(sessionData.id, outputsData?.length || 4);
+          track.viewResult({
+            analytics_session_id: getSessionId(),
+            db_session_id: sessionData.id,
+          });
         }
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -189,12 +193,16 @@ const Results = () => {
     await navigator.clipboard.writeText(content);
     
     if (selectedOutput) {
-      trackClickCopy(selectedOutput.platform_type, selectedOutput.id);
+      track.clickCopy(selectedOutput.platform_type, {
+        analytics_session_id: getSessionId(),
+        db_session_id: sessionId,
+      });
       supabase.from('events').insert({
         user_id: user?.id,
-        session_id: sessionId,
         event_type: 'click_copy',
         platform_type: selectedOutput.platform_type,
+        analytics_session_id: getSessionId(),
+        db_session_id: sessionId,
         metadata: { target_platform: selectedOutput.platform_type, output_id: selectedOutput.id },
       }).then(({ error }) => { if (error) console.error('Event logging error:', error); });
     }

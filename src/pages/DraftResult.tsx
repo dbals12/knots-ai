@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import track from "@/lib/track";
+import { getSessionId } from "@/lib/session";
 
 // ─── 접힘/펼침 가능한 원문 카드 (DraftResult용) ───
 interface DraftInputCardProps {
@@ -177,9 +178,12 @@ const DraftResult = () => {
     attemptAutoPromotion();
   }, [user, isSessionType, draftId, promotionAttempted, navigate]);
 
-  // ✅ Track page_view and result_view — fires once per mount (guarded by draftId dep)
+  // ✅ Track page_view and view_result — standardized event name, with analytics_session_id
   useEffect(() => {
-    const idProps = isSessionType ? { session_id: draftId } : { draft_id: draftId };
+    const analyticsSessionId = getSessionId();
+    const idProps = isSessionType
+      ? { db_session_id: draftId, analytics_session_id: analyticsSessionId }
+      : { draft_id: draftId, analytics_session_id: analyticsSessionId };
     track.pageView("result", idProps);
     track.viewResult(idProps);
   }, [draftId, isSessionType]);

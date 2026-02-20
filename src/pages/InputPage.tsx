@@ -13,6 +13,8 @@ import { blobToBase64 } from "@/lib/guestPendingSubmission";
 import { getEntrySource } from "@/lib/analytics";
 import type { Json } from "@/integrations/supabase/types";
 import { getAccessToken } from "@/lib/edgeFunctionAuth";
+import track from "@/lib/track";
+import { getSessionId, getNextInputSeq } from "@/lib/session";
 
 const sessionPurposes = [
   { value: "record", label: "기록" },
@@ -133,7 +135,7 @@ const InputPage = () => {
     setIsRecording(false);
   };
 
-  // 🔥 속도 개선 로직
+  // 🔥 속도 개선 + submit_input 트래킹 (draft 생성 후 발송)
   const handleSubmit = async () => {
     if (!selectedMood || !selectedPersona) {
       toast({ title: "선택 필요", description: "기분과 모드를 선택해주세요.", variant: "destructive" });
@@ -152,6 +154,9 @@ const InputPage = () => {
 
     setIsSubmitting(true);
     setShowConfirmation(false);
+
+    const analyticsSessionId = getSessionId();
+    const { seq, isFirst } = getNextInputSeq(analyticsSessionId);
 
     try {
       let audioBase64 = null;
@@ -181,7 +186,18 @@ const InputPage = () => {
 
         if (sessionError) throw sessionError;
 
-        // 2. AI 요청 (await 없이 던짐 - Fire & Forget)
+        // ✅ submit_input: db_session_id 포함하여 즉시 발송
+        track.submitInput(inputMode, {
+          analytics_session_id: analyticsSessionId,
+          db_session_id: sessionData.id,
+          input_seq: seq,
+          is_first_input: isFirst,
+          selected_mood: selectedMood,
+          selected_persona: selectedPersona,
+          session_purpose: sessionPurpose,
+        });
+
+        // 2. AI 요청 (Fire & Forget)
         const formData = new FormData();
         formData.append("session_id", sessionData.id);
         formData.append("user_persona", selectedPersona);
@@ -202,7 +218,7 @@ const InputPage = () => {
         // 3. 즉시 결과 페이지로 이동
         navigate(`/result/${sessionData.id}?type=session`);
       } else {
-        // [게스트 로직] - status를 processing으로 설정하고 Edge Function 호출
+        // [게스트 로직] - draft 먼저 생성 → submit_input 이벤트 → Edge Function 호출
         const inputData = {
           inputMode,
           selectedMood,
@@ -212,8 +228,8 @@ const InputPage = () => {
           textInput: isVoiceMode ? "" : textInput.trim(),
           audioBase64,
         };
-        
-        // ✅ 생성 시 바로 processing 상태로 설정
+
+        // ✅ draft 먼저 생성 (submit_input에 draft_id 포함 필수)
         const { data: draftData, error: draftError } = await supabase
           .from("drafts")
           .insert({ status: "processing", input_data: inputData as unknown as Json })
@@ -223,7 +239,18 @@ const InputPage = () => {
         if (draftError) throw draftError;
         localStorage.setItem("pending_draft_id", draftData.id);
 
-        // ✅ Edge Function 호출 (draft_id 포함)
+        // ✅ submit_input: draft_id 포함하여 즉시 발송 (첫 번째부터 기록됨)
+        track.submitInput(inputMode, {
+          analytics_session_id: analyticsSessionId,
+          db_session_id: null,
+          draft_id: draftData.id,
+          input_seq: seq,
+          is_first_input: isFirst,
+          selected_mood: selectedMood,
+          selected_persona: selectedPersona,
+          session_purpose: sessionPurpose,
+        });
+
         const fd = new FormData();
         fd.append("draft_id", draftData.id);
         fd.append("user_persona", selectedPersona);
@@ -238,7 +265,6 @@ const InputPage = () => {
           fd.append("raw_text", textInput.trim());
         }
 
-        // ✅ 게스트: Authorization 없이 호출 (process-audio는 게스트도 허용)
         fetch("https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/process-audio", {
           method: "POST",
           body: fd,

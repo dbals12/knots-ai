@@ -196,15 +196,8 @@ const Home = ({ isGuest = false }: HomeProps) => {
   const handleSubmit = async (mode: "voice" | "text") => {
     setIsSubmitting(true);
 
-    // ✅ Track submit_input IMMEDIATELY on user action (before any async DB calls)
-    const sid = getSessionId();
-    const { seq, isFirst } = getNextInputSeq(sid);
-    track.submitInput(mode, {
-      session_id: sid,
-      db_session_id: null, // real DB session_id not yet created; set after insert below
-      input_seq: seq,
-      is_first_input: isFirst,
-    });
+    const analyticsSessionId = getSessionId();
+    const { seq, isFirst } = getNextInputSeq(analyticsSessionId);
 
     try {
       let audioBase64 = null;
@@ -222,7 +215,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
         if (!textInput.trim()) throw new Error("입력된 텍스트가 없습니다.");
       }
 
-      // 1. 회원: 세션 생성 -> AI 실행(대기X) -> 이동
+      // 1. 회원: 세션 생성 -> submit_input 이벤트(db_session_id 포함) -> AI 실행 -> 이동
       if (user) {
         const accessToken = await getAccessToken();
         if (!accessToken) {
@@ -248,6 +241,17 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
         if (sessionError) throw sessionError;
 
+        // ✅ submit_input: db_session_id가 있으므로 완전한 페이로드로 즉시 발송
+        track.submitInput(mode, {
+          analytics_session_id: analyticsSessionId,
+          db_session_id: sessionData.id,
+          input_seq: seq,
+          is_first_input: isFirst,
+          selected_mood: selectedMood,
+          selected_persona: selectedPersona,
+          session_purpose: sessionPurpose,
+        });
+
         const formData = new FormData();
         formData.append("session_id", sessionData.id);
         formData.append("user_persona", selectedPersona);
@@ -260,7 +264,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
           formData.append("raw_text", finalTextInput);
         }
 
-        // ✅ 로그인 유저: Authorization 포함하여 호출
         void supabase.functions
           .invoke("process-audio", { body: formData, headers: { Authorization: `Bearer ${accessToken}` } })
           .then(({ error }) => {
@@ -274,10 +277,9 @@ const Home = ({ isGuest = false }: HomeProps) => {
           .eq("id", user.id)
           .then();
 
-        // 즉시 이동
         navigate(`/result/${sessionData.id}?type=session`);
       } else {
-        // 2. 게스트: Drafts 저장 (status: processing) -> Edge Function 호출 -> 이동
+        // 2. 게스트: draft를 먼저 생성 -> submit_input(draft_id 포함) -> Edge Function -> 이동
         const inputData = {
           inputMode: mode,
           selectedMood,
@@ -288,7 +290,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
           textInput: finalTextInput,
         };
 
-        // ✅ 생성 시 바로 processing 상태로 설정
+        // ✅ draft 먼저 생성 (submit_input 이벤트에 draft_id 포함 필수)
         const { data: draftData, error: draftError } = await supabase
           .from("drafts")
           .insert({
@@ -302,7 +304,18 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
         localStorage.setItem("pending_draft_id", draftData.id);
 
-        // ✅ Edge Function 호출 (draft_id 포함) - 게스트는 Authorization 없이 fetch로 호출
+        // ✅ submit_input: draft_id 포함하여 즉시 발송 (게스트도 첫 제출부터 기록)
+        track.submitInput(mode, {
+          analytics_session_id: analyticsSessionId,
+          db_session_id: null,
+          draft_id: draftData.id,
+          input_seq: seq,
+          is_first_input: isFirst,
+          selected_mood: selectedMood,
+          selected_persona: selectedPersona,
+          session_purpose: sessionPurpose,
+        });
+
         const fd = new FormData();
         fd.append("draft_id", draftData.id);
         fd.append("user_persona", selectedPersona);
@@ -317,13 +330,11 @@ const Home = ({ isGuest = false }: HomeProps) => {
           fd.append("raw_text", finalTextInput);
         }
 
-        // ✅ 게스트: Authorization 없이 호출 (process-audio는 게스트도 허용)
         fetch("https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/process-audio", {
           method: "POST",
           body: fd,
         }).catch(console.error);
 
-        // 즉시 이동
         navigate(`/result/${draftData.id}?type=draft`);
       }
     } catch (error: any) {

@@ -1,24 +1,33 @@
 /**
  * Unified analytics tracking module.
  *
- * trackEvent(eventName, props) sends to:
- *   A) Supabase events table via log-event Edge Function
- *   B) GA4 via window.gtag
- *   C) Meta Pixel via window.fbq
+ * trackEvent(eventName, props) sends to ALL THREE simultaneously:
+ *   A) GA4 via window.gtag (with debug_mode in DEV)
+ *   B) Meta Pixel via window.fbq
+ *   C) Supabase log-event Edge Function → public.events table
  *
  * All channels are safe-guarded: no crashes if SDK missing.
- * DEV only: one-line console.info per event.
+ * Console.log("TRACKED:<event>") on every call for verification.
  */
 
 import { supabase } from "@/integrations/supabase/client";
 import { getSessionId } from "./session";
 import { getAcquisitionContext } from "./acquisition";
 
-// Window extensions are already declared in analytics.ts — no re-declaration needed
+// ── Window type extensions ──
+declare global {
+  interface Window {
+    gtag?: (...args: any[]) => void;
+    fbq?: (...args: any[]) => void;
+    dataLayer?: any[];
+  }
+}
 
 export interface TrackProps {
-  session_id?: string;       // client-side analytics session (localStorage UUID)
-  db_session_id?: string | null; // real sessions.id from DB (FK-safe)
+  /** analytics_session_id: client-side UUID stored in localStorage (no FK) */
+  analytics_session_id?: string;
+  /** db_session_id: real sessions.id from DB (FK-safe, only when session exists) */
+  db_session_id?: string | null;
   user_id?: string | null;
   is_guest?: boolean;
   draft_id?: string | null;
@@ -31,7 +40,11 @@ export interface TrackProps {
   [key: string]: unknown;
 }
 
-async function getAuthContext(): Promise<{ userId: string | null; isGuest: boolean; accessToken: string | null }> {
+async function getAuthContext(): Promise<{
+  userId: string | null;
+  isGuest: boolean;
+  accessToken: string | null;
+}> {
   try {
     const { data } = await supabase.auth.getSession();
     const userId = data?.session?.user?.id ?? null;
@@ -43,19 +56,22 @@ async function getAuthContext(): Promise<{ userId: string | null; isGuest: boole
 }
 
 /**
- * Core tracking function. Call on every user action.
- * draft_id: null is explicitly allowed — do NOT block on missing draft_id.
+ * Core tracking function. Fires GA4 + Meta Pixel + Supabase simultaneously.
+ * NEVER throws — app always continues.
  */
-export async function trackEvent(eventName: string, props: TrackProps = {}): Promise<void> {
+export async function trackEvent(
+  eventName: string,
+  props: TrackProps = {}
+): Promise<void> {
   if (typeof window === "undefined") return;
 
   const { userId, isGuest, accessToken } = await getAuthContext();
   const acq = getAcquisitionContext();
-  const sid = getSessionId();
+  const analyticsSessionId = getSessionId(); // localStorage UUID
   const ts = Date.now();
 
-  const merged: TrackProps = {
-    session_id: sid,
+  const merged: TrackProps & { ts: number } = {
+    db_session_id: null,
     user_id: userId,
     is_guest: isGuest,
     draft_id: null,
@@ -65,13 +81,46 @@ export async function trackEvent(eventName: string, props: TrackProps = {}): Pro
     ts,
     ...acq,
     ...props,
+    // analytics_session_id always uses real localStorage value (never undefined)
+    analytics_session_id: props.analytics_session_id || analyticsSessionId,
   };
 
-  if (import.meta.env.DEV) {
-    console.info("[trackEvent]", eventName, merged);
+  // ── Console verification (always, not just DEV) ──
+  console.log(`TRACKED:${eventName}`, {
+    analytics_session_id: merged.analytics_session_id,
+    db_session_id: merged.db_session_id,
+    draft_id: merged.draft_id,
+    user_id: merged.user_id,
+    is_guest: merged.is_guest,
+    ...props,
+  });
+
+  // ── A) GA4 ──
+  try {
+    if (window.gtag) {
+      window.gtag("event", eventName, {
+        ...merged,
+        event_category: "knots",
+        // Enable debug_mode so GA4 DebugView shows events in dev/preview
+        debug_mode: import.meta.env.DEV || window.location.hostname.includes("lovable.app"),
+      });
+    } else {
+      console.warn("[trackEvent] GA4 gtag not available for:", eventName);
+    }
+  } catch (e) {
+    console.warn("[trackEvent] GA4 error:", e);
   }
 
-  // ── A) Supabase via log-event Edge Function ──
+  // ── B) Meta Pixel ──
+  try {
+    if (window.fbq) {
+      window.fbq("trackCustom", eventName, merged);
+    }
+  } catch (e) {
+    console.warn("[trackEvent] Meta Pixel error:", e);
+  }
+
+  // ── C) Supabase via log-event Edge Function ──
   try {
     const headers: Record<string, string> = {};
     if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
@@ -80,9 +129,7 @@ export async function trackEvent(eventName: string, props: TrackProps = {}): Pro
       .invoke("log-event", {
         body: {
           event_type: eventName,
-          // analytics_session_id: client-side UUID, no FK constraint
-          analytics_session_id: merged.session_id ?? null,
-          // db_session_id: real sessions.id, only set when we have a confirmed DB session
+          analytics_session_id: merged.analytics_session_id ?? null,
           db_session_id: merged.db_session_id ?? null,
           draft_id: merged.draft_id ?? null,
           platform_type: merged.platform_type ?? null,
@@ -94,31 +141,10 @@ export async function trackEvent(eventName: string, props: TrackProps = {}): Pro
         headers,
       })
       .catch((e) => {
-        if (import.meta.env.DEV) console.warn("[trackEvent] Supabase log-event error:", e);
+        console.warn("[trackEvent] Supabase log-event error:", e);
       });
   } catch (e) {
-    if (import.meta.env.DEV) console.warn("[trackEvent] Supabase invoke error:", e);
-  }
-
-  // ── B) GA4 ──
-  try {
-    if (window.gtag) {
-      window.gtag("event", eventName, {
-        ...merged,
-        event_category: "knots",
-      });
-    }
-  } catch (e) {
-    if (import.meta.env.DEV) console.warn("[trackEvent] GA4 error:", e);
-  }
-
-  // ── C) Meta Pixel ──
-  try {
-    if (window.fbq) {
-      window.fbq("trackCustom", eventName, merged);
-    }
-  } catch (e) {
-    if (import.meta.env.DEV) console.warn("[trackEvent] Meta Pixel error:", e);
+    console.warn("[trackEvent] Supabase invoke error:", e);
   }
 }
 
@@ -128,9 +154,17 @@ export const track = {
   pageView: (page: string, extra?: TrackProps) =>
     trackEvent("page_view", { page, ...extra }),
 
+  /**
+   * submit_input: fires at the MOMENT user submits (draft_id must be provided).
+   * This is the #1 funnel event — never skip or delay.
+   */
   submitInput: (inputType: "voice" | "text", extra?: TrackProps) =>
     trackEvent("submit_input", { input_type: inputType, page: "home", ...extra }),
 
+  /**
+   * view_result: fires when result screen is shown to user.
+   * Standardized name (not result_view).
+   */
   viewResult: (extra?: TrackProps) =>
     trackEvent("view_result", { page: "result", ...extra }),
 
@@ -138,7 +172,11 @@ export const track = {
     trackEvent("click_copy", { platform_type: platformType, ...extra }),
 
   refineContent: (refineMode: string, platformType: string, extra?: TrackProps) =>
-    trackEvent("refine_content", { refine_mode: refineMode, platform_type: platformType, ...extra }),
+    trackEvent("refine_content", {
+      refine_mode: refineMode,
+      platform_type: platformType,
+      ...extra,
+    }),
 
   saveContent: (platformType: string, extra?: TrackProps) =>
     trackEvent("save_content", { platform_type: platformType, ...extra }),
@@ -159,7 +197,14 @@ export const track = {
     trackEvent("promote_start", { draft_id: draftId, ...extra }),
 
   promoteSuccess: (draftId: string, sessionId: string, extra?: TrackProps) =>
-    trackEvent("promote_success", { draft_id: draftId, session_id: sessionId, ...extra }),
+    trackEvent("promote_success", {
+      draft_id: draftId,
+      db_session_id: sessionId,
+      ...extra,
+    }),
+
+  openPlatformModal: (platformType: string, extra?: TrackProps) =>
+    trackEvent("open_platform_modal", { platform_type: platformType, ...extra }),
 };
 
 export default track;
