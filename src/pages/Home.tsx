@@ -10,7 +10,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import AppShell from "@/components/AppShell";
 import { blobToBase64 } from "@/lib/guestPendingSubmission";
-import { getEntrySource, trackPageView_Event, trackSubmitInput_Event, trackLoginStart } from "@/lib/analytics";
+import { getEntrySource } from "@/lib/acquisition";
+import track from "@/lib/track";
+import { getSessionId, getNextInputSeq } from "@/lib/session";
 import { getAccessToken } from "@/lib/edgeFunctionAuth";
 
 const sessionPurposes = [
@@ -70,7 +72,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
   // ✅ Track page view on mount
   useEffect(() => {
-    trackPageView_Event("home");
+    track.pageView("home");
   }, []);
 
   useEffect(() => {
@@ -194,8 +196,15 @@ const Home = ({ isGuest = false }: HomeProps) => {
   const handleSubmit = async (mode: "voice" | "text") => {
     setIsSubmitting(true);
 
-    // ✅ Track submit_input event
-    trackSubmitInput_Event(mode, { metadata: { mood: selectedMood, persona: selectedPersona } });
+    // ✅ Track submit_input IMMEDIATELY on user action (before any async DB calls)
+    const sid = getSessionId();
+    const { seq, isFirst } = getNextInputSeq(sid);
+    track.submitInput(mode, {
+      session_id: sid,
+      input_seq: seq,
+      is_first_input: isFirst,
+      metadata: { mood: selectedMood, persona: selectedPersona },
+    });
 
     try {
       let audioBase64 = null;

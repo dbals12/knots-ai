@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { trackLoginSuccess } from "@/lib/analytics";
+import track from "@/lib/track";
 import { Button } from "@/components/ui/button";
 
 // Promote lock helpers
@@ -113,7 +113,7 @@ const AuthCallback = () => {
       }
 
       // Track login_success
-      trackLoginSuccess({ draft_id: pendingDraftId || undefined });
+      track.loginSuccess({ draft_id: pendingDraftId || null });
 
       // Ensure users table entry
       const { data: { user } } = await supabase.auth.getUser();

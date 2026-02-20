@@ -9,16 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import InstagramCardView from "./InstagramCardView";
 import { trackClickCopy, trackSaveContent, trackRefineContent, trackRating } from "@/lib/analytics";
-import {
-  trackCopyContent,
-  trackSaveContentEvent,
-  trackThumbUp,
-  trackThumbDown,
-  trackAiToolChangeTone,
-  trackAiToolAdjustLength,
-  trackAiToolApplyPersona,
-  trackAiToolAddThought,
-} from "@/lib/analytics";
+import track from "@/lib/track";
 import { getAccessToken } from "@/lib/edgeFunctionAuth";
 
 interface ResultDetailModalProps {
@@ -130,7 +121,7 @@ const ResultDetailModal = ({
     }
     navigator.clipboard.writeText(editedContent);
     trackClickCopy(platform, outputId);
-    trackCopyContent(platform, { session_id: outputId }); // Supabase events
+    track.clickCopy(platform, { session_id: outputId });
     toast({ title: "복사되었습니다!", description: "클립보드에 저장되었습니다." });
     onCopy(editedContent);
   };
@@ -160,7 +151,7 @@ const ResultDetailModal = ({
       if (error) throw error;
 
       trackSaveContent(platform, outputId);
-      trackSaveContentEvent(platform, { session_id: outputId }); // Supabase events
+      track.saveContent(platform, { session_id: outputId });
       setIsSaved(true);
       onContentUpdate?.(editedContent); // 부모에게 알림
       toast({ title: "저장 완료!", description: "내 기록에 안전하게 저장되었습니다." });
@@ -190,11 +181,11 @@ const ResultDetailModal = ({
 
     try {
       trackRating(score === 5 ? "positive" : "negative", outputId);
-      // ✅ Supabase events
+      // ✅ Supabase events via unified track
       if (score === 5) {
-        trackThumbUp(platform, { session_id: outputId });
+        track.thumbUp(platform, { session_id: outputId });
       } else {
-        trackThumbDown(platform, { session_id: outputId });
+        track.thumbDown(platform, { session_id: outputId });
       }
       const { error } = await supabase.from("edits").insert({ output_id: outputId, feedback_score: score });
       if (error) throw error;
@@ -259,15 +250,15 @@ const ResultDetailModal = ({
 
   const handleToneChange = (tone: string) => {
     setSelectedTone(tone);
-    trackAiToolChangeTone(tone, platform, { session_id: outputId });
+    track.aiTool("change_tone", platform, { session_id: outputId, tone });
     callRefineApi("tone", { userPersona: toneToPersona[tone] });
   };
   const handleLengthAdjust = (length: "shorter" | "longer") => {
-    trackAiToolAdjustLength(length, platform, { session_id: outputId });
+    track.aiTool("adjust_length", platform, { session_id: outputId, length });
     callRefineApi("length", { targetLength: length });
   };
   const handlePersonaBoost = () => {
-    trackAiToolApplyPersona(platform, { session_id: outputId });
+    track.aiTool("apply_persona", platform, { session_id: outputId });
     callRefineApi("persona_boost");
   };
   const handleAddThoughts = () => {
@@ -275,7 +266,7 @@ const ResultDetailModal = ({
       toast({ title: "내용을 입력해주세요", variant: "destructive" });
       return;
     }
-    trackAiToolAddThought(platform, { session_id: outputId });
+    track.aiTool("add_thought", platform, { session_id: outputId });
     callRefineApi("add_thoughts", { extraThoughts: additionalThoughts });
     setAdditionalThoughts("");
   };
