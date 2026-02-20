@@ -98,7 +98,9 @@ export type Database = {
       }
       events: {
         Row: {
+          analytics_session_id: string | null
           created_at: string
+          db_session_id: string | null
           event_type: string
           experiment_id: string | null
           id: string
@@ -108,7 +110,9 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          analytics_session_id?: string | null
           created_at?: string
+          db_session_id?: string | null
           event_type: string
           experiment_id?: string | null
           id?: string
@@ -118,7 +122,9 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          analytics_session_id?: string | null
           created_at?: string
+          db_session_id?: string | null
           event_type?: string
           experiment_id?: string | null
           id?: string
@@ -129,8 +135,8 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "events_session_id_fkey"
-            columns: ["session_id"]
+            foreignKeyName: "events_db_session_id_fkey"
+            columns: ["db_session_id"]
             isOneToOne: false
             referencedRelation: "sessions"
             referencedColumns: ["id"]

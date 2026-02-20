@@ -18,7 +18,14 @@ Deno.serve(async (req) => {
     );
 
     // Parse request body
-    const { event_type, session_id, draft_id, platform_type, metadata } = await req.json();
+    const {
+      event_type,
+      analytics_session_id, // client-side UUID (no FK)
+      db_session_id,         // real sessions.id (FK, may be null)
+      draft_id,
+      platform_type,
+      metadata,
+    } = await req.json();
 
     if (!event_type) {
       return new Response(
@@ -30,7 +37,7 @@ Deno.serve(async (req) => {
     // Check Authorization header for user_id
     let userId: string | null = null;
     const authHeader = req.headers.get("Authorization");
-    
+
     if (authHeader?.startsWith("Bearer ")) {
       const token = authHeader.replace("Bearer ", "");
       try {
@@ -43,10 +50,24 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Validate db_session_id: only use if it actually exists in sessions table
+    let validDbSessionId: string | null = null;
+    if (db_session_id) {
+      const { data: sessionRow } = await supabaseAdmin
+        .from("sessions")
+        .select("id")
+        .eq("id", db_session_id)
+        .maybeSingle();
+      if (sessionRow) validDbSessionId = db_session_id;
+    }
+
     // Insert event with service role (bypasses RLS)
+    // session_id column is kept for backward compat but not set (no FK anymore after migration)
     const { error: insertError } = await supabaseAdmin.from("events").insert({
       event_type,
-      session_id: session_id || null,
+      analytics_session_id: analytics_session_id || null,
+      db_session_id: validDbSessionId,
+      session_id: validDbSessionId, // keep old column in sync if we have a real session
       user_id: userId,
       platform_type: platform_type || null,
       metadata: {
@@ -64,7 +85,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`[log-event] Logged: ${event_type}`, { userId, session_id, draft_id, platform_type });
+    console.log(`[log-event] Logged: ${event_type}`, { userId, analytics_session_id, db_session_id: validDbSessionId, platform_type });
 
     return new Response(
       JSON.stringify({ ok: true }),

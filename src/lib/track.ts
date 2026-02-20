@@ -17,7 +17,8 @@ import { getAcquisitionContext } from "./acquisition";
 // Window extensions are already declared in analytics.ts — no re-declaration needed
 
 export interface TrackProps {
-  session_id?: string;
+  session_id?: string;       // client-side analytics session (localStorage UUID)
+  db_session_id?: string | null; // real sessions.id from DB (FK-safe)
   user_id?: string | null;
   is_guest?: boolean;
   draft_id?: string | null;
@@ -79,7 +80,10 @@ export async function trackEvent(eventName: string, props: TrackProps = {}): Pro
       .invoke("log-event", {
         body: {
           event_type: eventName,
-          session_id: merged.session_id ?? null,
+          // analytics_session_id: client-side UUID, no FK constraint
+          analytics_session_id: merged.session_id ?? null,
+          // db_session_id: real sessions.id, only set when we have a confirmed DB session
+          db_session_id: merged.db_session_id ?? null,
           draft_id: merged.draft_id ?? null,
           platform_type: merged.platform_type ?? null,
           metadata: {
