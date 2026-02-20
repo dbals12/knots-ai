@@ -18,14 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  trackPageView_Event,
-  trackResultView,
-  trackOpenPlatformModal,
-  trackClickNewRecord,
-  trackClickGoHome,
-  trackLoginStart,
-} from "@/lib/analytics";
+import track from "@/lib/track";
 
 // ─── 접힘/펼침 가능한 원문 카드 (DraftResult용) ───
 interface DraftInputCardProps {
@@ -184,11 +177,11 @@ const DraftResult = () => {
     attemptAutoPromotion();
   }, [user, isSessionType, draftId, promotionAttempted, navigate]);
 
-  // ✅ Track page_view and result_view
+  // ✅ Track page_view and result_view — fires once per mount (guarded by draftId dep)
   useEffect(() => {
-    const params = isSessionType ? { session_id: draftId } : { draft_id: draftId };
-    trackPageView_Event("result", params);
-    trackResultView(params);
+    const idProps = isSessionType ? { session_id: draftId } : { draft_id: draftId };
+    track.pageView("result", idProps);
+    track.viewResult(idProps);
   }, [draftId, isSessionType]);
 
   // 로딩 멘트 애니메이션
@@ -500,8 +493,8 @@ const DraftResult = () => {
   };
 
   const handleCardClick = (platformKey: string) => {
-    const params = isSessionType ? { session_id: draftId } : { draft_id: draftId };
-    trackOpenPlatformModal(platformKey, params);
+    const idProps = isSessionType ? { session_id: draftId } : { draft_id: draftId };
+    track.pageView("platform_modal", { platform_type: platformKey, ...idProps });
     setSelectedPlatform(platformKey);
     setIsModalOpen(true);
   };
@@ -608,8 +601,8 @@ const DraftResult = () => {
             <>
               <Button
                 onClick={() => {
-                  const params = isSessionType ? { session_id: draftId } : { draft_id: draftId };
-                  trackClickNewRecord(params);
+                  const idProps = isSessionType ? { session_id: draftId } : { draft_id: draftId };
+                  track.pageView("new_record_click", idProps);
                   navigate("/input");
                 }}
                 className="w-full h-11 md:h-14 rounded-xl bg-foreground text-background hover:bg-foreground/90 font-bold text-sm md:text-base shadow-lg"
@@ -619,8 +612,8 @@ const DraftResult = () => {
               <Button
                 variant="outline"
                 onClick={() => {
-                  const params = isSessionType ? { session_id: draftId } : { draft_id: draftId };
-                  trackClickGoHome(params);
+                  const idProps = isSessionType ? { session_id: draftId } : { draft_id: draftId };
+                  track.pageView("go_home_click", idProps);
                   navigate("/");
                 }}
                 className="w-full h-11 md:h-14 rounded-xl font-bold text-sm md:text-base"
