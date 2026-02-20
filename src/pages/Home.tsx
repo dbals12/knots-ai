@@ -201,9 +201,9 @@ const Home = ({ isGuest = false }: HomeProps) => {
     const { seq, isFirst } = getNextInputSeq(sid);
     track.submitInput(mode, {
       session_id: sid,
+      db_session_id: null, // real DB session_id not yet created; set after insert below
       input_seq: seq,
       is_first_input: isFirst,
-      metadata: { mood: selectedMood, persona: selectedPersona },
     });
 
     try {
