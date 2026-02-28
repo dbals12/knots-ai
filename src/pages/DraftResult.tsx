@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import AppShell from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
-import { Loader2, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, RefreshCw, ChevronDown, ChevronUp, Lock } from "lucide-react";
 import { SiNaver, SiLinkedin, SiInstagram, SiThreads } from "react-icons/si";
 import ResultDetailModal from "@/components/ResultDetailModal";
 import {
@@ -21,7 +21,7 @@ import {
 import track from "@/lib/track";
 import { getSessionId } from "@/lib/session";
 
-// ─── 접힘/펼침 가능한 원문 카드 (DraftResult용) ───
+// ─── Collapsible input card ───
 interface DraftInputCardProps {
   inputText: string;
   isEditing: boolean;
@@ -90,13 +90,24 @@ const platformIcons = {
   threads: { icon: SiThreads, color: "#000000", title: "Threads (짧은 에세이)" },
 };
 
-const getSummary = (content: string | null) => {
+const getSummary = (content: string | null, maxLen = 80) => {
   if (!content) return "콘텐츠 생성 중...";
-  const cleanContent = content
-    .replace(/```json\s*/gi, "")
-    .replace(/```\s*/gi, "")
-    .trim();
-  return cleanContent.length > 80 ? cleanContent.substring(0, 80) + "..." : cleanContent;
+  const clean = content.replace(/```json\s*/gi, "").replace(/```\s*/gi, "").trim();
+  return clean.length > maxLen ? clean.substring(0, maxLen) + "..." : clean;
+};
+
+/** Count non-empty result fields as "insight count" */
+const countInsights = (rd: ContentData["result_data"]): number => {
+  return [rd.blog_content, rd.linkedin_content, rd.reels_content, rd.threads_content].filter(Boolean).length;
+};
+
+/** Extract first 2-3 sentences from blog content as insight summary */
+const getInsightSummary = (rd: ContentData["result_data"]): string => {
+  const source = rd.blog_content || rd.linkedin_content || "";
+  if (!source) return "";
+  const clean = source.replace(/```json\s*/gi, "").replace(/```\s*/gi, "").replace(/^#+\s.*/gm, "").trim();
+  const sentences = clean.split(/[.!?。]\s/).filter(Boolean).slice(0, 3);
+  return sentences.join(". ").substring(0, 200) + (sentences.length > 0 ? "." : "");
 };
 
 const DraftResult = () => {
@@ -122,63 +133,41 @@ const DraftResult = () => {
   const [editedInput, setEditedInput] = useState("");
   const [savingInput, setSavingInput] = useState(false);
 
-  // ✅ URL에서 type 파라미터 확인
   const isSessionType = new URLSearchParams(location.search).get("type") === "session";
   const [promotionAttempted, setPromotionAttempted] = useState(false);
 
-  // ✅ [세이프가드] 로그인 유저가 draft 페이지에 있으면 자동 승격 시도
+  // ── Auto-promotion for logged-in users (unchanged) ──
   useEffect(() => {
     const attemptAutoPromotion = async () => {
-      // 이미 session 타입이거나, 유저가 없거나, 이미 시도했으면 스킵
       if (isSessionType || !user || promotionAttempted || !draftId) return;
-
       setPromotionAttempted(true);
-
       try {
-        // 먼저 draft의 session_id 확인 (이미 승격되었는지)
         const { data: draft } = await supabase
-          .from("drafts")
-          .select("session_id, status")
-          .eq("id", draftId)
-          .single();
-
-        // 이미 승격된 경우 바로 세션 페이지로 이동
+          .from("drafts").select("session_id, status").eq("id", draftId).single();
         if (draft?.session_id) {
           navigate(`/result/${draft.session_id}?type=session`, { replace: true });
           return;
         }
-
-        // 아직 완료되지 않은 draft면 승격하지 않음
-        if (draft?.status !== "completed") {
-          return;
-        }
-
-        // ✅ 승격 시도
+        if (draft?.status !== "completed") return;
         const { data: sessionData } = await supabase.auth.getSession();
         const accessToken = sessionData?.session?.access_token;
-
-        if (!accessToken) {
-          return;
-        }
-
-        const { data, error } = await supabase.functions.invoke("promote-draft", {
+        if (!accessToken) return;
+        const { data: promoteData, error } = await supabase.functions.invoke("promote-draft", {
           body: { draft_id: draftId },
           headers: { Authorization: `Bearer ${accessToken}` },
         });
-
-        if (!error && data?.session_id) {
+        if (!error && promoteData?.session_id) {
           localStorage.removeItem("pending_draft_id");
-          navigate(`/result/${data.session_id}?type=session`, { replace: true });
+          navigate(`/result/${promoteData.session_id}?type=session`, { replace: true });
         }
       } catch (e) {
         console.error("[DraftResult] Auto-promotion failed:", e);
       }
     };
-
     attemptAutoPromotion();
   }, [user, isSessionType, draftId, promotionAttempted, navigate]);
 
-  // ✅ Track page_view and view_result — standardized event name, with analytics_session_id
+  // ── Track view_result (unchanged) ──
   useEffect(() => {
     const analyticsSessionId = getSessionId();
     const idProps = isSessionType
@@ -188,7 +177,7 @@ const DraftResult = () => {
     track.viewResult(idProps);
   }, [draftId, isSessionType]);
 
-  // 로딩 멘트 애니메이션
+  // ── Loading message animation (unchanged) ──
   useEffect(() => {
     if (!loading) return;
     const messages = [
@@ -198,43 +187,22 @@ const DraftResult = () => {
       "거의 다 되었습니다!",
     ];
     let i = 0;
-    const interval = setInterval(() => {
-      i = (i + 1) % messages.length;
-      setLoadingMessage(messages[i]);
-    }, 3000);
+    const interval = setInterval(() => { i = (i + 1) % messages.length; setLoadingMessage(messages[i]); }, 3000);
     return () => clearInterval(interval);
   }, [loading]);
 
-  // ✅ 게스트 재시도: draft 기반 process-audio 호출
+  // ── Guest retry (unchanged) ──
   const handleRetry = async () => {
     if (!draftId || isRetrying) return;
-
     setIsRetrying(true);
     setShowRetryButton(false);
     setLoadingMessage("재시도 중...");
     loadingStartRef.current = Date.now();
-
     try {
-      // 먼저 draft의 input_data를 가져옴
-      const { data: draft, error: fetchError } = await supabase
-        .from("drafts")
-        .select("input_data")
-        .eq("id", draftId)
-        .single();
-
-      if (fetchError || !draft) {
-        throw new Error("Draft를 찾을 수 없습니다.");
-      }
-
+      const { data: draft, error: fetchError } = await supabase.from("drafts").select("input_data").eq("id", draftId).single();
+      if (fetchError || !draft) throw new Error("Draft를 찾을 수 없습니다.");
       const inputData = draft.input_data as Record<string, unknown>;
-
-      // status를 processing으로 업데이트
-      await supabase
-        .from("drafts")
-        .update({ status: "processing", error_message: null })
-        .eq("id", draftId);
-
-      // FormData 구성
+      await supabase.from("drafts").update({ status: "processing", error_message: null }).eq("id", draftId);
       const fd = new FormData();
       fd.append("draft_id", draftId);
       fd.append("user_persona", (inputData?.selectedPersona as string) || "");
@@ -242,34 +210,24 @@ const DraftResult = () => {
       fd.append("session_purpose", (inputData?.sessionPurpose as string) || "");
       fd.append("input_type", (inputData?.inputMode as string) || "text");
       fd.append("keyword", (inputData?.keyword as string) || "");
-
-      // 텍스트 또는 오디오 추가
       const textInput = inputData?.textInput as string;
       const audioBase64 = inputData?.audioBase64 as string;
-
       if (textInput) {
         fd.append("raw_text", textInput);
       } else if (audioBase64) {
-        // base64를 Blob으로 변환
         const byteString = atob(audioBase64.split(",")[1] || audioBase64);
         const mimeString = audioBase64.split(",")[0]?.split(":")[1]?.split(";")[0] || "audio/webm";
         const ab = new ArrayBuffer(byteString.length);
         const ia = new Uint8Array(ab);
-        for (let i = 0; i < byteString.length; i++) {
-          ia[i] = byteString.charCodeAt(i);
-        }
+        for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
         const blob = new Blob([ab], { type: mimeString });
         fd.append("audio", blob, "recording.webm");
       } else {
         throw new Error("입력 데이터가 없습니다.");
       }
-
-      // ✅ 게스트: Authorization 없이 fetch 호출
       fetch("https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/process-audio", {
-        method: "POST",
-        body: fd,
+        method: "POST", body: fd,
       }).catch(console.error);
-
       toast({ title: "재시도 시작", description: "콘텐츠를 다시 생성하고 있어요." });
     } catch (error: any) {
       console.error("Retry error:", error);
@@ -280,17 +238,15 @@ const DraftResult = () => {
     }
   };
 
+  // ── Data polling (unchanged) ──
   const checkData = async () => {
     try {
       if (isSessionType) {
-        // ✅ [세션 모드] sessions + outputs 테이블 조회
         const { data: session } = await supabase.from("sessions").select("*").eq("id", draftId).single();
         const { data: outputs } = await supabase.from("outputs").select("*").eq("session_id", draftId);
-
         if (session) {
           const result_data: any = {};
           let outputCount = 0;
-
           if (outputs && outputs.length > 0) {
             outputs.forEach((o: any) => {
               if (o.generated_content) {
@@ -302,31 +258,19 @@ const DraftResult = () => {
               }
             });
           }
-
-          // 4개 콘텐츠가 다 만들어졌거나, 15초 지나서 재시도 버튼 활성화 시
           if (outputCount >= 4 || (showRetryButton && session.raw_text)) {
-            setData({
-              input_text: session.raw_text || "음성 변환 중...",
-              input_mode: session.input_type,
-              result_data,
-            });
+            setData({ input_text: session.raw_text || "음성 변환 중...", input_mode: session.input_type, result_data });
             setLoading(false);
             return true;
           }
         }
       } else {
-        // ✅ [드래프트 모드] drafts 테이블 조회
         const { data: draft } = await supabase.from("drafts").select("*").eq("id", draftId).single();
         if (draft) {
           const inputData = draft.input_data as any;
           const resultData = draft.result_data as any;
-
           if (draft.status === "completed" && resultData && Object.keys(resultData).length > 0) {
-            setData({
-              input_text: resultData?.transcript || inputData?.textInput || "변환 중...",
-              input_mode: inputData?.inputMode,
-              result_data: resultData || {},
-            });
+            setData({ input_text: resultData?.transcript || inputData?.textInput || "변환 중...", input_mode: inputData?.inputMode, result_data: resultData || {} });
             setLoading(false);
             return true;
           }
@@ -346,32 +290,18 @@ const DraftResult = () => {
 
   useEffect(() => {
     if (!draftId) return;
-
     loadingStartRef.current = Date.now();
     checkData();
-
-    // 1초마다 데이터 확인 (Polling) + 15초 타임아웃 체크
     pollingRef.current = setInterval(async () => {
       const allDone = await checkData();
-      if (allDone && pollingRef.current) {
-        clearInterval(pollingRef.current);
-        return;
-      }
-
-      // 15초 이상 idle 또는 processing 상태면 재시도 버튼 표시
+      if (allDone && pollingRef.current) { clearInterval(pollingRef.current); return; }
       const elapsed = Date.now() - loadingStartRef.current;
-      if (elapsed >= 15000 && !showRetryButton) {
-        setShowRetryButton(true);
-      }
+      if (elapsed >= 15000 && !showRetryButton) setShowRetryButton(true);
     }, 1000);
-
     const channel = supabase
       .channel(`any-${draftId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: isSessionType ? "outputs" : "drafts" }, () =>
-        checkData(),
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: isSessionType ? "outputs" : "drafts" }, () => checkData())
       .subscribe();
-
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
       supabase.removeChannel(channel);
@@ -383,12 +313,8 @@ const DraftResult = () => {
     navigate(`/login?next=${encodeURIComponent(nextUrl)}`);
   };
 
-  // ✅ 수정 버튼 클릭: 로그인 유저만 허용
   const handleEditInputClick = () => {
-    if (!user) {
-      setShowLoginAlert(true);
-      return;
-    }
+    if (!user) { setShowLoginAlert(true); return; }
     setEditedInput(data?.input_text || "");
     setIsEditingInput(true);
   };
@@ -398,70 +324,40 @@ const DraftResult = () => {
     setEditedInput("");
   };
 
-  // ✅ 저장: 세션 기반으로만 동작 (regenerate-session 호출)
+  // ── Save edited input (unchanged logic) ──
   const handleSaveEditedInput = async () => {
-    if (!user) {
-      setShowLoginAlert(true);
-      return;
-    }
+    if (!user) { setShowLoginAlert(true); return; }
     if (!draftId) return;
-
     const nextText = editedInput.trim();
-    if (!nextText) {
-      toast({ title: "내용이 비어있어요", description: "텍스트를 입력해주세요.", variant: "destructive" });
-      return;
-    }
-
+    if (!nextText) { toast({ title: "내용이 비어있어요", description: "텍스트를 입력해주세요.", variant: "destructive" }); return; }
     try {
       setSavingInput(true);
       setIsRegenerating(true);
       setLoadingMessage("재생성 중...");
       setIsEditingInput(false);
       setEditedInput("");
-
-      // ✅ 세션 토큰 가져오기
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token;
-
       if (!accessToken) {
         toast({ title: "로그인이 필요합니다", description: "다시 로그인해 주세요.", variant: "destructive" });
-        setIsRegenerating(false);
-        setSavingInput(false);
+        setIsRegenerating(false); setSavingInput(false);
         return;
       }
-
-      // ✅ 세션 모드가 아니면 먼저 승격 필요
       let targetSessionId = draftId;
       if (!isSessionType) {
         const { data: promoteResult, error: promoteError } = await supabase.functions.invoke("promote-draft", {
-          body: { draft_id: draftId },
-          headers: { Authorization: `Bearer ${accessToken}` },
+          body: { draft_id: draftId }, headers: { Authorization: `Bearer ${accessToken}` },
         });
-
-        if (promoteError || !promoteResult?.session_id) {
-          throw new Error("세션 생성에 실패했습니다.");
-        }
+        if (promoteError || !promoteResult?.session_id) throw new Error("세션 생성에 실패했습니다.");
         targetSessionId = promoteResult.session_id;
       }
-
       toast({ title: "재생성 시작", description: "새 원문 기준으로 콘텐츠를 다시 만들고 있어요." });
-
-      // ✅ regenerate-session 호출 (세션 기반으로만 동작)
       const { data: result, error: regenerateError } = await supabase.functions.invoke("regenerate-session", {
         body: { session_id: targetSessionId, raw_text: nextText },
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-
-      if (regenerateError || !result?.success) {
-        throw new Error(result?.error || "재생성에 실패했습니다.");
-      }
-
-      // ✅ 세션 URL로 이동 (draft에서 session으로 승격된 경우)
-      if (targetSessionId !== draftId) {
-        navigate(`/result/${targetSessionId}?type=session`, { replace: true });
-      }
-
-      // ✅ 화면에 새 콘텐츠 즉시 반영
+      if (regenerateError || !result?.success) throw new Error(result?.error || "재생성에 실패했습니다.");
+      if (targetSessionId !== draftId) navigate(`/result/${targetSessionId}?type=session`, { replace: true });
       if (result.outputs) {
         setData({
           input_text: nextText,
@@ -474,7 +370,6 @@ const DraftResult = () => {
           },
         });
       }
-
       toast({ title: "재생성 완료", description: "콘텐츠가 새로 생성되었어요." });
     } catch (e: any) {
       console.error("Regeneration error:", e);
@@ -487,16 +382,18 @@ const DraftResult = () => {
   };
 
   const handleCopyAction = (content: string) => {
-    if (!user) {
-      setShowLoginAlert(true);
-      return;
-    }
+    if (!user) { setShowLoginAlert(true); return; }
     navigator.clipboard.writeText(content).then(() => {
       toast({ title: "복사 완료", description: "클립보드에 복사되었습니다." });
     });
   };
 
   const handleCardClick = (platformKey: string) => {
+    // Guest: only blog/linkedin are clickable (partial preview)
+    if (!user && (platformKey === "reels" || platformKey === "threads")) {
+      setShowLoginAlert(true);
+      return;
+    }
     const idProps = isSessionType ? { session_id: draftId } : { draft_id: draftId };
     track.pageView("platform_modal", { platform_type: platformKey, ...idProps });
     setSelectedPlatform(platformKey);
@@ -513,30 +410,21 @@ const DraftResult = () => {
     return "";
   };
 
-  // ✅ [로딩 화면]
+  // ── Loading screen ──
   if (loading || !data || isRegenerating) {
     return (
       <AppShell showHeader={false}>
         <div className="flex-1 flex flex-col items-center justify-center gap-8 h-[100dvh] px-6 bg-background">
           <div className="relative">
             <div className="w-16 h-16 border-4 border-muted border-t-foreground rounded-full animate-spin"></div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-2xl">✨</span>
-            </div>
+            <div className="absolute inset-0 flex items-center justify-center"><span className="text-2xl">✨</span></div>
           </div>
-
           <div className="text-center space-y-3">
             <p className="text-lg font-bold text-foreground animate-pulse">{loadingMessage}</p>
             <p className="text-sm text-muted-foreground">잠시만 기다려주세요 (약 10초 소요)</p>
           </div>
-
           {showRetryButton && !isRegenerating && (
-            <Button
-              onClick={handleRetry}
-              disabled={isRetrying}
-              variant="outline"
-              className="gap-2 rounded-full mt-4 border-border text-muted-foreground"
-            >
+            <Button onClick={handleRetry} disabled={isRetrying} variant="outline" className="gap-2 rounded-full mt-4 border-border text-muted-foreground">
               <RefreshCw className={`w-4 h-4 ${isRetrying ? "animate-spin" : ""}`} />
               {isRetrying ? "재시도 중..." : "결과가 안 나오나요? 재시도"}
             </Button>
@@ -546,13 +434,32 @@ const DraftResult = () => {
     );
   }
 
-  // ✅ [결과 화면]
+  const insightCount = countInsights(data.result_data);
+  const insightSummary = getInsightSummary(data.result_data);
+  const isGuest = !user;
+
+  // ── Platform card for guest: vertical stack with blur ──
+  const platformOrder = ["blog", "linkedin", "reels", "threads"] as const;
+
   return (
     <AppShell>
       <div className="flex-1 px-4 md:px-5 py-4 md:py-6 space-y-4 md:space-y-5 pb-6">
-        <h2 className="text-lg md:text-xl font-bold text-foreground">오늘의 결과</h2>
+        {/* ── 인사이트 헤더 ── */}
+        <h2 className="text-lg md:text-xl font-bold text-foreground">
+          {insightCount}개의 핵심 인사이트를 발견했어요! 🚀
+        </h2>
 
-        {/* 원본 카드 - 모바일 접힘/펼침 */}
+        {/* ── 인사이트 요약 ── */}
+        {insightSummary && (
+          <div className="bg-muted/30 rounded-2xl p-4 border border-border/40 space-y-2">
+            <h3 className="text-sm font-semibold text-foreground">오늘 기록에서 이런 포인트가 드러났습니다.</h3>
+            <p className="text-xs md:text-sm text-muted-foreground leading-relaxed line-clamp-3">
+              {insightSummary}
+            </p>
+          </div>
+        )}
+
+        {/* ── 원본 카드 ── */}
         <DraftInputCard
           inputText={data.input_text}
           isEditing={isEditingInput}
@@ -564,43 +471,94 @@ const DraftResult = () => {
           onEditedInputChange={setEditedInput}
         />
 
-        {/* 반응형 그리드: 모바일 1열 / md 이상 2열 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-          {Object.keys(platformIcons).map((key) => {
-            const meta = platformIcons[key as keyof typeof platformIcons];
-            const Icon = meta.icon;
-            const content = getContent(key);
+        {/* ── 결과 카드: 로그인 유저는 2x2 그리드, 게스트는 세로 스택+블러 ── */}
+        {isGuest ? (
+          <div className="space-y-3">
+            {platformOrder.map((key) => {
+              const meta = platformIcons[key];
+              const Icon = meta.icon;
+              const content = getContent(key) || "";
+              const isLocked = key === "reels" || key === "threads";
+              const previewLines = isLocked ? "" : getSummary(content, 150);
 
-            return (
-              <button
-                key={key}
-                onClick={() => handleCardClick(key)}
-                className="bg-muted/40 rounded-2xl p-3 md:p-4 border border-border/50 hover:bg-muted/60 transition-all text-left space-y-2 md:space-y-3 flex flex-col"
-              >
-                <div
-                  className={`w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm ${key === "reels" ? "bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af]" : ""}`}
-                  style={{ backgroundColor: key === "reels" ? undefined : meta.color }}
+              return (
+                <button
+                  key={key}
+                  onClick={() => handleCardClick(key)}
+                  className="w-full bg-muted/40 rounded-2xl p-4 border border-border/50 text-left space-y-2 relative overflow-hidden transition-all hover:bg-muted/60"
                 >
-                  <Icon className="w-4 h-4 md:w-5 md:h-5 text-white" />
-                </div>
-                <div className="flex-1 overflow-hidden w-full">
-                  <h3 className="font-bold text-foreground text-xs md:text-sm mb-1">{meta.title}</h3>
-                  <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 md:line-clamp-3">{getSummary(content)}</p>
-                </div>
-              </button>
-            );
-          })}
-        </div>
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${key === "reels" ? "bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af]" : ""}`}
+                      style={{ backgroundColor: key === "reels" ? undefined : meta.color }}
+                    >
+                      <Icon className="w-4 h-4 text-white" />
+                    </div>
+                    <h3 className="font-bold text-foreground text-sm">{meta.title}</h3>
+                    {isLocked && <Lock className="w-3.5 h-3.5 text-muted-foreground ml-auto" />}
+                  </div>
 
-        {/* 하단 버튼 */}
+                  {isLocked ? (
+                    /* Full blur for Instagram & Threads */
+                    <div className="relative">
+                      <p className="text-xs text-muted-foreground leading-relaxed blur-[6px] select-none" aria-hidden>
+                        이 콘텐츠는 로그인 후 확인할 수 있습니다. AI가 생성한 인사이트를 확인하고 복사해보세요.
+                      </p>
+                    </div>
+                  ) : (
+                    /* Partial reveal for Blog & LinkedIn */
+                    <div className="relative">
+                      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">
+                        {previewLines}
+                      </p>
+                      <div className="mt-1 h-12 bg-gradient-to-t from-muted/40 to-transparent blur-[3px]" />
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          /* ── Logged-in: 2x2 grid (unchanged) ── */
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+            {platformOrder.map((key) => {
+              const meta = platformIcons[key];
+              const Icon = meta.icon;
+              const content = getContent(key);
+              return (
+                <button
+                  key={key}
+                  onClick={() => handleCardClick(key)}
+                  className="bg-muted/40 rounded-2xl p-3 md:p-4 border border-border/50 hover:bg-muted/60 transition-all text-left space-y-2 md:space-y-3 flex flex-col"
+                >
+                  <div
+                    className={`w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm ${key === "reels" ? "bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af]" : ""}`}
+                    style={{ backgroundColor: key === "reels" ? undefined : meta.color }}
+                  >
+                    <Icon className="w-4 h-4 md:w-5 md:h-5 text-white" />
+                  </div>
+                  <div className="flex-1 overflow-hidden w-full">
+                    <h3 className="font-bold text-foreground text-xs md:text-sm mb-1">{meta.title}</h3>
+                    <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 md:line-clamp-3">{getSummary(content)}</p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ── CTA 버튼 ── */}
         <div className="flex flex-col gap-2 md:gap-3 pt-1">
-          {!user ? (
-            <Button
-              onClick={() => performLogin()}
-              className="w-full h-11 md:h-14 rounded-xl bg-foreground text-background hover:bg-foreground/90 text-sm md:text-base font-bold shadow-lg"
-            >
-              3초 만에 로그인하고 결과 저장하기
-            </Button>
+          {isGuest ? (
+            <div className="text-center space-y-2">
+              <Button
+                onClick={performLogin}
+                className="w-full h-12 md:h-14 rounded-xl bg-foreground text-background hover:bg-foreground/90 text-sm md:text-base font-bold shadow-lg"
+              >
+                로그인하고 모든 결과 확인하기
+              </Button>
+              <p className="text-xs text-muted-foreground">구글 로그인으로 3초면 충분합니다.</p>
+            </div>
           ) : (
             <>
               <Button
@@ -629,6 +587,7 @@ const DraftResult = () => {
         </div>
       </div>
 
+      {/* ── Login Alert Dialog ── */}
       <AlertDialog open={showLoginAlert} onOpenChange={setShowLoginAlert}>
         <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
@@ -639,25 +598,23 @@ const DraftResult = () => {
             <AlertDialogCancel className="rounded-xl border-0">취소</AlertDialogCancel>
             <AlertDialogAction
               onClick={performLogin}
-              className="rounded-xl bg-[#FEE500] text-black hover:bg-[#FEE500]/90"
+              className="rounded-xl bg-foreground text-background hover:bg-foreground/90"
             >
-              카카오/구글로 시작하기
+              로그인하고 결과 확인하기
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* ── Result Detail Modal ── */}
       {selectedPlatform && (
         <ResultDetailModal
           isOpen={isModalOpen}
-          onClose={() => {
-            setIsModalOpen(false);
-            setSelectedPlatform(null);
-          }}
+          onClose={() => { setIsModalOpen(false); setSelectedPlatform(null); }}
           platform={selectedPlatform}
           content={getContent(selectedPlatform) || ""}
           outputId={draftId || ""}
-          isGuest={!user}
+          isGuest={isGuest}
           isDraftMode={!isSessionType}
           onSave={() => (user ? null : setShowLoginAlert(true))}
           onCopy={(content) => handleCopyAction(content)}

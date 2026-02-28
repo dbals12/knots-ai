@@ -2,39 +2,47 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Mic, ChevronLeft, ChevronRight, Loader2, Type } from "lucide-react";
+import { Mic, Loader2, Type } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import AppShell from "@/components/AppShell";
 import { blobToBase64 } from "@/lib/guestPendingSubmission";
-import { getEntrySource } from "@/lib/acquisition";
+import { getEntrySource } from "@/lib/analytics";
 import track from "@/lib/track";
 import { getSessionId, getNextInputSeq } from "@/lib/session";
 import { getAccessToken } from "@/lib/edgeFunctionAuth";
 
-const sessionPurposes = [
-  { value: "record", label: "기록" },
-  { value: "career", label: "커리어 브랜딩" },
-  { value: "review", label: "업무 회고" },
-  { value: "emotion", label: "감정 정리" },
-  { value: "idea", label: "아이디어 저장" },
-];
-const moods = [
-  { value: "energetic", label: "🔥 불타는 하루" },
-  { value: "tired", label: "😞 좀 힘들고 지쳤다" },
-  { value: "proud", label: "😊 뿌듯했다" },
-  { value: "neutral", label: "😐 그냥 그런 날" },
-  { value: "chaotic", label: "🤯 정신 없었다" },
-];
-const personas = [
-  { value: "growth", label: "🌱 성장한 나", desc: "배운 점, 성장 포인트 중심" },
-  { value: "achiever", label: "💼 일잘러 나", desc: "성과, 문제 해결, 인사이트 중심" },
-  { value: "collaborator", label: "🤝 협업한 나", desc: "사람, 팀워크, 관계 중심" },
-  { value: "challenger", label: "⚡ 갈등한 나", desc: "어려움, 스트레스, 고민을 솔직히" },
-  { value: "authentic", label: "💬 날것의 나", desc: "포장 없이 있는 그대로" },
+const guideChips = [
+  {
+    tag: "#소소한성취",
+    placeholder: "오늘 해낸 작은 일, 스스로 칭찬하듯 정리해보세요.",
+    mood: "proud",
+    persona: "achiever",
+    purpose: "record",
+  },
+  {
+    tag: "#에러삽질기록",
+    placeholder: "어떤 문제로 고생했나요? 해결 과정을 하소연하듯 정리해보세요.",
+    mood: "chaotic",
+    persona: "challenger",
+    purpose: "review",
+  },
+  {
+    tag: "#오늘의넋두리",
+    placeholder: "그냥 털어놓고 싶은 이야기, 편하게 남겨보세요.",
+    mood: "neutral",
+    persona: "authentic",
+    purpose: "emotion",
+  },
+  {
+    tag: "#배운한가지",
+    placeholder: "오늘 새로 알게 된 한 가지, 잊기 전에 정리해볼까요?",
+    mood: "energetic",
+    persona: "growth",
+    purpose: "idea",
+  },
 ];
 
 interface HomeProps {
@@ -46,14 +54,17 @@ const Home = ({ isGuest = false }: HomeProps) => {
   const [isRecording, setIsRecording] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
 
-  const [sessionPurpose, setSessionPurpose] = useState("");
-  const [selectedMood, setSelectedMood] = useState("");
-  const [selectedPersona, setSelectedPersona] = useState("");
+  // Guide chip selection drives mood/persona/purpose silently
+  const [selectedChipIndex, setSelectedChipIndex] = useState<number | null>(null);
+  const [textPlaceholder, setTextPlaceholder] = useState("");
+
+  // Hidden but populated from guide chip
+  const [sessionPurpose, setSessionPurpose] = useState("record");
+  const [selectedMood, setSelectedMood] = useState("neutral");
+  const [selectedPersona, setSelectedPersona] = useState("authentic");
   const [keyword, setKeyword] = useState("");
   const [textInput, setTextInput] = useState("");
 
-  const [isReturningUser, setIsReturningUser] = useState(false);
-  const [isLoadingUserStatus, setIsLoadingUserStatus] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -66,11 +77,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  const moodScrollRef = useRef<HTMLDivElement>(null);
-  const personaScrollRef = useRef<HTMLDivElement>(null);
-  const purposeScrollRef = useRef<HTMLDivElement>(null);
-
-  // ✅ Track page view on mount
   useEffect(() => {
     track.pageView("home");
   }, []);
@@ -84,60 +90,37 @@ const Home = ({ isGuest = false }: HomeProps) => {
   }, [location]);
 
   useEffect(() => {
-    const checkUserStatus = async () => {
-      if (!user) {
-        setIsLoadingUserStatus(false);
-        return;
-      }
-      try {
-        const { count } = await supabase
-          .from("sessions")
-          .select("id", { count: "exact", head: true })
-          .eq("user_id", user.id);
-        setIsReturningUser((count || 0) > 0);
-
-        const { data: userData } = await supabase.from("users").select("usage_purpose").eq("id", user.id).single();
-        if (userData?.usage_purpose) {
-          const purposeMap: Record<string, string> = {
-            "빠르게 하루를 정리하고 싶어요": "record",
-            "커리어 브랜딩을 시작하고 싶어요": "career",
-            "업무 성과를 정리하는 게 어려워요": "review",
-            "마음·감정을 정리하고 싶어요": "emotion",
-            "콘텐츠 아이디어가 필요해요": "idea",
-          };
-          if (!sessionPurpose) setSessionPurpose(purposeMap[userData.usage_purpose] || "");
-        }
-      } catch (error) {
-        console.error("Error checking user status:", error);
-      } finally {
-        setIsLoadingUserStatus(false);
-      }
-    };
-    checkUserStatus();
-  }, [user]);
-
-  useEffect(() => {
     return () => {
       if (audioStreamRef.current) {
-        audioStreamRef.current.getTracks().forEach((track) => track.stop());
+        audioStreamRef.current.getTracks().forEach((t) => t.stop());
       }
     };
   }, []);
 
-  const scrollContainer = (ref: React.RefObject<HTMLDivElement>, direction: "left" | "right") => {
-    if (ref.current) {
-      const scrollAmount = ref.current.offsetWidth * 0.8;
-      ref.current.scrollBy({ left: direction === "left" ? -scrollAmount : scrollAmount, behavior: "smooth" });
+  const handleChipClick = (index: number) => {
+    if (selectedChipIndex === index) {
+      setSelectedChipIndex(null);
+      setTextPlaceholder("");
+      setSelectedMood("neutral");
+      setSelectedPersona("authentic");
+      setSessionPurpose("record");
+      return;
     }
+    const chip = guideChips[index];
+    setSelectedChipIndex(index);
+    setTextPlaceholder(chip.placeholder);
+    setSelectedMood(chip.mood);
+    setSelectedPersona(chip.persona);
+    setSessionPurpose(chip.purpose);
   };
 
+  // ── Recording logic (unchanged) ──
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioStreamRef.current = stream;
       audioChunksRef.current = [];
 
-      // 브라우저 지원 mimeType 동적 선택
       const mimeOptions = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
       const selectedMime = mimeOptions.find(m => MediaRecorder.isTypeSupported(m)) || '';
       console.log('[Recording] Selected mimeType:', selectedMime || 'browser default');
@@ -173,16 +156,12 @@ const Home = ({ isGuest = false }: HomeProps) => {
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
-      if (audioStreamRef.current) audioStreamRef.current.getTracks().forEach((track) => track.stop());
+      if (audioStreamRef.current) audioStreamRef.current.getTracks().forEach((t) => t.stop());
       setIsRecording(false);
     }
   };
 
   const toggleRecording = () => {
-    if (!selectedMood || !selectedPersona) {
-      toast({ title: "선택 필요", description: "기분과 모드를 먼저 선택해주세요.", variant: "destructive" });
-      return;
-    }
     if (!isRecording) startRecording();
     else stopRecording();
   };
@@ -193,6 +172,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
     setIsRecording(false);
   };
 
+  // ── Submit logic (completely preserved) ──
   const handleSubmit = async (mode: "voice" | "text") => {
     setIsSubmitting(true);
 
@@ -215,7 +195,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
         if (!textInput.trim()) throw new Error("입력된 텍스트가 없습니다.");
       }
 
-      // 1. 회원: 세션 생성 -> submit_input 이벤트(db_session_id 포함) -> AI 실행 -> 이동
       if (user) {
         const accessToken = await getAccessToken();
         if (!accessToken) {
@@ -241,7 +220,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
         if (sessionError) throw sessionError;
 
-        // ✅ submit_input: db_session_id가 있으므로 완전한 페이로드로 즉시 발송
         track.submitInput(mode, {
           analytics_session_id: analyticsSessionId,
           db_session_id: sessionData.id,
@@ -279,7 +257,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
         navigate(`/result/${sessionData.id}?type=session`);
       } else {
-        // 2. 게스트: draft를 먼저 생성 -> submit_input(draft_id 포함) -> Edge Function -> 이동
         const inputData = {
           inputMode: mode,
           selectedMood,
@@ -290,7 +267,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
           textInput: finalTextInput,
         };
 
-        // ✅ draft 먼저 생성 (submit_input 이벤트에 draft_id 포함 필수)
         const { data: draftData, error: draftError } = await supabase
           .from("drafts")
           .insert({
@@ -304,7 +280,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
         localStorage.setItem("pending_draft_id", draftData.id);
 
-        // ✅ submit_input: draft_id 포함하여 즉시 발송 (게스트도 첫 제출부터 기록)
         track.submitInput(mode, {
           analytics_session_id: analyticsSessionId,
           db_session_id: null,
@@ -346,10 +321,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
   const handleVoiceSubmit = () => handleSubmit("voice");
   const handleTextSubmit = () => {
-    if (!selectedMood || !selectedPersona) {
-      toast({ title: "선택 필요", description: "기분과 모드를 선택해주세요.", variant: "destructive" });
-      return;
-    }
     if (!textInput.trim()) {
       toast({ title: "입력 필요", description: "내용을 입력해주세요.", variant: "destructive" });
       return;
@@ -359,150 +330,85 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
   return (
     <AppShell isGuest={isGuest}>
-      {/* 컨텐츠 영역: 모바일은 컴팩트, 데스크탑은 여유 있는 간격 */}
-      <div className="flex-1 flex flex-col px-5 md:px-6 pt-6 md:pt-8 pb-8 md:pb-8 space-y-6 md:space-y-7">
-        {/* ... (기존 UI 유지) ... */}
-        {!isLoadingUserStatus && isReturningUser && (
-          <div className="space-y-2">
-            <h2 className="text-sm font-semibold text-foreground">오늘의 목적은 무엇인가요?</h2>
-            <div className="relative group">
-              <button
-                onClick={() => scrollContainer(purposeScrollRef, "left")}
-                className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 items-center justify-center bg-background border border-border rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-muted"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <div
-                ref={purposeScrollRef}
-                className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide snap-x snap-mandatory"
-              >
-                {sessionPurposes.map((purpose) => (
-                  <button
-                    key={purpose.value}
-                    onClick={() => setSessionPurpose(sessionPurpose === purpose.value ? "" : purpose.value)}
-                    className={`flex-shrink-0 px-3 py-1.5 rounded-full border-2 text-sm font-medium transition-all whitespace-nowrap snap-start ${sessionPurpose === purpose.value ? "border-foreground bg-foreground text-background" : "border-border bg-background text-foreground hover:border-foreground/30"}`}
-                  >
-                    {purpose.label}
-                  </button>
-                ))}
-              </div>
-              <button
-                onClick={() => scrollContainer(purposeScrollRef, "right")}
-                className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 items-center justify-center bg-background border border-border rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-muted"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        )}
+      <div className="flex-1 flex flex-col px-5 md:px-6 pt-8 md:pt-12 pb-8 space-y-6 md:space-y-8">
+        {/* ── 상단 카피 ── */}
+        <div className="space-y-2 text-center">
+          <h1 className="text-xl md:text-2xl font-bold text-foreground leading-tight">
+            당신의 넋두리를 성장의 기록으로.
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            30초만 말하세요. 당신의 경험이 문장이 됩니다.
+          </p>
+        </div>
 
+        {/* ── 가이드 칩 ── */}
         <div className="space-y-2">
-          <h2 className="text-sm font-semibold text-foreground">오늘 하루 어땠나요?</h2>
-          <div className="relative group">
-            <button
-              onClick={() => scrollContainer(moodScrollRef, "left")}
-              className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 items-center justify-center bg-background border border-border rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-muted"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <div ref={moodScrollRef} className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide snap-x snap-mandatory">
-              {moods.map((mood) => (
-                <button
-                  key={mood.value}
-                  onClick={() => setSelectedMood(mood.value)}
-                  className={`flex-shrink-0 px-3 py-2 rounded-xl border-2 transition-all whitespace-nowrap snap-start text-sm ${selectedMood === mood.value ? "border-foreground bg-background shadow-sm" : "border-border bg-background hover:border-foreground/30"}`}
-                >
-                  <span className="font-medium text-foreground">{mood.label}</span>
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() => scrollContainer(moodScrollRef, "right")}
-              className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 items-center justify-center bg-background border border-border rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-muted"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
+          <p className="text-xs text-muted-foreground">기록할 방향을 고르세요.</p>
+          <div className="flex flex-wrap gap-2">
+            {guideChips.map((chip, i) => (
+              <button
+                key={chip.tag}
+                onClick={() => handleChipClick(i)}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
+                  selectedChipIndex === i
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-border bg-background text-foreground hover:border-foreground/40"
+                }`}
+              >
+                {chip.tag}
+              </button>
+            ))}
           </div>
         </div>
 
-        <div className="space-y-2">
-          <h2 className="text-sm font-semibold text-foreground">오늘은 어떤 나로 정리할까요?</h2>
-          <div className="relative group">
-            <button
-              onClick={() => scrollContainer(personaScrollRef, "left")}
-              className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 items-center justify-center bg-background border border-border rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-muted"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <div
-              ref={personaScrollRef}
-              className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide snap-x snap-mandatory"
-            >
-              {personas.map((persona) => (
-                <button
-                  key={persona.value}
-                  onClick={() => setSelectedPersona(persona.value)}
-                  className={`flex-shrink-0 px-3 py-2 rounded-xl border-2 transition-all snap-start ${selectedPersona === persona.value ? "border-foreground bg-background shadow-sm" : "border-border bg-background hover:border-foreground/30"}`}
-                >
-                  <div className="text-sm font-medium text-foreground whitespace-nowrap">{persona.label}</div>
-                  <div className="text-xs text-muted-foreground mt-0.5 whitespace-nowrap">{persona.desc}</div>
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() => scrollContainer(personaScrollRef, "right")}
-              className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 items-center justify-center bg-background border border-border rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-muted"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-sm text-muted-foreground">오늘의 키워드 (한두 단어로 정리해볼까요?)</label>
-          <Input
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
-            placeholder="예: 클라이언트 미팅, 런칭, 실수"
-            className="h-9 md:h-10 rounded-xl border-border bg-background"
-          />
-        </div>
-
+        {/* ── 음성 / 텍스트 토글 ── */}
         <div className="flex items-center justify-center gap-2">
           <button
             onClick={() => setInputMode("voice")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${inputMode === "voice" ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+              inputMode === "voice"
+                ? "bg-foreground text-background"
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
+            }`}
           >
             <Mic className="w-3.5 h-3.5" /> 음성
           </button>
           <button
             onClick={() => setInputMode("text")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${inputMode === "text" ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+              inputMode === "text"
+                ? "bg-foreground text-background"
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
+            }`}
           >
             <Type className="w-3.5 h-3.5" /> 텍스트
           </button>
         </div>
 
-        {/* 음성/텍스트 입력 영역 — flex-1로 남은 공간 채우고 CTA를 하단 정렬 */}
+        {/* ── 입력 영역 ── */}
         <div className="flex-1 flex flex-col justify-end">
           {inputMode === "voice" ? (
-            <div className="flex flex-col items-center gap-3 pb-2">
+            <div className="flex flex-col items-center gap-4 pb-2">
               <button
                 onClick={toggleRecording}
-              className={`w-[6.5rem] h-[6.5rem] md:w-28 md:h-28 rounded-full bg-foreground flex items-center justify-center transition-all shadow-[0_6px_24px_rgba(0,0,0,0.15)] ${isRecording ? "animate-pulse scale-95" : "hover:scale-105 active:scale-95"}`}
-            >
-              <Mic className="w-11 h-11 md:w-12 md:h-12 text-background" strokeWidth={2} />
+                className={`w-[6.5rem] h-[6.5rem] md:w-28 md:h-28 rounded-full bg-foreground flex items-center justify-center transition-all shadow-[0_6px_24px_rgba(0,0,0,0.15)] ${
+                  isRecording
+                    ? "animate-pulse scale-95"
+                    : "hover:scale-105 active:scale-95"
+                }`}
+              >
+                <Mic className="w-11 h-11 md:w-12 md:h-12 text-background" strokeWidth={2} />
               </button>
-              <p className="text-sm text-muted-foreground text-center">
-                {isRecording ? "녹음 중... 탭하여 중지" : "버튼을 누르고 자유롭게 이야기해주세요"}
+              <p className="text-sm font-medium text-foreground">
+                {isRecording ? "녹음 중... 탭하여 중지" : "기록 시작하기"}
               </p>
             </div>
           ) : (
-            <div className="space-y-2 pb-2">
+            <div className="space-y-3 pb-2">
               <Textarea
                 value={textInput}
                 onChange={(e) => setTextInput(e.target.value)}
-                placeholder="오늘 있었던 일이나 배운 점을 자유롭게 작성해주세요..."
+                placeholder={textPlaceholder || "자유롭게 적어주세요..."}
                 className="min-h-[140px] md:min-h-[180px] rounded-xl border-border bg-background resize-none"
               />
               <Button
@@ -510,12 +416,19 @@ const Home = ({ isGuest = false }: HomeProps) => {
                 disabled={isSubmitting}
                 className="w-full h-10 md:h-12 rounded-xl bg-foreground text-background hover:bg-foreground/90"
               >
-                {isSubmitting ? "저장 중..." : "완료"}
+                {isSubmitting ? "저장 중..." : "기록 시작하기"}
               </Button>
             </div>
           )}
         </div>
+
+        {/* ── 하단 유도 카피 ── */}
+        <p className="text-center text-xs text-muted-foreground pb-2">
+          완벽할 필요 없습니다. 오늘만 남겨보세요.
+        </p>
       </div>
+
+      {/* ── 녹음 확인 Sheet ── */}
       <Sheet open={showConfirmation} onOpenChange={setShowConfirmation}>
         <SheetContent side="bottom" className="h-auto rounded-t-3xl">
           <SheetHeader className="pb-6">
@@ -536,6 +449,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
         </SheetContent>
       </Sheet>
 
+      {/* ── 제출 로딩 오버레이 ── */}
       {isSubmitting && (
         <div className="fixed inset-0 z-[9999] bg-background flex flex-col items-center justify-center">
           <div className="flex flex-col items-center gap-6">
