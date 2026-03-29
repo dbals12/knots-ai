@@ -5,9 +5,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import AppShell from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
-import { Loader2, RefreshCw, ChevronDown, ChevronUp, Lock } from "lucide-react";
+import { Loader2, RefreshCw, ChevronDown, ChevronUp, Lock, Plus } from "lucide-react";
 import { SiNaver, SiLinkedin, SiInstagram, SiThreads } from "react-icons/si";
 import ResultDetailModal from "@/components/ResultDetailModal";
+import GlassOrb from "@/components/GlassOrb";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,15 +40,18 @@ const DraftInputCard = ({
 }: DraftInputCardProps) => {
   const [expanded, setExpanded] = useState(false);
   return (
-    <div className="bg-muted/40 rounded-2xl p-3 md:p-5 border border-border/50">
+    <div className="glass-card rounded-2xl p-4 md:p-5">
       <div className="flex items-center justify-between mb-2 md:mb-3">
-        <h3 className="font-bold text-foreground text-sm md:text-base">오늘 내가 기록한 내용</h3>
+        <div className="flex items-center gap-2">
+          <span className="text-sm">📝</span>
+          <h3 className="font-semibold text-foreground text-sm">기록의 내용</h3>
+        </div>
         {!isEditing ? (
-          <Button variant="outline" size="sm" onClick={onEditClick} className="h-7 md:h-8 text-xs">수정하기</Button>
+          <button onClick={onEditClick} className="text-xs text-muted-foreground hover:text-foreground transition-colors">+ 수정하기</button>
         ) : (
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={onCancel} className="h-7 md:h-8 text-xs" disabled={savingInput}>취소</Button>
-            <Button size="sm" onClick={onSave} className="h-7 md:h-8 text-xs bg-foreground text-background hover:bg-foreground/90" disabled={savingInput || !editedInput.trim()}>
+            <Button variant="outline" size="sm" onClick={onCancel} className="h-7 text-xs rounded-lg" disabled={savingInput}>취소</Button>
+            <Button size="sm" onClick={onSave} className="h-7 text-xs rounded-lg bg-foreground text-background hover:bg-foreground/90" disabled={savingInput || !editedInput.trim()}>
               {savingInput ? "저장 중..." : "저장"}
             </Button>
           </div>
@@ -55,10 +59,10 @@ const DraftInputCard = ({
       </div>
       {!isEditing ? (
         <div>
-          <div className={`text-xs md:text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap overflow-hidden ${expanded ? "" : "line-clamp-3 md:line-clamp-4"}`}>
+          <div className={`text-xs md:text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap overflow-hidden ${expanded ? "" : "line-clamp-2"}`}>
             {inputText}
           </div>
-          {inputText && inputText.length > 120 && (
+          {inputText && inputText.length > 80 && (
             <button onClick={() => setExpanded(!expanded)} className="mt-1.5 flex items-center gap-0.5 text-xs text-muted-foreground/70 hover:text-muted-foreground transition-colors">
               {expanded ? <><ChevronUp className="w-3 h-3" /> 접기</> : <><ChevronDown className="w-3 h-3" /> 더보기</>}
             </button>
@@ -66,7 +70,7 @@ const DraftInputCard = ({
         </div>
       ) : (
         <textarea value={editedInput} onChange={(e) => onEditedInputChange(e.target.value)}
-          className="w-full min-h-[140px] md:min-h-[160px] max-h-[240px] p-3 rounded-xl border border-border bg-background text-xs md:text-sm text-foreground leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-foreground/20" />
+          className="w-full min-h-[120px] max-h-[200px] p-3 rounded-xl border border-border/60 bg-background/80 text-xs md:text-sm text-foreground leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-foreground/20" />
       )}
     </div>
   );
@@ -84,10 +88,10 @@ interface ContentData {
 }
 
 const platformIcons = {
-  blog: { icon: SiNaver, color: "#03C75A", title: "블로그 (회고형)" },
-  linkedin: { icon: SiLinkedin, color: "#0077B5", title: "LinkedIn (인사이트형)" },
-  reels: { icon: SiInstagram, color: "#E4405F", title: "인스타 (카드뉴스 & 캡션)" },
-  threads: { icon: SiThreads, color: "#000000", title: "Threads (짧은 에세이)" },
+  blog: { icon: SiNaver, color: "#03C75A", title: "블로그 글" },
+  linkedin: { icon: SiLinkedin, color: "#0077B5", title: "LinkedIn 글" },
+  reels: { icon: SiInstagram, color: "#E4405F", title: "Instagram 카드뉴스" },
+  threads: { icon: SiThreads, color: "#000000", title: "Threads 글" },
 };
 
 const getSummary = (content: string | null, maxLen = 80) => {
@@ -96,18 +100,16 @@ const getSummary = (content: string | null, maxLen = 80) => {
   return clean.length > maxLen ? clean.substring(0, maxLen) + "..." : clean;
 };
 
-/** Count non-empty result fields as "insight count" */
 const countInsights = (rd: ContentData["result_data"]): number => {
   return [rd.blog_content, rd.linkedin_content, rd.reels_content, rd.threads_content].filter(Boolean).length;
 };
 
-/** Extract first 2-3 sentences from blog content as insight summary */
 const getInsightSummary = (rd: ContentData["result_data"]): string => {
   const source = rd.blog_content || rd.linkedin_content || "";
   if (!source) return "";
   const clean = source.replace(/```json\s*/gi, "").replace(/```\s*/gi, "").replace(/^#+\s.*/gm, "").trim();
-  const sentences = clean.split(/[.!?。]\s/).filter(Boolean).slice(0, 3);
-  return sentences.join(". ").substring(0, 200) + (sentences.length > 0 ? "." : "");
+  const sentences = clean.split(/[.!?。]\s/).filter(Boolean).slice(0, 2);
+  return sentences.join(". ").substring(0, 160) + (sentences.length > 0 ? "." : "");
 };
 
 const DraftResult = () => {
@@ -123,7 +125,7 @@ const DraftResult = () => {
   const [isRetrying, setIsRetrying] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("AI가 기록을 분석하고 있어요...");
-  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const loadingStartRef = useRef<number>(Date.now());
 
   const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
@@ -324,7 +326,6 @@ const DraftResult = () => {
     setEditedInput("");
   };
 
-  // ── Save edited input (unchanged logic) ──
   const handleSaveEditedInput = async () => {
     if (!user) { setShowLoginAlert(true); return; }
     if (!draftId) return;
@@ -389,7 +390,6 @@ const DraftResult = () => {
   };
 
   const handleCardClick = (platformKey: string) => {
-    // Guest: only blog/linkedin are clickable (partial preview)
     if (!user && (platformKey === "reels" || platformKey === "threads")) {
       setShowLoginAlert(true);
       return;
@@ -414,13 +414,10 @@ const DraftResult = () => {
   if (loading || !data || isRegenerating) {
     return (
       <AppShell showHeader={false}>
-        <div className="flex-1 flex flex-col items-center justify-center gap-8 h-[100dvh] px-6 bg-background">
-          <div className="relative">
-            <div className="w-16 h-16 border-4 border-muted border-t-foreground rounded-full animate-spin"></div>
-            <div className="absolute inset-0 flex items-center justify-center"><span className="text-2xl">✨</span></div>
-          </div>
+        <div className="flex-1 flex flex-col items-center justify-center gap-8 h-[100dvh] px-6">
+          <GlassOrb state="recording" size="w-28 h-28" />
           <div className="text-center space-y-3">
-            <p className="text-lg font-bold text-foreground animate-pulse">{loadingMessage}</p>
+            <p className="text-lg font-semibold text-foreground animate-pulse">{loadingMessage}</p>
             <p className="text-sm text-muted-foreground">잠시만 기다려주세요 (약 10초 소요)</p>
           </div>
           {showRetryButton && !isRegenerating && (
@@ -437,29 +434,22 @@ const DraftResult = () => {
   const insightCount = countInsights(data.result_data);
   const insightSummary = getInsightSummary(data.result_data);
   const isGuest = !user;
-
-  // ── Platform card for guest: vertical stack with blur ──
   const platformOrder = ["blog", "linkedin", "reels", "threads"] as const;
 
   return (
     <AppShell>
-      <div className="flex-1 px-4 md:px-5 py-4 md:py-6 space-y-4 md:space-y-5 pb-6">
-        {/* ── 인사이트 헤더 ── */}
-        <h2 className="text-lg md:text-xl font-bold text-foreground">
-          {insightCount}개의 핵심 인사이트를 발견했어요! 🚀
-        </h2>
+      <div className="flex-1 px-4 md:px-5 py-4 md:py-6 space-y-4 pb-6">
+        {/* ── Header with user info ── */}
+        <div className="space-y-1">
+          {user && (
+            <p className="text-xs text-muted-foreground">{user.email?.split("@")[0]} / 로그인</p>
+          )}
+          <h2 className="text-xl md:text-2xl font-bold text-foreground leading-snug">
+            오늘 {insightCount}개의 인사이트를<br />발견했어요
+          </h2>
+        </div>
 
-        {/* ── 인사이트 요약 ── */}
-        {insightSummary && (
-          <div className="bg-muted/30 rounded-2xl p-4 border border-border/40 space-y-2">
-            <h3 className="text-sm font-semibold text-foreground">오늘 기록에서 이런 포인트가 드러났습니다.</h3>
-            <p className="text-xs md:text-sm text-muted-foreground leading-relaxed line-clamp-3">
-              {insightSummary}
-            </p>
-          </div>
-        )}
-
-        {/* ── 원본 카드 ── */}
+        {/* ── 기록 내용 카드 ── */}
         <DraftInputCard
           inputText={data.input_text}
           isEditing={isEditingInput}
@@ -471,93 +461,128 @@ const DraftResult = () => {
           onEditedInputChange={setEditedInput}
         />
 
-        {/* ── 결과 카드: 로그인 유저는 2x2 그리드, 게스트는 세로 스택+블러 ── */}
-        {isGuest ? (
-          <div className="space-y-3">
-            {platformOrder.map((key) => {
-              const meta = platformIcons[key];
-              const Icon = meta.icon;
-              const content = getContent(key) || "";
-              const isLocked = key === "reels" || key === "threads";
-              const previewLines = isLocked ? "" : getSummary(content, 150);
+        {/* ── AI 핵심 인사이트 ── */}
+        {insightSummary && (
+          <div className="glass-card rounded-2xl p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">💡</span>
+              <h3 className="text-sm font-semibold text-foreground">AI 핵심 인사이트</h3>
+            </div>
+            <p className="text-xs md:text-sm text-muted-foreground leading-relaxed line-clamp-3">
+              {insightSummary}
+            </p>
 
-              return (
-                <button
-                  key={key}
-                  onClick={() => handleCardClick(key)}
-                  className="w-full bg-muted/40 rounded-2xl p-4 border border-border/50 text-left space-y-2 relative overflow-hidden transition-all hover:bg-muted/60"
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${key === "reels" ? "bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af]" : ""}`}
-                      style={{ backgroundColor: key === "reels" ? undefined : meta.color }}
-                    >
-                      <Icon className="w-4 h-4 text-white" />
+            {/* Extra insights (locked for guests) */}
+            {isGuest && (
+              <div className="space-y-1.5 pt-2">
+                <div className="glass-card rounded-xl p-3 flex items-center gap-2">
+                  <Plus className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span className="text-xs font-medium text-foreground">추가 인사이트</span>
+                </div>
+                <div className="space-y-1">
+                  {["문제 해결 접근 방식", "감정 반응 패턴", "성장 인사이트"].map((label) => (
+                    <div key={label} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/30">
+                      <Lock className="w-3 h-3 text-muted-foreground/50" />
+                      <span className="text-xs text-muted-foreground/60 blur-[2px] select-none">{label}</span>
                     </div>
-                    <h3 className="font-bold text-foreground text-sm">{meta.title}</h3>
-                    {isLocked && <Lock className="w-3.5 h-3.5 text-muted-foreground ml-auto" />}
-                  </div>
-
-                  {isLocked ? (
-                    /* Full blur for Instagram & Threads */
-                    <div className="relative">
-                      <p className="text-xs text-muted-foreground leading-relaxed blur-[6px] select-none" aria-hidden>
-                        이 콘텐츠는 로그인 후 확인할 수 있습니다. AI가 생성한 인사이트를 확인하고 복사해보세요.
-                      </p>
-                    </div>
-                  ) : (
-                    /* Partial reveal for Blog & LinkedIn */
-                    <div className="relative">
-                      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">
-                        {previewLines}
-                      </p>
-                      <div className="mt-1 h-12 bg-gradient-to-t from-muted/40 to-transparent blur-[3px]" />
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        ) : (
-          /* ── Logged-in: 2x2 grid (unchanged) ── */
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-            {platformOrder.map((key) => {
-              const meta = platformIcons[key];
-              const Icon = meta.icon;
-              const content = getContent(key);
-              return (
-                <button
-                  key={key}
-                  onClick={() => handleCardClick(key)}
-                  className="bg-muted/40 rounded-2xl p-3 md:p-4 border border-border/50 hover:bg-muted/60 transition-all text-left space-y-2 md:space-y-3 flex flex-col"
-                >
-                  <div
-                    className={`w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm ${key === "reels" ? "bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af]" : ""}`}
-                    style={{ backgroundColor: key === "reels" ? undefined : meta.color }}
-                  >
-                    <Icon className="w-4 h-4 md:w-5 md:h-5 text-white" />
-                  </div>
-                  <div className="flex-1 overflow-hidden w-full">
-                    <h3 className="font-bold text-foreground text-xs md:text-sm mb-1">{meta.title}</h3>
-                    <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 md:line-clamp-3">{getSummary(content)}</p>
-                  </div>
-                </button>
-              );
-            })}
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
-        {/* ── CTA 버튼 ── */}
-        <div className="flex flex-col gap-2 md:gap-3 pt-1">
+        {/* ── 콘텐츠 변환 섹션 ── */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-foreground">코앤츠 콘텐츠 변환</h3>
+
           {isGuest ? (
-            <div className="text-center space-y-2">
+            /* Guest: 2x2 grid, first one preview, rest blurred */
+            <div className="grid grid-cols-2 gap-2.5">
+              {platformOrder.map((key, idx) => {
+                const meta = platformIcons[key];
+                const Icon = meta.icon;
+                const content = getContent(key) || "";
+                const isPreview = idx === 0; // Only first (blog) gets preview
+
+                return (
+                  <button
+                    key={key}
+                    onClick={() => handleCardClick(key)}
+                    className="glass-card rounded-2xl p-3 text-left space-y-2 relative overflow-hidden transition-all hover:shadow-md"
+                  >
+                    <div
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${key === "reels" ? "bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af]" : ""}`}
+                      style={{ backgroundColor: key === "reels" ? undefined : meta.color }}
+                    >
+                      <Icon className="w-3.5 h-3.5 text-white" />
+                    </div>
+                    <h4 className="text-xs font-medium text-foreground">{meta.title}</h4>
+                    {isPreview ? (
+                      <div className="relative">
+                        <p className="text-[10px] text-muted-foreground leading-relaxed line-clamp-2">
+                          {getSummary(content, 60)}
+                        </p>
+                        <div className="h-6 bg-gradient-to-t from-background/80 to-transparent blur-[2px]" />
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <p className="text-[10px] text-muted-foreground leading-relaxed blur-[4px] select-none line-clamp-2" aria-hidden>
+                          콘텐츠가 생성되었습니다. 로그인하여 확인하세요.
+                        </p>
+                        <Lock className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/40" />
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            /* Logged-in: 2x2 grid, full access */
+            <div className="grid grid-cols-2 gap-2.5">
+              {platformOrder.map((key) => {
+                const meta = platformIcons[key];
+                const Icon = meta.icon;
+                const content = getContent(key);
+                return (
+                  <button
+                    key={key}
+                    onClick={() => handleCardClick(key)}
+                    className="glass-card rounded-2xl p-3 md:p-4 hover:shadow-md transition-all text-left space-y-2 flex flex-col"
+                  >
+                    <div
+                      className={`w-8 h-8 md:w-9 md:h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${key === "reels" ? "bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af]" : ""}`}
+                      style={{ backgroundColor: key === "reels" ? undefined : meta.color }}
+                    >
+                      <Icon className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" />
+                    </div>
+                    <div className="flex-1 overflow-hidden w-full">
+                      <h4 className="font-medium text-foreground text-xs mb-1">{meta.title}</h4>
+                      <p className="text-[10px] md:text-xs text-muted-foreground leading-relaxed line-clamp-2">{getSummary(content)}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* ── CTA ── */}
+        <div className="flex flex-col gap-2 pt-2">
+          {isGuest ? (
+            <div className="text-center space-y-3">
+              <div className="glass-card rounded-2xl p-4 space-y-2">
+                <p className="text-sm font-semibold text-foreground">AI 분석 전체 확인하기</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  로그인하면 모든 인사이트와 콘텐츠 생성 기능을 사용할 수 있습니다.
+                </p>
+              </div>
               <Button
                 onClick={performLogin}
-                className="w-full h-12 md:h-14 rounded-xl bg-foreground text-background hover:bg-foreground/90 text-sm md:text-base font-bold shadow-lg"
+                className="w-full h-12 rounded-2xl bg-foreground text-background hover:bg-foreground/90 text-sm font-semibold shadow-lg"
               >
-                로그인하고 모든 결과 확인하기
+                AI 분석 전체 확인하기 →
               </Button>
-              <p className="text-xs text-muted-foreground">구글 로그인으로 3초면 충분합니다.</p>
             </div>
           ) : (
             <>
@@ -567,7 +592,7 @@ const DraftResult = () => {
                   track.pageView("new_record_click", idProps);
                   navigate("/input");
                 }}
-                className="w-full h-11 md:h-14 rounded-xl bg-foreground text-background hover:bg-foreground/90 font-bold text-sm md:text-base shadow-lg"
+                className="w-full h-11 rounded-2xl bg-foreground text-background hover:bg-foreground/90 font-semibold text-sm shadow-lg"
               >
                 새로운 기록 만들기
               </Button>
@@ -578,7 +603,7 @@ const DraftResult = () => {
                   track.pageView("go_home_click", idProps);
                   navigate("/");
                 }}
-                className="w-full h-11 md:h-14 rounded-xl font-bold text-sm md:text-base"
+                className="w-full h-11 rounded-2xl text-sm border-border/60"
               >
                 홈으로 돌아가기
               </Button>

@@ -8,6 +8,7 @@ import { Mic, Loader2, Type } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import AppShell from "@/components/AppShell";
+import GlassOrb from "@/components/GlassOrb";
 import { blobToBase64 } from "@/lib/guestPendingSubmission";
 import { getEntrySource } from "@/lib/analytics";
 import track from "@/lib/track";
@@ -16,34 +17,49 @@ import { getAccessToken } from "@/lib/edgeFunctionAuth";
 
 const guideChips = [
   {
-    tag: "#소소한성취",
-    placeholder: "오늘 해낸 작은 일, 스스로 칭찬하듯 정리해보세요.",
-    mood: "proud",
-    persona: "achiever",
-    purpose: "record",
-  },
-  {
-    tag: "#에러삽질기록",
-    placeholder: "어떤 문제로 고생했나요? 해결 과정을 하소연하듯 정리해보세요.",
-    mood: "chaotic",
-    persona: "challenger",
-    purpose: "review",
-  },
-  {
-    tag: "#오늘의넋두리",
-    placeholder: "그냥 털어놓고 싶은 이야기, 편하게 남겨보세요.",
+    tag: "오늘의 넋두리",
+    emoji: "💭",
+    placeholder: "오늘 있었던 일 중\n그냥 털어놓고 싶은 이야기가 있나요?\n편하게 말하듯 남겨보세요.",
     mood: "neutral",
     persona: "authentic",
     purpose: "emotion",
   },
   {
-    tag: "#배운한가지",
-    placeholder: "오늘 새로 알게 된 한 가지, 잊기 전에 정리해볼까요?",
+    tag: "배운 점",
+    emoji: "💡",
+    placeholder: "오늘 새롭게 깨달은 점이나\n배운 것이 있나요?\n잊기 전에 한 가지라도 남겨보세요.",
     mood: "energetic",
     persona: "growth",
     purpose: "idea",
   },
+  {
+    tag: "성취 기록",
+    emoji: "🏆",
+    placeholder: "오늘 해낸 작은 일이나\n스스로 칭찬하고 싶은 순간이 있나요?\n짧게라도 남겨보세요.",
+    mood: "proud",
+    persona: "achiever",
+    purpose: "record",
+  },
+  {
+    tag: "문제 해결",
+    emoji: "🔧",
+    placeholder: "오늘 어떤 문제로 고생했나요?\n해결 과정이나 삽질 경험을\n편하게 남겨보세요.",
+    mood: "chaotic",
+    persona: "challenger",
+    purpose: "review",
+  },
+  {
+    tag: "생각 정리",
+    emoji: "🧠",
+    placeholder: "지금 머릿속에 맴도는 생각이 있나요?\n정리되지 않아도 괜찮아요\n그대로 남겨보세요.",
+    mood: "neutral",
+    persona: "authentic",
+    purpose: "emotion",
+  },
 ];
+
+const defaultPlaceholder =
+  "오늘 하루를 기록해보세요.\n기록 방향을 고르면\nAI가 정리 방법을 알려드려요.";
 
 interface HomeProps {
   isGuest?: boolean;
@@ -54,11 +70,9 @@ const Home = ({ isGuest = false }: HomeProps) => {
   const [isRecording, setIsRecording] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
 
-  // Guide chip selection drives mood/persona/purpose silently
   const [selectedChipIndex, setSelectedChipIndex] = useState<number | null>(null);
-  const [textPlaceholder, setTextPlaceholder] = useState("");
+  const [cardPlaceholder, setCardPlaceholder] = useState(defaultPlaceholder);
 
-  // Hidden but populated from guide chip
   const [sessionPurpose, setSessionPurpose] = useState("record");
   const [selectedMood, setSelectedMood] = useState("neutral");
   const [selectedPersona, setSelectedPersona] = useState("authentic");
@@ -97,10 +111,13 @@ const Home = ({ isGuest = false }: HomeProps) => {
     };
   }, []);
 
+  // ── Orb state ──
+  const orbState = isRecording ? "recording" : inputMode === "text" ? "text" : "idle";
+
   const handleChipClick = (index: number) => {
     if (selectedChipIndex === index) {
       setSelectedChipIndex(null);
-      setTextPlaceholder("");
+      setCardPlaceholder(defaultPlaceholder);
       setSelectedMood("neutral");
       setSelectedPersona("authentic");
       setSessionPurpose("record");
@@ -108,7 +125,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
     }
     const chip = guideChips[index];
     setSelectedChipIndex(index);
-    setTextPlaceholder(chip.placeholder);
+    setCardPlaceholder(chip.placeholder);
     setSelectedMood(chip.mood);
     setSelectedPersona(chip.persona);
     setSessionPurpose(chip.purpose);
@@ -330,102 +347,111 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
   return (
     <AppShell isGuest={isGuest}>
-      <div className="flex-1 flex flex-col px-5 md:px-6 pt-8 md:pt-12 pb-8 space-y-6 md:space-y-8">
-        {/* ── 상단 카피 ── */}
-        <div className="space-y-2 text-center">
-          <h1 className="text-xl md:text-2xl font-bold text-foreground leading-tight">
-            당신의 넋두리를 성장의 기록으로.
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            30초만 말하세요. 당신의 경험이 문장이 됩니다.
-          </p>
+      <div className="flex-1 flex flex-col px-5 md:px-6 pt-4 pb-6 space-y-4 overflow-y-auto">
+        {/* ── Glass Orb (always visible) ── */}
+        <div className="flex justify-center pt-2">
+          <GlassOrb state={orbState} size="w-36 h-36 md:w-44 md:h-44" />
         </div>
 
-        {/* ── 가이드 칩 ── */}
-        <div className="space-y-2">
-          <p className="text-xs text-muted-foreground">기록할 방향을 고르세요.</p>
-          <div className="flex flex-wrap gap-2">
+        {/* ── Title ── */}
+        <div className="text-center">
+          <h2 className="text-base md:text-lg font-semibold text-foreground">
+            기록 방향을 고르세요.
+          </h2>
+        </div>
+
+        {/* ── Guide Chips (horizontal scroll) ── */}
+        <div className="overflow-x-auto scrollbar-hide -mx-5 px-5">
+          <div className="flex gap-2 w-max">
             {guideChips.map((chip, i) => (
               <button
                 key={chip.tag}
                 onClick={() => handleChipClick(i)}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm whitespace-nowrap transition-all border ${
                   selectedChipIndex === i
-                    ? "border-foreground bg-foreground text-background"
-                    : "border-border bg-background text-foreground hover:border-foreground/40"
+                    ? "border-foreground/30 bg-foreground/5 text-foreground shadow-sm"
+                    : "border-border/60 bg-background/80 text-muted-foreground hover:border-foreground/20"
                 }`}
               >
-                {chip.tag}
+                <span>{chip.emoji}</span>
+                <span>{chip.tag}</span>
               </button>
             ))}
           </div>
         </div>
 
-        {/* ── 음성 / 텍스트 토글 ── */}
-        <div className="flex items-center justify-center gap-2">
+        {/* ── Placeholder Card (slides in on chip select) ── */}
+        <div
+          key={selectedChipIndex ?? "default"}
+          className="glass-card rounded-2xl p-4 md:p-5 animate-slide-card"
+        >
+          <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+            {cardPlaceholder}
+          </p>
+        </div>
+
+        {/* ── Spacer to push input area down ── */}
+        <div className="flex-1 min-h-4" />
+
+        {/* ── Input Area ── */}
+        {inputMode === "voice" ? (
+          <div className="flex flex-col items-center gap-3 pb-2">
+            {/* Mic button */}
+            <button
+              onClick={toggleRecording}
+              className={`w-[4.5rem] h-[4.5rem] md:w-20 md:h-20 rounded-full flex items-center justify-center transition-all ${
+                isRecording
+                  ? "bg-foreground scale-95 shadow-[0_0_30px_hsla(340,50%,60%,0.3)]"
+                  : "bg-foreground hover:scale-105 active:scale-95 shadow-[0_6px_24px_hsla(0,0%,0%,0.2)]"
+              }`}
+            >
+              <Mic className="w-8 h-8 md:w-9 md:h-9 text-background" strokeWidth={1.8} />
+            </button>
+            <p className="text-xs text-muted-foreground">
+              {isRecording ? "듣는 중..." : "기록 시작하기"}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3 pb-2">
+            <Textarea
+              value={textInput}
+              onChange={(e) => setTextInput(e.target.value)}
+              placeholder="기록 내용을 입력해보세요..."
+              className="min-h-[120px] md:min-h-[140px] rounded-2xl border-border/60 bg-background/80 resize-none text-sm"
+            />
+            <Button
+              onClick={handleTextSubmit}
+              disabled={isSubmitting}
+              className="w-full h-11 rounded-2xl bg-foreground text-background hover:bg-foreground/90 text-sm shadow-lg"
+            >
+              {isSubmitting ? "저장 중..." : "기록 시작하기"}
+            </Button>
+          </div>
+        )}
+
+        {/* ── Voice/Text toggle ── */}
+        <div className="flex items-center justify-center gap-2 pb-1">
           <button
             onClick={() => setInputMode("voice")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs transition-all ${
               inputMode === "voice"
                 ? "bg-foreground text-background"
-                : "bg-muted text-muted-foreground hover:bg-muted/80"
+                : "bg-muted/60 text-muted-foreground hover:bg-muted"
             }`}
           >
-            <Mic className="w-3.5 h-3.5" /> 음성
+            <Mic className="w-3 h-3" /> 음성
           </button>
           <button
             onClick={() => setInputMode("text")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs transition-all ${
               inputMode === "text"
                 ? "bg-foreground text-background"
-                : "bg-muted text-muted-foreground hover:bg-muted/80"
+                : "bg-muted/60 text-muted-foreground hover:bg-muted"
             }`}
           >
-            <Type className="w-3.5 h-3.5" /> 텍스트
+            <Type className="w-3 h-3" /> 텍스트
           </button>
         </div>
-
-        {/* ── 입력 영역 ── */}
-        <div className="flex-1 flex flex-col justify-end">
-          {inputMode === "voice" ? (
-            <div className="flex flex-col items-center gap-4 pb-2">
-              <button
-                onClick={toggleRecording}
-                className={`w-[6.5rem] h-[6.5rem] md:w-28 md:h-28 rounded-full bg-foreground flex items-center justify-center transition-all shadow-[0_6px_24px_rgba(0,0,0,0.15)] ${
-                  isRecording
-                    ? "animate-pulse scale-95"
-                    : "hover:scale-105 active:scale-95"
-                }`}
-              >
-                <Mic className="w-11 h-11 md:w-12 md:h-12 text-background" strokeWidth={2} />
-              </button>
-              <p className="text-sm font-medium text-foreground">
-                {isRecording ? "녹음 중... 탭하여 중지" : "기록 시작하기"}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3 pb-2">
-              <Textarea
-                value={textInput}
-                onChange={(e) => setTextInput(e.target.value)}
-                placeholder={textPlaceholder || "자유롭게 적어주세요..."}
-                className="min-h-[140px] md:min-h-[180px] rounded-xl border-border bg-background resize-none"
-              />
-              <Button
-                onClick={handleTextSubmit}
-                disabled={isSubmitting}
-                className="w-full h-10 md:h-12 rounded-xl bg-foreground text-background hover:bg-foreground/90"
-              >
-                {isSubmitting ? "저장 중..." : "기록 시작하기"}
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {/* ── 하단 유도 카피 ── */}
-        <p className="text-center text-xs text-muted-foreground pb-2">
-          완벽할 필요 없습니다. 오늘만 남겨보세요.
-        </p>
       </div>
 
       {/* ── 녹음 확인 Sheet ── */}
@@ -443,7 +469,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
               disabled={isSubmitting}
               className="w-full h-12 rounded-xl bg-foreground text-background hover:bg-foreground/90"
             >
-              {isSubmitting ? "콘텐츠 생성하기" : "콘텐츠 생성하기"}
+              콘텐츠 생성하기
             </Button>
           </div>
         </SheetContent>
@@ -451,9 +477,9 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
       {/* ── 제출 로딩 오버레이 ── */}
       {isSubmitting && (
-        <div className="fixed inset-0 z-[9999] bg-background flex flex-col items-center justify-center">
+        <div className="fixed inset-0 z-[9999] warm-gradient-bg flex flex-col items-center justify-center">
           <div className="flex flex-col items-center gap-6">
-            <Loader2 className="w-12 h-12 text-foreground animate-spin" />
+            <GlassOrb state="recording" size="w-32 h-32" />
             <div className="text-center space-y-2">
               <p className="text-lg font-medium text-foreground">AI가 당신의 기록을 분석 중입니다...</p>
               <p className="text-sm text-muted-foreground">

@@ -2,45 +2,46 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
 @layer base {
   :root {
-    /* Strict Minimalist Theme - Pure White & Black */
-    --background: 0 0% 100%;
-    --foreground: 0 0% 0%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 0%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 0%;
-    --primary: 0 0% 0%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 0%;
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 40%;
-    --accent: 0 0% 0%;
-    --accent-foreground: 0 0% 100%;
+    /* Warm Glassmorphism Theme */
+    --background: 30 20% 98%;
+    --foreground: 0 0% 8%;
+    --card: 30 20% 99%;
+    --card-foreground: 0 0% 8%;
+    --popover: 30 20% 99%;
+    --popover-foreground: 0 0% 8%;
+    --primary: 0 0% 8%;
+    --primary-foreground: 30 20% 98%;
+    --secondary: 30 15% 95%;
+    --secondary-foreground: 0 0% 8%;
+    --muted: 30 12% 94%;
+    --muted-foreground: 0 0% 42%;
+    --accent: 0 0% 8%;
+    --accent-foreground: 30 20% 98%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 90%;
-    --input: 0 0% 90%;
-    --ring: 0 0% 0%;
-    
+    --border: 30 10% 88%;
+    --input: 30 10% 88%;
+    --ring: 0 0% 8%;
+
+    /* Warm gradient tokens */
+    --warm-gold: 38 60% 70%;
+    --warm-pink: 340 50% 80%;
+    --warm-peach: 20 70% 85%;
+    --glass-bg: 30 20% 98% / 0.6;
+
     /* Platform Brand Colors */
-    --blog: 142 91% 38%; /* Naver Green #03C75A */
-    --linkedin: 201 100% 35%; /* LinkedIn Blue #0077B5 */
-    --reels: 316 73% 52%; /* Instagram Pink/Purple */
-    --threads: 0 0% 0%; /* Black */
-    
-    /* Instagram Gradient for Reels */
-    --reels-gradient: linear-gradient(135deg, 
+    --blog: 142 91% 38%;
+    --linkedin: 201 100% 35%;
+    --reels: 316 73% 52%;
+    --threads: 0 0% 0%;
+
+    --reels-gradient: linear-gradient(135deg,
       hsl(316 73% 52%) 0%,
       hsl(340 82% 52%) 50%,
       hsl(25 95% 53%) 100%);
-    
+
     --radius: 1rem;
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 0 0% 20%;
@@ -51,7 +52,7 @@ All colors MUST be HSL.
     --sidebar-border: 0 0% 90%;
     --sidebar-ring: 0 0% 0%;
   }
-  
+
   .dark {
     --background: 222 47% 11%;
     --foreground: 0 0% 98%;
@@ -72,13 +73,12 @@ All colors MUST be HSL.
     --border: 222 30% 25%;
     --input: 222 30% 25%;
     --ring: 222 47% 75%;
-    
-    /* Platform accent colors (adjusted for dark) */
+
     --blog-accent: 142 71% 55%;
     --linkedin-accent: 201 96% 42%;
     --reels-accent: 316 73% 62%;
     --threads-accent: 0 0% 98%;
-    
+
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -101,7 +101,6 @@ All colors MUST be HSL.
     font-weight: 400;
   }
 
-  /* Thin & Chic: Headlines use Light (300), bold elements use Semibold (600) */
   h1, h2, h3 {
     font-weight: 300;
   }
@@ -110,7 +109,6 @@ All colors MUST be HSL.
     font-weight: 400;
   }
 
-  /* Reduce bold to semibold globally for refined look */
   .font-bold {
     font-weight: 600 !important;
   }
@@ -125,8 +123,74 @@ All colors MUST be HSL.
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-  
+
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
 }
+
+/* ── Warm gradient background ── */
+.warm-gradient-bg {
+  background: linear-gradient(
+    160deg,
+    hsl(30 30% 97%) 0%,
+    hsl(340 30% 95%) 35%,
+    hsl(30 40% 95%) 65%,
+    hsl(38 35% 94%) 100%
+  );
+}
+
+/* ── Glass card ── */
+.glass-card {
+  background: hsla(30, 20%, 99%, 0.65);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid hsla(30, 20%, 90%, 0.5);
+  box-shadow: 0 8px 32px hsla(0, 0%, 0%, 0.06);
+}
+
+/* ── Orb animations ── */
+@keyframes orb-breathe {
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  50% { transform: scale(1.03); opacity: 1; }
+}
+
+@keyframes orb-recording {
+  0%, 100% { transform: scale(1.05); filter: brightness(1.1) blur(0px); }
+  25% { transform: scale(1.12) rotate(2deg); filter: brightness(1.25) blur(0.5px); }
+  50% { transform: scale(1.08); filter: brightness(1.15) blur(0px); }
+  75% { transform: scale(1.1) rotate(-2deg); filter: brightness(1.2) blur(0.5px); }
+}
+
+@keyframes orb-text {
+  0%, 100% { transform: scale(1.01); opacity: 0.8; }
+  50% { transform: scale(1.04); opacity: 0.9; }
+}
+
+@keyframes orb-inner-flow {
+  0% { transform: rotate(0deg) translateX(8px); }
+  100% { transform: rotate(360deg) translateX(8px); }
+}
+
+@keyframes orb-glow-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.15); }
+}
+
+@keyframes float-up {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-card-in {
+  0% { opacity: 0; transform: translateX(20px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+.animate-orb-breathe { animation: orb-breathe 4s ease-in-out infinite; }
+.animate-orb-recording { animation: orb-recording 2s ease-in-out infinite; }
+.animate-orb-text { animation: orb-text 5s ease-in-out infinite; }
+.animate-orb-inner-flow { animation: orb-inner-flow 8s linear infinite; }
+.animate-orb-glow-pulse { animation: orb-glow-pulse 3s ease-in-out infinite; }
+.animate-float-up { animation: float-up 0.6s ease-out forwards; }
+.animate-slide-card { animation: slide-card-in 0.4s ease-out forwards; }
