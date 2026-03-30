@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import AppShell from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
-import { Loader2, RefreshCw, ChevronDown, ChevronUp, Lock, Plus } from "lucide-react";
+import { Loader2, RefreshCw, ChevronDown, ChevronUp, Lock, Pencil } from "lucide-react";
 import { SiNaver, SiLinkedin, SiInstagram, SiThreads } from "react-icons/si";
 import ResultDetailModal from "@/components/ResultDetailModal";
 import GlassOrb from "@/components/GlassOrb";
@@ -40,14 +40,13 @@ const DraftInputCard = ({
 }: DraftInputCardProps) => {
   const [expanded, setExpanded] = useState(false);
   return (
-    <div className="glass-card rounded-2xl p-4 md:p-5">
-      <div className="flex items-center justify-between mb-2 md:mb-3">
-        <div className="flex items-center gap-2">
-          <span className="text-sm">📝</span>
-          <h3 className="font-semibold text-foreground text-sm">기록의 내용</h3>
-        </div>
+    <div className="glass-card rounded-2xl p-4">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-sm font-medium text-foreground">기록한 내용</h3>
         {!isEditing ? (
-          <button onClick={onEditClick} className="text-xs text-muted-foreground hover:text-foreground transition-colors">+ 수정하기</button>
+          <button onClick={onEditClick} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+            <Pencil className="w-3 h-3" /> 수정하기
+          </button>
         ) : (
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={onCancel} className="h-7 text-xs rounded-lg" disabled={savingInput}>취소</Button>
@@ -59,18 +58,18 @@ const DraftInputCard = ({
       </div>
       {!isEditing ? (
         <div>
-          <div className={`text-xs md:text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap overflow-hidden ${expanded ? "" : "line-clamp-2"}`}>
+          <div className={`text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap overflow-hidden ${expanded ? "" : "line-clamp-2"}`}>
             {inputText}
           </div>
           {inputText && inputText.length > 80 && (
-            <button onClick={() => setExpanded(!expanded)} className="mt-1.5 flex items-center gap-0.5 text-xs text-muted-foreground/70 hover:text-muted-foreground transition-colors">
+            <button onClick={() => setExpanded(!expanded)} className="mt-1 flex items-center gap-0.5 text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors">
               {expanded ? <><ChevronUp className="w-3 h-3" /> 접기</> : <><ChevronDown className="w-3 h-3" /> 더보기</>}
             </button>
           )}
         </div>
       ) : (
         <textarea value={editedInput} onChange={(e) => onEditedInputChange(e.target.value)}
-          className="w-full min-h-[120px] max-h-[200px] p-3 rounded-xl border border-border/60 bg-background/80 text-xs md:text-sm text-foreground leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-foreground/20" />
+          className="w-full min-h-[100px] max-h-[180px] p-3 rounded-xl border border-border/40 bg-background/60 text-xs text-foreground leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-foreground/20" />
       )}
     </div>
   );
@@ -88,13 +87,13 @@ interface ContentData {
 }
 
 const platformIcons = {
-  blog: { icon: SiNaver, color: "#03C75A", title: "블로그 글" },
-  linkedin: { icon: SiLinkedin, color: "#0077B5", title: "LinkedIn 글" },
-  reels: { icon: SiInstagram, color: "#E4405F", title: "Instagram 카드뉴스" },
-  threads: { icon: SiThreads, color: "#000000", title: "Threads 글" },
+  blog: { icon: SiNaver, color: "#03C75A", title: "Blog" },
+  linkedin: { icon: SiLinkedin, color: "#0077B5", title: "LinkedIn" },
+  reels: { icon: SiInstagram, color: "#E4405F", title: "Instagram" },
+  threads: { icon: SiThreads, color: "#000000", title: "Threads" },
 };
 
-const getSummary = (content: string | null, maxLen = 80) => {
+const getSummary = (content: string | null, maxLen = 60) => {
   if (!content) return "콘텐츠 생성 중...";
   const clean = content.replace(/```json\s*/gi, "").replace(/```\s*/gi, "").trim();
   return clean.length > maxLen ? clean.substring(0, maxLen) + "..." : clean;
@@ -138,33 +137,26 @@ const DraftResult = () => {
   const isSessionType = new URLSearchParams(location.search).get("type") === "session";
   const [promotionAttempted, setPromotionAttempted] = useState(false);
 
-  // ── Auto-promotion for logged-in users (unchanged) ──
+  // ── Auto-promotion (unchanged) ──
   useEffect(() => {
     const attemptAutoPromotion = async () => {
       if (isSessionType || !user || promotionAttempted || !draftId) return;
       setPromotionAttempted(true);
       try {
-        const { data: draft } = await supabase
-          .from("drafts").select("session_id, status").eq("id", draftId).single();
-        if (draft?.session_id) {
-          navigate(`/result/${draft.session_id}?type=session`, { replace: true });
-          return;
-        }
+        const { data: draft } = await supabase.from("drafts").select("session_id, status").eq("id", draftId).single();
+        if (draft?.session_id) { navigate(`/result/${draft.session_id}?type=session`, { replace: true }); return; }
         if (draft?.status !== "completed") return;
         const { data: sessionData } = await supabase.auth.getSession();
         const accessToken = sessionData?.session?.access_token;
         if (!accessToken) return;
         const { data: promoteData, error } = await supabase.functions.invoke("promote-draft", {
-          body: { draft_id: draftId },
-          headers: { Authorization: `Bearer ${accessToken}` },
+          body: { draft_id: draftId }, headers: { Authorization: `Bearer ${accessToken}` },
         });
         if (!error && promoteData?.session_id) {
           localStorage.removeItem("pending_draft_id");
           navigate(`/result/${promoteData.session_id}?type=session`, { replace: true });
         }
-      } catch (e) {
-        console.error("[DraftResult] Auto-promotion failed:", e);
-      }
+      } catch (e) { console.error("[DraftResult] Auto-promotion failed:", e); }
     };
     attemptAutoPromotion();
   }, [user, isSessionType, draftId, promotionAttempted, navigate]);
@@ -179,15 +171,10 @@ const DraftResult = () => {
     track.viewResult(idProps);
   }, [draftId, isSessionType]);
 
-  // ── Loading message animation (unchanged) ──
+  // ── Loading messages (unchanged) ──
   useEffect(() => {
     if (!loading) return;
-    const messages = [
-      "AI가 기록을 분석하고 있어요...",
-      "핵심 키워드를 추출하고 있습니다...",
-      "4가지 플랫폼 콘텐츠를 생성하고 있어요...",
-      "거의 다 되었습니다!",
-    ];
+    const messages = ["AI가 기록을 분석하고 있어요...", "핵심 키워드를 추출하고 있습니다...", "4가지 플랫폼 콘텐츠를 생성하고 있어요...", "거의 다 되었습니다!"];
     let i = 0;
     const interval = setInterval(() => { i = (i + 1) % messages.length; setLoadingMessage(messages[i]); }, 3000);
     return () => clearInterval(interval);
@@ -196,9 +183,7 @@ const DraftResult = () => {
   // ── Guest retry (unchanged) ──
   const handleRetry = async () => {
     if (!draftId || isRetrying) return;
-    setIsRetrying(true);
-    setShowRetryButton(false);
-    setLoadingMessage("재시도 중...");
+    setIsRetrying(true); setShowRetryButton(false); setLoadingMessage("재시도 중...");
     loadingStartRef.current = Date.now();
     try {
       const { data: draft, error: fetchError } = await supabase.from("drafts").select("input_data").eq("id", draftId).single();
@@ -214,30 +199,22 @@ const DraftResult = () => {
       fd.append("keyword", (inputData?.keyword as string) || "");
       const textInput = inputData?.textInput as string;
       const audioBase64 = inputData?.audioBase64 as string;
-      if (textInput) {
-        fd.append("raw_text", textInput);
-      } else if (audioBase64) {
+      if (textInput) { fd.append("raw_text", textInput); }
+      else if (audioBase64) {
         const byteString = atob(audioBase64.split(",")[1] || audioBase64);
         const mimeString = audioBase64.split(",")[0]?.split(":")[1]?.split(";")[0] || "audio/webm";
         const ab = new ArrayBuffer(byteString.length);
         const ia = new Uint8Array(ab);
         for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
-        const blob = new Blob([ab], { type: mimeString });
-        fd.append("audio", blob, "recording.webm");
-      } else {
-        throw new Error("입력 데이터가 없습니다.");
-      }
-      fetch("https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/process-audio", {
-        method: "POST", body: fd,
-      }).catch(console.error);
+        fd.append("audio", new Blob([ab], { type: mimeString }), "recording.webm");
+      } else { throw new Error("입력 데이터가 없습니다."); }
+      fetch("https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/process-audio", { method: "POST", body: fd }).catch(console.error);
       toast({ title: "재시도 시작", description: "콘텐츠를 다시 생성하고 있어요." });
     } catch (error: any) {
       console.error("Retry error:", error);
       toast({ title: "재시도 실패", description: error.message, variant: "destructive" });
       setShowRetryButton(true);
-    } finally {
-      setIsRetrying(false);
-    }
+    } finally { setIsRetrying(false); }
   };
 
   // ── Data polling (unchanged) ──
@@ -262,8 +239,7 @@ const DraftResult = () => {
           }
           if (outputCount >= 4 || (showRetryButton && session.raw_text)) {
             setData({ input_text: session.raw_text || "음성 변환 중...", input_mode: session.input_type, result_data });
-            setLoading(false);
-            return true;
+            setLoading(false); return true;
           }
         }
       } else {
@@ -273,21 +249,13 @@ const DraftResult = () => {
           const resultData = draft.result_data as any;
           if (draft.status === "completed" && resultData && Object.keys(resultData).length > 0) {
             setData({ input_text: resultData?.transcript || inputData?.textInput || "변환 중...", input_mode: inputData?.inputMode, result_data: resultData || {} });
-            setLoading(false);
-            return true;
+            setLoading(false); return true;
           }
-          if (draft.status === "failed") {
-            setLoadingMessage("생성에 실패했습니다. 다시 시도해주세요.");
-            setShowRetryButton(true);
-            return true;
-          }
+          if (draft.status === "failed") { setLoadingMessage("생성에 실패했습니다. 다시 시도해주세요."); setShowRetryButton(true); return true; }
         }
       }
       return false;
-    } catch (error) {
-      console.error("Check Error:", error);
-      return false;
-    }
+    } catch (error) { console.error("Check Error:", error); return false; }
   };
 
   useEffect(() => {
@@ -304,10 +272,7 @@ const DraftResult = () => {
       .channel(`any-${draftId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: isSessionType ? "outputs" : "drafts" }, () => checkData())
       .subscribe();
-    return () => {
-      if (pollingRef.current) clearInterval(pollingRef.current);
-      supabase.removeChannel(channel);
-    };
+    return () => { if (pollingRef.current) clearInterval(pollingRef.current); supabase.removeChannel(channel); };
   }, [draftId, isSessionType]);
 
   const performLogin = () => {
@@ -317,14 +282,10 @@ const DraftResult = () => {
 
   const handleEditInputClick = () => {
     if (!user) { setShowLoginAlert(true); return; }
-    setEditedInput(data?.input_text || "");
-    setIsEditingInput(true);
+    setEditedInput(data?.input_text || ""); setIsEditingInput(true);
   };
 
-  const handleCancelEdit = () => {
-    setIsEditingInput(false);
-    setEditedInput("");
-  };
+  const handleCancelEdit = () => { setIsEditingInput(false); setEditedInput(""); };
 
   const handleSaveEditedInput = async () => {
     if (!user) { setShowLoginAlert(true); return; }
@@ -332,18 +293,11 @@ const DraftResult = () => {
     const nextText = editedInput.trim();
     if (!nextText) { toast({ title: "내용이 비어있어요", description: "텍스트를 입력해주세요.", variant: "destructive" }); return; }
     try {
-      setSavingInput(true);
-      setIsRegenerating(true);
-      setLoadingMessage("재생성 중...");
-      setIsEditingInput(false);
-      setEditedInput("");
+      setSavingInput(true); setIsRegenerating(true); setLoadingMessage("재생성 중...");
+      setIsEditingInput(false); setEditedInput("");
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token;
-      if (!accessToken) {
-        toast({ title: "로그인이 필요합니다", description: "다시 로그인해 주세요.", variant: "destructive" });
-        setIsRegenerating(false); setSavingInput(false);
-        return;
-      }
+      if (!accessToken) { toast({ title: "로그인이 필요합니다", variant: "destructive" }); setIsRegenerating(false); setSavingInput(false); return; }
       let targetSessionId = draftId;
       if (!isSessionType) {
         const { data: promoteResult, error: promoteError } = await supabase.functions.invoke("promote-draft", {
@@ -361,43 +315,27 @@ const DraftResult = () => {
       if (targetSessionId !== draftId) navigate(`/result/${targetSessionId}?type=session`, { replace: true });
       if (result.outputs) {
         setData({
-          input_text: nextText,
-          input_mode: data?.input_mode,
-          result_data: {
-            blog_content: result.outputs.blog_content,
-            linkedin_content: result.outputs.linkedin_content,
-            reels_content: result.outputs.reels_content,
-            threads_content: result.outputs.threads_content,
-          },
+          input_text: nextText, input_mode: data?.input_mode,
+          result_data: { blog_content: result.outputs.blog_content, linkedin_content: result.outputs.linkedin_content, reels_content: result.outputs.reels_content, threads_content: result.outputs.threads_content },
         });
       }
       toast({ title: "재생성 완료", description: "콘텐츠가 새로 생성되었어요." });
     } catch (e: any) {
       console.error("Regeneration error:", e);
       toast({ title: "재생성 실패", description: e.message, variant: "destructive" });
-    } finally {
-      setSavingInput(false);
-      setIsRegenerating(false);
-      setLoading(false);
-    }
+    } finally { setSavingInput(false); setIsRegenerating(false); setLoading(false); }
   };
 
   const handleCopyAction = (content: string) => {
     if (!user) { setShowLoginAlert(true); return; }
-    navigator.clipboard.writeText(content).then(() => {
-      toast({ title: "복사 완료", description: "클립보드에 복사되었습니다." });
-    });
+    navigator.clipboard.writeText(content).then(() => { toast({ title: "복사 완료", description: "클립보드에 복사되었습니다." }); });
   };
 
   const handleCardClick = (platformKey: string) => {
-    if (!user && (platformKey === "reels" || platformKey === "threads")) {
-      setShowLoginAlert(true);
-      return;
-    }
+    if (!user) { setShowLoginAlert(true); return; }
     const idProps = isSessionType ? { session_id: draftId } : { draft_id: draftId };
     track.pageView("platform_modal", { platform_type: platformKey, ...idProps });
-    setSelectedPlatform(platformKey);
-    setIsModalOpen(true);
+    setSelectedPlatform(platformKey); setIsModalOpen(true);
   };
 
   const getContent = (key: string) => {
@@ -417,8 +355,8 @@ const DraftResult = () => {
         <div className="flex-1 flex flex-col items-center justify-center gap-8 h-[100dvh] px-6">
           <GlassOrb state="recording" size="w-28 h-28" />
           <div className="text-center space-y-3">
-            <p className="text-lg font-semibold text-foreground animate-pulse">{loadingMessage}</p>
-            <p className="text-sm text-muted-foreground">잠시만 기다려주세요 (약 10초 소요)</p>
+            <p className="text-base font-medium text-foreground animate-pulse">{loadingMessage}</p>
+            <p className="text-xs text-muted-foreground">잠시만 기다려주세요 (약 10초 소요)</p>
           </div>
           {showRetryButton && !isRegenerating && (
             <Button onClick={handleRetry} disabled={isRetrying} variant="outline" className="gap-2 rounded-full mt-4 border-border text-muted-foreground">
@@ -438,18 +376,16 @@ const DraftResult = () => {
 
   return (
     <AppShell>
-      <div className="flex-1 px-4 md:px-5 py-4 md:py-6 space-y-4 pb-6">
-        {/* ── Header with user info ── */}
-        <div className="space-y-1">
-          {user && (
-            <p className="text-xs text-muted-foreground">{user.email?.split("@")[0]} / 로그인</p>
-          )}
-          <h2 className="text-xl md:text-2xl font-bold text-foreground leading-snug">
-            오늘 {insightCount}개의 인사이트를<br />발견했어요
-          </h2>
+      {/* No GlassOrb on result screen */}
+      <div className="flex-1 px-4 md:px-5 py-4 space-y-4 overflow-y-auto">
+        {/* ── Header ── */}
+        <div className="pt-2">
+          <p className="text-sm text-foreground leading-relaxed">
+            AI가 분석해 <span className="font-semibold">{insightCount}개</span>의 인사이트를 정리했어요.
+          </p>
         </div>
 
-        {/* ── 기록 내용 카드 ── */}
+        {/* ── 기록한 내용 ── */}
         <DraftInputCard
           inputText={data.input_text}
           isEditing={isEditingInput}
@@ -461,158 +397,127 @@ const DraftResult = () => {
           onEditedInputChange={setEditedInput}
         />
 
-        {/* ── AI 핵심 인사이트 ── */}
+        {/* ── Insights: 2-column layout ── */}
         {insightSummary && (
-          <div className="glass-card rounded-2xl p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="text-sm">💡</span>
-              <h3 className="text-sm font-semibold text-foreground">AI 핵심 인사이트</h3>
-            </div>
-            <p className="text-xs md:text-sm text-muted-foreground leading-relaxed line-clamp-3">
-              {insightSummary}
-            </p>
-
-            {/* Extra insights (locked for guests) */}
-            {isGuest && (
-              <div className="space-y-1.5 pt-2">
-                <div className="glass-card rounded-xl p-3 flex items-center gap-2">
-                  <Plus className="w-3.5 h-3.5 text-muted-foreground" />
-                  <span className="text-xs font-medium text-foreground">추가 인사이트</span>
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              {/* Left: 핵심 포인트 (larger card) */}
+              <div className="flex-1 glass-card rounded-2xl p-4 space-y-2">
+                <h3 className="text-xs font-semibold text-foreground">인사이트 그리드</h3>
+                <div className="glass-card rounded-xl p-3">
+                  <p className="text-[10px] font-medium text-foreground mb-1">핵심 포인트</p>
+                  <p className="text-[10px] text-muted-foreground leading-relaxed line-clamp-3">
+                    {insightSummary}
+                  </p>
                 </div>
-                <div className="space-y-1">
-                  {["문제 해결 접근 방식", "감정 반응 패턴", "성장 인사이트"].map((label) => (
-                    <div key={label} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/30">
-                      <Lock className="w-3 h-3 text-muted-foreground/50" />
-                      <span className="text-xs text-muted-foreground/60 blur-[2px] select-none">{label}</span>
+              </div>
+
+              {/* Right: 추가 인사이트 (smaller cards, some locked) */}
+              <div className="w-[45%] glass-card rounded-2xl p-3 space-y-2">
+                <h3 className="text-xs font-semibold text-foreground">추가 인사이트</h3>
+                <div className="space-y-1.5">
+                  {["문제 해결 접근 방식", "경쟁 반응 재인", "성장 인사이트"].map((label, idx) => (
+                    <div key={label} className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg bg-muted/30">
+                      <Lock className="w-3 h-3 text-muted-foreground/40 flex-shrink-0" />
+                      <span className={`text-[10px] text-muted-foreground ${idx > 0 ? "blur-[2px] select-none" : ""}`}>
+                        {label}
+                      </span>
                     </div>
                   ))}
                 </div>
               </div>
-            )}
+            </div>
           </div>
         )}
 
-        {/* ── 콘텐츠 변환 섹션 ── */}
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-foreground">코앤츠 콘텐츠 변환</h3>
+        {/* ── 콘텐츠 변환 ── */}
+        <div className="space-y-2">
+          <h3 className="text-xs font-semibold text-foreground">콘텐츠 변환</h3>
 
-          {isGuest ? (
-            /* Guest: 2x2 grid, first one preview, rest blurred */
-            <div className="grid grid-cols-2 gap-2.5">
-              {platformOrder.map((key, idx) => {
-                const meta = platformIcons[key];
-                const Icon = meta.icon;
-                const content = getContent(key) || "";
-                const isPreview = idx === 0; // Only first (blog) gets preview
+          <div className="grid grid-cols-2 gap-2">
+            {platformOrder.map((key, idx) => {
+              const meta = platformIcons[key];
+              const Icon = meta.icon;
+              const content = getContent(key) || "";
+              const isPreview = isGuest ? idx === 0 : true;
 
-                return (
-                  <button
-                    key={key}
-                    onClick={() => handleCardClick(key)}
-                    className="glass-card rounded-2xl p-3 text-left space-y-2 relative overflow-hidden transition-all hover:shadow-md"
-                  >
+              return (
+                <button
+                  key={key}
+                  onClick={() => handleCardClick(key)}
+                  className="glass-card rounded-2xl p-3 text-left space-y-2 relative overflow-hidden transition-all hover:shadow-md"
+                >
+                  <div className="flex items-center gap-2">
                     <div
-                      className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${key === "reels" ? "bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af]" : ""}`}
+                      className={`w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 ${key === "reels" ? "bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af]" : ""}`}
                       style={{ backgroundColor: key === "reels" ? undefined : meta.color }}
                     >
-                      <Icon className="w-3.5 h-3.5 text-white" />
+                      <Icon className="w-3 h-3 text-white" />
                     </div>
-                    <h4 className="text-xs font-medium text-foreground">{meta.title}</h4>
-                    {isPreview ? (
-                      <div className="relative">
-                        <p className="text-[10px] text-muted-foreground leading-relaxed line-clamp-2">
-                          {getSummary(content, 60)}
-                        </p>
-                        <div className="h-6 bg-gradient-to-t from-background/80 to-transparent blur-[2px]" />
-                      </div>
-                    ) : (
-                      <div className="relative">
-                        <p className="text-[10px] text-muted-foreground leading-relaxed blur-[4px] select-none line-clamp-2" aria-hidden>
-                          콘텐츠가 생성되었습니다. 로그인하여 확인하세요.
-                        </p>
-                        <Lock className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/40" />
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            /* Logged-in: 2x2 grid, full access */
-            <div className="grid grid-cols-2 gap-2.5">
-              {platformOrder.map((key) => {
-                const meta = platformIcons[key];
-                const Icon = meta.icon;
-                const content = getContent(key);
-                return (
-                  <button
-                    key={key}
-                    onClick={() => handleCardClick(key)}
-                    className="glass-card rounded-2xl p-3 md:p-4 hover:shadow-md transition-all text-left space-y-2 flex flex-col"
-                  >
-                    <div
-                      className={`w-8 h-8 md:w-9 md:h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${key === "reels" ? "bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af]" : ""}`}
-                      style={{ backgroundColor: key === "reels" ? undefined : meta.color }}
-                    >
-                      <Icon className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" />
-                    </div>
-                    <div className="flex-1 overflow-hidden w-full">
-                      <h4 className="font-medium text-foreground text-xs mb-1">{meta.title}</h4>
-                      <p className="text-[10px] md:text-xs text-muted-foreground leading-relaxed line-clamp-2">{getSummary(content)}</p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+                    <span className="text-xs font-medium text-foreground">{meta.title}</span>
+                    {!isPreview && <Lock className="w-3 h-3 text-muted-foreground/40 ml-auto" />}
+                  </div>
+
+                  {isPreview ? (
+                    <p className="text-[10px] text-muted-foreground leading-relaxed line-clamp-2">
+                      {getSummary(content, 50)}
+                    </p>
+                  ) : (
+                    <p className="text-[10px] text-muted-foreground leading-relaxed blur-[3px] select-none line-clamp-2" aria-hidden>
+                      콘텐츠가 생성되었습니다
+                    </p>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* ── CTA ── */}
-        <div className="flex flex-col gap-2 pt-2">
-          {isGuest ? (
-            <div className="text-center space-y-3">
-              <div className="glass-card rounded-2xl p-4 space-y-2">
-                <p className="text-sm font-semibold text-foreground">AI 분석 전체 확인하기</p>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  로그인하면 모든 인사이트와 콘텐츠 생성 기능을 사용할 수 있습니다.
-                </p>
-              </div>
-              <Button
-                onClick={performLogin}
-                className="w-full h-12 rounded-2xl bg-foreground text-background hover:bg-foreground/90 text-sm font-semibold shadow-lg"
-              >
-                AI 분석 전체 확인하기 →
-              </Button>
-            </div>
-          ) : (
-            <>
-              <Button
-                onClick={() => {
-                  const idProps = isSessionType ? { session_id: draftId } : { draft_id: draftId };
-                  track.pageView("new_record_click", idProps);
-                  navigate("/input");
-                }}
-                className="w-full h-11 rounded-2xl bg-foreground text-background hover:bg-foreground/90 font-semibold text-sm shadow-lg"
-              >
-                새로운 기록 만들기
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  const idProps = isSessionType ? { session_id: draftId } : { draft_id: draftId };
-                  track.pageView("go_home_click", idProps);
-                  navigate("/");
-                }}
-                className="w-full h-11 rounded-2xl text-sm border-border/60"
-              >
-                홈으로 돌아가기
-              </Button>
-            </>
-          )}
-        </div>
+        {isGuest ? (
+          <div className="glass-card rounded-2xl p-5 space-y-3 text-center">
+            <p className="text-sm font-semibold text-foreground">AI 분석 전체 확인하기</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              로그인하면 모든 인사이트와 콘텐츠 생성 기능을<br />사용할 수 있습니다.
+            </p>
+            <button
+              onClick={performLogin}
+              className="w-full h-12 rounded-2xl btn-steel text-sm tracking-wide"
+            >
+              로그인하기
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2 pt-1">
+            <button
+              onClick={() => {
+                const idProps = isSessionType ? { session_id: draftId } : { draft_id: draftId };
+                track.pageView("new_record_click", idProps);
+                navigate("/input");
+              }}
+              className="w-full h-12 rounded-2xl btn-steel text-sm tracking-wide"
+            >
+              새로운 기록 만들기
+            </button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                const idProps = isSessionType ? { session_id: draftId } : { draft_id: draftId };
+                track.pageView("go_home_click", idProps);
+                navigate("/");
+              }}
+              className="w-full h-11 rounded-2xl text-sm border-border/40"
+            >
+              홈으로 돌아가기
+            </Button>
+          </div>
+        )}
+
+        {/* Bottom spacing */}
+        <div className="h-4" />
       </div>
 
-      {/* ── Login Alert Dialog ── */}
+      {/* ── Login Alert ── */}
       <AlertDialog open={showLoginAlert} onOpenChange={setShowLoginAlert}>
         <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
@@ -621,17 +526,14 @@ const DraftResult = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="rounded-xl border-0">취소</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={performLogin}
-              className="rounded-xl bg-foreground text-background hover:bg-foreground/90"
-            >
+            <AlertDialogAction onClick={performLogin} className="rounded-xl bg-foreground text-background hover:bg-foreground/90">
               로그인하고 결과 확인하기
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* ── Result Detail Modal ── */}
+      {/* ── Detail Modal ── */}
       {selectedPlatform && (
         <ResultDetailModal
           isOpen={isModalOpen}
