@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Home, Settings, LogOut } from "lucide-react";
+import { ChevronLeft, Sun } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 
@@ -9,62 +9,36 @@ interface HeaderProps {
 
 const Header = ({ isGuest = false }: HeaderProps) => {
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
-
-  const handleLogout = async () => {
-    await signOut();
-    navigate("/");
-  };
+  const { user } = useAuth();
 
   return (
-    <header className="relative flex items-center justify-center px-5 py-4 border-b border-border/50">
-      {/* Left: Home Button - Absolute positioned */}
-      <Button 
-        variant="ghost" 
-        size="icon" 
-        onClick={() => navigate("/")} 
-        className="absolute left-5 w-9 h-9 rounded-full hover:bg-muted"
+    <header className="relative flex items-center justify-center px-5 py-3.5">
+      {/* Left: Back */}
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => navigate(-1)}
+        className="absolute left-4 w-8 h-8 rounded-full hover:bg-muted/60"
       >
-        <Home className="w-5 h-5 text-foreground" />
+        <ChevronLeft className="w-5 h-5 text-foreground/60" />
       </Button>
 
-      {/* Center: Logo - Always centered */}
+      {/* Center: Logo */}
       <button
         onClick={() => navigate("/")}
-        className="text-xl font-normal tracking-wide text-foreground font-jost"
+        className="text-base font-normal tracking-wide text-foreground/80 font-jost"
       >
         knots
       </button>
 
-      {/* Right: Settings & Logout OR Login button */}
-      <div className="absolute right-5 flex flex-row items-center gap-1">
-        {isGuest ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate("/login")}
-            className="text-sm font-medium text-foreground hover:bg-muted"
-          >
-            로그인
-          </Button>
-        ) : user ? (
-          <>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate("/settings")}
-              className="w-9 h-9 rounded-full hover:bg-muted"
-            >
-              <Settings className="w-5 h-5 text-foreground" />
-            </Button>
-            <Button variant="ghost" size="icon" onClick={handleLogout} className="w-9 h-9 rounded-full hover:bg-muted">
-              <LogOut className="w-5 h-5 text-foreground" />
-            </Button>
-          </>
-        ) : (
-          <div className="w-9 h-9" />
-        )}
-      </div>
+      {/* Right: Theme icon */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="absolute right-4 w-8 h-8 rounded-full hover:bg-muted/60"
+      >
+        <Sun className="w-4 h-4 text-foreground/50" />
+      </Button>
     </header>
   );
 };

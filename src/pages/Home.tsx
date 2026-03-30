@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Mic, Loader2, Type } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import AppShell from "@/components/AppShell";
@@ -18,40 +18,45 @@ import { getAccessToken } from "@/lib/edgeFunctionAuth";
 const guideChips = [
   {
     tag: "오늘의 넋두리",
+    label: "감정",
     emoji: "💭",
-    placeholder: "오늘 있었던 일 중\n그냥 털어놓고 싶은 이야기가 있나요?\n편하게 말하듯 남겨보세요.",
+    placeholder: "오늘 있었던 일 중\n그냥 털어놓고 싶은 이야기가 있나요?",
     mood: "neutral",
     persona: "authentic",
     purpose: "emotion",
   },
   {
     tag: "배운 점",
+    label: "학습",
     emoji: "💡",
-    placeholder: "오늘 새롭게 깨달은 점이나\n배운 것이 있나요?\n잊기 전에 한 가지라도 남겨보세요.",
+    placeholder: "오늘 새롭게 깨달은 점이나\n배운 것이 있나요?",
     mood: "energetic",
     persona: "growth",
     purpose: "idea",
   },
   {
     tag: "성취 기록",
+    label: "성과",
     emoji: "🏆",
-    placeholder: "오늘 해낸 작은 일이나\n스스로 칭찬하고 싶은 순간이 있나요?\n짧게라도 남겨보세요.",
+    placeholder: "오늘 해낸 작은 일이나\n스스로 칭찬하고 싶은 순간이 있나요?",
     mood: "proud",
     persona: "achiever",
     purpose: "record",
   },
   {
     tag: "문제 해결",
+    label: "삽질",
     emoji: "🔧",
-    placeholder: "오늘 어떤 문제로 고생했나요?\n해결 과정이나 삽질 경험을\n편하게 남겨보세요.",
+    placeholder: "오늘 어떤 문제로 고생했나요?\n해결 과정을 남겨보세요.",
     mood: "chaotic",
     persona: "challenger",
     purpose: "review",
   },
   {
     tag: "생각 정리",
+    label: "인지",
     emoji: "🧠",
-    placeholder: "지금 머릿속에 맴도는 생각이 있나요?\n정리되지 않아도 괜찮아요\n그대로 남겨보세요.",
+    placeholder: "지금 머릿속에 맴도는 생각이 있나요?\n정리되지 않아도 괜찮아요.",
     mood: "neutral",
     persona: "authentic",
     purpose: "emotion",
@@ -66,7 +71,7 @@ interface HomeProps {
 }
 
 const Home = ({ isGuest = false }: HomeProps) => {
-  const [inputMode, setInputMode] = useState<"voice" | "text">("voice");
+  const [inputMode, setInputMode] = useState<"voice" | "text" | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
 
@@ -111,7 +116,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
     };
   }, []);
 
-  // ── Orb state ──
   const orbState = isRecording ? "recording" : inputMode === "text" ? "text" : "idle";
 
   const handleChipClick = (index: number) => {
@@ -137,23 +141,17 @@ const Home = ({ isGuest = false }: HomeProps) => {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioStreamRef.current = stream;
       audioChunksRef.current = [];
-
       const mimeOptions = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
       const selectedMime = mimeOptions.find(m => MediaRecorder.isTypeSupported(m)) || '';
-      console.log('[Recording] Selected mimeType:', selectedMime || 'browser default');
-
       const recorderOptions: MediaRecorderOptions = selectedMime ? { mimeType: selectedMime } : {};
       const mediaRecorder = new MediaRecorder(stream, recorderOptions);
       mediaRecorderRef.current = mediaRecorder;
-
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) audioChunksRef.current.push(event.data);
       };
       mediaRecorder.onstop = () => {
         const actualMime = mediaRecorder.mimeType || selectedMime || 'audio/webm';
         const audioBlob = new Blob(audioChunksRef.current, { type: actualMime });
-        console.log('[Recording] Blob created - size:', audioBlob.size, 'type:', audioBlob.type, 'chunks:', audioChunksRef.current.length);
-
         if (audioChunksRef.current.length === 0 || audioBlob.size < 5000) {
           toast({ title: "녹음 실패", description: "녹음이 너무 짧거나 실패했습니다. 다시 시도해주세요.", variant: "destructive" });
           setRecordedBlob(null);
@@ -178,11 +176,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
     }
   };
 
-  const toggleRecording = () => {
-    if (!isRecording) startRecording();
-    else stopRecording();
-  };
-
   const handleRetry = () => {
     setShowConfirmation(false);
     setRecordedBlob(null);
@@ -192,14 +185,11 @@ const Home = ({ isGuest = false }: HomeProps) => {
   // ── Submit logic (completely preserved) ──
   const handleSubmit = async (mode: "voice" | "text") => {
     setIsSubmitting(true);
-
     const analyticsSessionId = getSessionId();
     const { seq, isFirst } = getNextInputSeq(analyticsSessionId);
-
     try {
       let audioBase64 = null;
       let finalTextInput = textInput;
-
       if (mode === "voice") {
         if (!recordedBlob) {
           toast({ title: "오류", description: "녹음 파일이 없습니다.", variant: "destructive" });
@@ -211,7 +201,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
       } else {
         if (!textInput.trim()) throw new Error("입력된 텍스트가 없습니다.");
       }
-
       if (user) {
         const accessToken = await getAccessToken();
         if (!accessToken) {
@@ -219,7 +208,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
           setIsSubmitting(false);
           return;
         }
-
         const { data: sessionData, error: sessionError } = await supabase
           .from("sessions")
           .insert({
@@ -234,9 +222,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
           })
           .select("id")
           .single();
-
         if (sessionError) throw sessionError;
-
         track.submitInput(mode, {
           analytics_session_id: analyticsSessionId,
           db_session_id: sessionData.id,
@@ -246,32 +232,21 @@ const Home = ({ isGuest = false }: HomeProps) => {
           selected_persona: selectedPersona,
           session_purpose: sessionPurpose,
         });
-
         const formData = new FormData();
         formData.append("session_id", sessionData.id);
         formData.append("user_persona", selectedPersona);
         formData.append("user_mood", selectedMood);
         formData.append("session_purpose", sessionPurpose);
-
         if (mode === "voice" && recordedBlob) {
           formData.append("audio", recordedBlob, "recording.webm");
         } else {
           formData.append("raw_text", finalTextInput);
         }
-
         void supabase.functions
           .invoke("process-audio", { body: formData, headers: { Authorization: `Bearer ${accessToken}` } })
-          .then(({ error }) => {
-            if (error) console.error("process-audio invoke error:", error);
-          })
+          .then(({ error }) => { if (error) console.error("process-audio invoke error:", error); })
           .catch((e) => console.error("process-audio invoke failed:", e));
-
-        supabase
-          .from("users")
-          .update({ usage_purpose: sessionPurpose || undefined })
-          .eq("id", user.id)
-          .then();
-
+        supabase.from("users").update({ usage_purpose: sessionPurpose || undefined }).eq("id", user.id).then();
         navigate(`/result/${sessionData.id}?type=session`);
       } else {
         const inputData = {
@@ -283,20 +258,13 @@ const Home = ({ isGuest = false }: HomeProps) => {
           audioBase64,
           textInput: finalTextInput,
         };
-
         const { data: draftData, error: draftError } = await supabase
           .from("drafts")
-          .insert({
-            status: "processing",
-            input_data: inputData,
-          })
+          .insert({ status: "processing", input_data: inputData })
           .select("id")
           .single();
-
         if (draftError) throw draftError;
-
         localStorage.setItem("pending_draft_id", draftData.id);
-
         track.submitInput(mode, {
           analytics_session_id: analyticsSessionId,
           db_session_id: null,
@@ -307,7 +275,6 @@ const Home = ({ isGuest = false }: HomeProps) => {
           selected_persona: selectedPersona,
           session_purpose: sessionPurpose,
         });
-
         const fd = new FormData();
         fd.append("draft_id", draftData.id);
         fd.append("user_persona", selectedPersona);
@@ -315,18 +282,15 @@ const Home = ({ isGuest = false }: HomeProps) => {
         fd.append("session_purpose", sessionPurpose);
         fd.append("input_type", mode);
         fd.append("keyword", keyword || "");
-
         if (mode === "voice" && recordedBlob) {
           fd.append("audio", recordedBlob, "recording.webm");
         } else {
           fd.append("raw_text", finalTextInput);
         }
-
         fetch("https://qdzhwrcanenolbocysmx.supabase.co/functions/v1/process-audio", {
           method: "POST",
           body: fd,
         }).catch(console.error);
-
         navigate(`/result/${draftData.id}?type=draft`);
       }
     } catch (error: any) {
@@ -345,116 +309,110 @@ const Home = ({ isGuest = false }: HomeProps) => {
     handleSubmit("text");
   };
 
+  const handleVoiceClick = () => {
+    if (inputMode === "voice" && isRecording) {
+      stopRecording();
+    } else {
+      setInputMode("voice");
+      startRecording();
+    }
+  };
+
   return (
     <AppShell isGuest={isGuest}>
-      <div className="flex-1 flex flex-col px-5 md:px-6 pt-4 pb-6 space-y-4 overflow-y-auto">
-        {/* ── Glass Orb (always visible) ── */}
-        <div className="flex justify-center pt-2">
-          <GlassOrb state={orbState} size="w-36 h-36 md:w-44 md:h-44" />
+      <div className="flex-1 flex flex-col px-5 md:px-6 pt-2 pb-5 overflow-y-auto">
+        {/* ── Glass Orb ── */}
+        <div className="flex justify-center pt-4 pb-3">
+          <GlassOrb state={orbState} size="w-[45vw] h-[45vw] max-w-[200px] max-h-[200px]" />
         </div>
 
         {/* ── Title ── */}
-        <div className="text-center">
-          <h2 className="text-base md:text-lg font-semibold text-foreground">
-            기록 방향을 고르세요.
+        <div className="text-center mb-3">
+          <h2 className="text-lg font-light text-foreground tracking-tight">
+            How was your Today?
           </h2>
+          <p className="text-xs text-muted-foreground mt-1">
+            기록할 방향을 골라보세요
+          </p>
         </div>
 
-        {/* ── Guide Chips (horizontal scroll) ── */}
-        <div className="overflow-x-auto scrollbar-hide -mx-5 px-5">
-          <div className="flex gap-2 w-max">
+        {/* ── Guide Cards (horizontal scroll) ── */}
+        <div className="overflow-x-auto scrollbar-hide -mx-5 px-5 mb-3">
+          <div className="flex gap-3 w-max">
             {guideChips.map((chip, i) => (
               <button
                 key={chip.tag}
                 onClick={() => handleChipClick(i)}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm whitespace-nowrap transition-all border ${
+                className={`flex-shrink-0 w-[65vw] max-w-[260px] rounded-[20px] p-4 text-left transition-all ${
                   selectedChipIndex === i
-                    ? "border-foreground/30 bg-foreground/5 text-foreground shadow-sm"
-                    : "border-border/60 bg-background/80 text-muted-foreground hover:border-foreground/20"
+                    ? "glass-card shadow-md border-foreground/10"
+                    : "glass-card hover:shadow-sm"
                 }`}
               >
-                <span>{chip.emoji}</span>
-                <span>{chip.tag}</span>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-base">{chip.emoji}</span>
+                  <span className="text-sm font-medium text-foreground">{chip.tag}</span>
+                  <span className="text-[10px] text-muted-foreground/60">({chip.label})</span>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line">
+                  {chip.placeholder}
+                </p>
               </button>
             ))}
           </div>
         </div>
 
-        {/* ── Placeholder Card (slides in on chip select) ── */}
-        <div
-          key={selectedChipIndex ?? "default"}
-          className="glass-card rounded-2xl p-4 md:p-5 animate-slide-card"
-        >
-          <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-            {cardPlaceholder}
-          </p>
-        </div>
-
-        {/* ── Spacer to push input area down ── */}
+        {/* ── Spacer ── */}
         <div className="flex-1 min-h-4" />
 
-        {/* ── Input Area ── */}
-        {inputMode === "voice" ? (
-          <div className="flex flex-col items-center gap-3 pb-2">
-            {/* Mic button */}
-            <button
-              onClick={toggleRecording}
-              className={`w-[4.5rem] h-[4.5rem] md:w-20 md:h-20 rounded-full flex items-center justify-center transition-all ${
-                isRecording
-                  ? "bg-foreground scale-95 shadow-[0_0_30px_hsla(340,50%,60%,0.3)]"
-                  : "bg-foreground hover:scale-105 active:scale-95 shadow-[0_6px_24px_hsla(0,0%,0%,0.2)]"
-              }`}
-            >
-              <Mic className="w-8 h-8 md:w-9 md:h-9 text-background" strokeWidth={1.8} />
-            </button>
-            <p className="text-xs text-muted-foreground">
-              {isRecording ? "듣는 중..." : "기록 시작하기"}
-            </p>
+        {/* ── Recording status ── */}
+        {isRecording && (
+          <div className="text-center mb-3 animate-float-up">
+            <p className="text-sm text-muted-foreground">듣는 중...</p>
           </div>
-        ) : (
-          <div className="space-y-3 pb-2">
+        )}
+
+        {/* ── Text input area (shown when text mode active) ── */}
+        {inputMode === "text" && (
+          <div className="space-y-3 mb-4 animate-float-up">
             <Textarea
               value={textInput}
               onChange={(e) => setTextInput(e.target.value)}
               placeholder="기록 내용을 입력해보세요..."
-              className="min-h-[120px] md:min-h-[140px] rounded-2xl border-border/60 bg-background/80 resize-none text-sm"
+              className="min-h-[120px] rounded-2xl border-border/40 bg-background/60 backdrop-blur-sm resize-none text-sm"
             />
-            <Button
+            <button
               onClick={handleTextSubmit}
               disabled={isSubmitting}
-              className="w-full h-11 rounded-2xl bg-foreground text-background hover:bg-foreground/90 text-sm shadow-lg"
+              className="w-full h-14 rounded-2xl btn-steel text-sm tracking-wide transition-all"
             >
               {isSubmitting ? "저장 중..." : "기록 시작하기"}
-            </Button>
+            </button>
           </div>
         )}
 
-        {/* ── Voice/Text toggle ── */}
-        <div className="flex items-center justify-center gap-2 pb-1">
-          <button
-            onClick={() => setInputMode("voice")}
-            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs transition-all ${
-              inputMode === "voice"
-                ? "bg-foreground text-background"
-                : "bg-muted/60 text-muted-foreground hover:bg-muted"
-            }`}
-          >
-            <Mic className="w-3 h-3" /> 음성
-          </button>
-          <button
-            onClick={() => setInputMode("text")}
-            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs transition-all ${
-              inputMode === "text"
-                ? "bg-foreground text-background"
-                : "bg-muted/60 text-muted-foreground hover:bg-muted"
-            }`}
-          >
-            <Type className="w-3 h-3" /> 텍스트
-          </button>
-        </div>
+        {/* ── Voice / Text Buttons (vertically stacked steel bars) ── */}
+        {inputMode !== "text" && (
+          <div className="space-y-3 pb-2">
+            <button
+              onClick={handleVoiceClick}
+              className={`w-full h-14 rounded-2xl btn-steel text-sm tracking-widest transition-all ${
+                isRecording ? "ring-2 ring-foreground/20" : ""
+              }`}
+            >
+              {isRecording ? "녹음 중지" : "Voice"}
+            </button>
+            <button
+              onClick={() => setInputMode("text")}
+              className="w-full h-14 rounded-2xl btn-steel text-sm tracking-widest transition-all"
+            >
+              Text
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* ── 녹음 확인 Sheet ── */}
+      {/* ── Recording confirmation sheet ── */}
       <Sheet open={showConfirmation} onOpenChange={setShowConfirmation}>
         <SheetContent side="bottom" className="h-auto rounded-t-3xl">
           <SheetHeader className="pb-6">
@@ -464,18 +422,18 @@ const Home = ({ isGuest = false }: HomeProps) => {
             <Button onClick={handleRetry} variant="outline" className="w-full h-12 rounded-xl border-border">
               다시 녹음
             </Button>
-            <Button
+            <button
               onClick={handleVoiceSubmit}
               disabled={isSubmitting}
-              className="w-full h-12 rounded-xl bg-foreground text-background hover:bg-foreground/90"
+              className="w-full h-12 rounded-xl btn-steel text-sm"
             >
               콘텐츠 생성하기
-            </Button>
+            </button>
           </div>
         </SheetContent>
       </Sheet>
 
-      {/* ── 제출 로딩 오버레이 ── */}
+      {/* ── Submitting overlay ── */}
       {isSubmitting && (
         <div className="fixed inset-0 z-[9999] warm-gradient-bg flex flex-col items-center justify-center">
           <div className="flex flex-col items-center gap-6">
