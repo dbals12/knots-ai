@@ -9,31 +9,31 @@ const Landing = () => {
   useEffect(() => {
     const timer = setTimeout(() => {
       setVisible(false);
-      setTimeout(() => navigate("/input", { replace: true }), 400);
+      setTimeout(() => navigate("/input", { replace: true }), 600);
     }, 1000);
     return () => clearTimeout(timer);
   }, [navigate]);
 
   return (
     <div
-      className={`fixed inset-0 warm-gradient-bg flex flex-col items-center transition-opacity duration-400 ${
+      className={`fixed inset-0 bg-background flex flex-col items-center transition-opacity duration-[600ms] ${
         visible ? "opacity-100" : "opacity-0"
       }`}
     >
-      {/* Orb — positioned at ~30-35% from top */}
+      {/* Orb — positioned at ~28% from top */}
       <div className="mt-[28vh] animate-float-up">
-        <GlassOrb state="idle" size="w-[55vw] h-[55vw] max-w-[280px] max-h-[280px]" />
+        <GlassOrb state="idle" size="w-[220px] h-[220px]" />
       </div>
 
       {/* Text below orb */}
-      <div className="text-center mt-10 animate-float-up" style={{ animationDelay: "0.15s" }}>
-        <h1 className="text-3xl md:text-4xl font-light text-foreground tracking-tight font-jost">
+      <div className="text-center mt-[60px] animate-float-up" style={{ animationDelay: "0.15s" }}>
+        <h1 className="text-[28px] font-medium text-foreground tracking-tight">
           Welcome to Knots !
         </h1>
-        <p className="mt-5 text-sm text-muted-foreground font-light leading-relaxed">
-          당신의 경험을 성장의 기록으로
+        <p className="mt-3 text-sm text-muted-foreground font-normal leading-relaxed">
+          당신의 경험을
           <br />
-          남기고 싶은가요?
+          성장의 기록으로 남기고 싶은가요?
         </p>
       </div>
     </div>

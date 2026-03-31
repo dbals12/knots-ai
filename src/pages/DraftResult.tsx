@@ -5,19 +5,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import AppShell from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
-import { Loader2, RefreshCw, ChevronDown, ChevronUp, Lock, Pencil } from "lucide-react";
+import { RefreshCw, ChevronDown, ChevronUp, Lock, Pencil, ArrowRight, Lightbulb } from "lucide-react";
 import { SiNaver, SiLinkedin, SiInstagram, SiThreads } from "react-icons/si";
 import ResultDetailModal from "@/components/ResultDetailModal";
 import GlassOrb from "@/components/GlassOrb";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import track from "@/lib/track";
 import { getSessionId } from "@/lib/session";
@@ -40,12 +34,12 @@ const DraftInputCard = ({
 }: DraftInputCardProps) => {
   const [expanded, setExpanded] = useState(false);
   return (
-    <div className="glass-card rounded-2xl p-4">
+    <div className="glass-card p-4">
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-sm font-medium text-foreground">기록한 내용</h3>
         {!isEditing ? (
-          <button onClick={onEditClick} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
-            <Pencil className="w-3 h-3" /> 수정하기
+          <button onClick={onEditClick} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-full bg-muted/50">
+            수정하기
           </button>
         ) : (
           <div className="flex gap-2">
@@ -69,7 +63,7 @@ const DraftInputCard = ({
         </div>
       ) : (
         <textarea value={editedInput} onChange={(e) => onEditedInputChange(e.target.value)}
-          className="w-full min-h-[100px] max-h-[180px] p-3 rounded-xl border border-border/40 bg-background/60 text-xs text-foreground leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-foreground/20" />
+          className="w-full min-h-[100px] max-h-[180px] p-3 rounded-xl border border-border/40 bg-muted/30 text-xs text-foreground leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-foreground/20" />
       )}
     </div>
   );
@@ -88,7 +82,7 @@ interface ContentData {
 
 const platformIcons = {
   blog: { icon: SiNaver, color: "#03C75A", title: "Blog" },
-  linkedin: { icon: SiLinkedin, color: "#0077B5", title: "LinkedIn" },
+  linkedin: { icon: SiLinkedin, color: "#0077B5", title: "Linkedin" },
   reels: { icon: SiInstagram, color: "#E4405F", title: "Instagram" },
   threads: { icon: SiThreads, color: "#000000", title: "Threads" },
 };
@@ -109,6 +103,25 @@ const getInsightSummary = (rd: ContentData["result_data"]): string => {
   const clean = source.replace(/```json\s*/gi, "").replace(/```\s*/gi, "").replace(/^#+\s.*/gm, "").trim();
   const sentences = clean.split(/[.!?。]\s/).filter(Boolean).slice(0, 2);
   return sentences.join(". ").substring(0, 160) + (sentences.length > 0 ? "." : "");
+};
+
+const getAdditionalInsights = (rd: ContentData["result_data"]): string[] => {
+  const sources = [rd.linkedin_content, rd.blog_content, rd.threads_content].filter(Boolean);
+  const insights: string[] = [];
+  for (const src of sources) {
+    if (!src) continue;
+    const clean = src.replace(/```json\s*/gi, "").replace(/```\s*/gi, "").replace(/^#+\s.*/gm, "").trim();
+    const sentences = clean.split(/[.!?。]\s/).filter(s => s.length > 15);
+    for (const s of sentences) {
+      if (insights.length >= 3) break;
+      const trimmed = s.trim().substring(0, 80);
+      if (!insights.some(existing => existing.startsWith(trimmed.substring(0, 20)))) {
+        insights.push(trimmed + (s.length > 80 ? "..." : "."));
+      }
+    }
+    if (insights.length >= 3) break;
+  }
+  return insights.length > 0 ? insights : ["핵심 패턴을 분석하고 있습니다.", "감정 반응 패턴을 확인합니다.", "성장 인사이트를 도출합니다."];
 };
 
 const DraftResult = () => {
@@ -371,17 +384,17 @@ const DraftResult = () => {
 
   const insightCount = countInsights(data.result_data);
   const insightSummary = getInsightSummary(data.result_data);
+  const additionalInsights = getAdditionalInsights(data.result_data);
   const isGuest = !user;
   const platformOrder = ["blog", "linkedin", "reels", "threads"] as const;
 
   return (
     <AppShell>
-      {/* No GlassOrb on result screen */}
-      <div className="flex-1 px-4 md:px-5 py-4 space-y-4 overflow-y-auto">
-        {/* ── Header ── */}
-        <div className="pt-2">
+      <div className="flex-1 px-6 py-4 space-y-4 overflow-y-auto pb-40">
+        {/* ── Header text ── */}
+        <div className="pt-1">
           <p className="text-sm text-foreground leading-relaxed">
-            AI가 분석해 <span className="font-semibold">{insightCount}개</span>의 인사이트를 정리했어요.
+            AI가 분석해 <span className="font-semibold">{insightCount}개</span>의 인사이트를 정리했어요
           </p>
         </div>
 
@@ -397,44 +410,45 @@ const DraftResult = () => {
           onEditedInputChange={setEditedInput}
         />
 
-        {/* ── Insights: 2-column layout ── */}
+        {/* ── 핵심 포인트 (Core Insight) ── */}
         {insightSummary && (
-          <div className="space-y-2">
-            <div className="flex gap-2">
-              {/* Left: 핵심 포인트 (larger card) */}
-              <div className="flex-1 glass-card rounded-2xl p-4 space-y-2">
-                <h3 className="text-xs font-semibold text-foreground">인사이트 그리드</h3>
-                <div className="glass-card rounded-xl p-3">
-                  <p className="text-[10px] font-medium text-foreground mb-1">핵심 포인트</p>
-                  <p className="text-[10px] text-muted-foreground leading-relaxed line-clamp-3">
-                    {insightSummary}
-                  </p>
-                </div>
-              </div>
-
-              {/* Right: 추가 인사이트 (smaller cards, some locked) */}
-              <div className="w-[45%] glass-card rounded-2xl p-3 space-y-2">
-                <h3 className="text-xs font-semibold text-foreground">추가 인사이트</h3>
-                <div className="space-y-1.5">
-                  {["문제 해결 접근 방식", "경쟁 반응 재인", "성장 인사이트"].map((label, idx) => (
-                    <div key={label} className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg bg-muted/30">
-                      <Lock className="w-3 h-3 text-muted-foreground/40 flex-shrink-0" />
-                      <span className={`text-[10px] text-muted-foreground ${idx > 0 ? "blur-[2px] select-none" : ""}`}>
-                        {label}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+          <div className="glass-card p-5 relative overflow-hidden">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-sm">✨</span>
+              <h3 className="text-sm font-semibold text-foreground">핵심 포인트</h3>
+              <ArrowRight className="w-4 h-4 text-muted-foreground ml-auto" />
             </div>
+            <p className="text-base font-medium text-foreground leading-relaxed">
+              "{insightSummary}"
+            </p>
           </div>
         )}
 
-        {/* ── 콘텐츠 변환 ── */}
+        {/* ── 추가 인사이트 ── */}
         <div className="space-y-2">
-          <h3 className="text-xs font-semibold text-foreground">콘텐츠 변환</h3>
+          <h3 className="text-sm font-semibold text-foreground">추가 인사이트</h3>
+          <div className="space-y-2">
+            {additionalInsights.map((insight, idx) => (
+              <div
+                key={idx}
+                className={`glass-card px-4 py-3 flex items-start gap-3 ${isGuest && idx > 0 ? "relative overflow-hidden" : ""}`}
+              >
+                <Lightbulb className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                <p className={`text-xs text-muted-foreground leading-relaxed ${isGuest && idx > 0 ? "blur-[3px] select-none" : ""}`}>
+                  {insight}
+                </p>
+                {isGuest && idx > 0 && (
+                  <Lock className="w-3 h-3 text-muted-foreground/50 flex-shrink-0 mt-0.5" />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
 
-          <div className="grid grid-cols-2 gap-2">
+        {/* ── 콘텐츠로 변환 ── */}
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold text-foreground">콘텐츠로 변환</h3>
+          <div className="grid grid-cols-2 gap-3">
             {platformOrder.map((key, idx) => {
               const meta = platformIcons[key];
               const Icon = meta.icon;
@@ -445,7 +459,7 @@ const DraftResult = () => {
                 <button
                   key={key}
                   onClick={() => handleCardClick(key)}
-                  className="glass-card rounded-2xl p-3 text-left space-y-2 relative overflow-hidden transition-all hover:shadow-md"
+                  className="glass-card p-4 text-left space-y-2 relative overflow-hidden transition-all hover:shadow-md"
                 >
                   <div className="flex items-center gap-2">
                     <div
@@ -457,14 +471,13 @@ const DraftResult = () => {
                     <span className="text-xs font-medium text-foreground">{meta.title}</span>
                     {!isPreview && <Lock className="w-3 h-3 text-muted-foreground/40 ml-auto" />}
                   </div>
-
                   {isPreview ? (
-                    <p className="text-[10px] text-muted-foreground leading-relaxed line-clamp-2">
+                    <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2">
                       {getSummary(content, 50)}
                     </p>
                   ) : (
-                    <p className="text-[10px] text-muted-foreground leading-relaxed blur-[3px] select-none line-clamp-2" aria-hidden>
-                      콘텐츠가 생성되었습니다
+                    <p className="text-[11px] text-muted-foreground leading-relaxed blur-[3px] select-none line-clamp-2" aria-hidden>
+                      {getSummary(content, 40)}
                     </p>
                   )}
                 </button>
@@ -472,50 +485,47 @@ const DraftResult = () => {
             })}
           </div>
         </div>
-
-        {/* ── CTA ── */}
-        {isGuest ? (
-          <div className="glass-card rounded-2xl p-5 space-y-3 text-center">
-            <p className="text-sm font-semibold text-foreground">AI 분석 전체 확인하기</p>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              로그인하면 모든 인사이트와 콘텐츠 생성 기능을<br />사용할 수 있습니다.
-            </p>
-            <button
-              onClick={performLogin}
-              className="w-full h-12 rounded-2xl btn-steel text-sm tracking-wide"
-            >
-              로그인하기
-            </button>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2 pt-1">
-            <button
-              onClick={() => {
-                const idProps = isSessionType ? { session_id: draftId } : { draft_id: draftId };
-                track.pageView("new_record_click", idProps);
-                navigate("/input");
-              }}
-              className="w-full h-12 rounded-2xl btn-steel text-sm tracking-wide"
-            >
-              새로운 기록 만들기
-            </button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                const idProps = isSessionType ? { session_id: draftId } : { draft_id: draftId };
-                track.pageView("go_home_click", idProps);
-                navigate("/");
-              }}
-              className="w-full h-11 rounded-2xl text-sm border-border/40"
-            >
-              홈으로 돌아가기
-            </Button>
-          </div>
-        )}
-
-        {/* Bottom spacing */}
-        <div className="h-4" />
       </div>
+
+      {/* ── Floating CTA (guest) or action buttons (logged in) ── */}
+      {isGuest ? (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-48px)] max-w-[392px] bg-background rounded-[20px] shadow-[0_8px_24px_hsla(0,0%,0%,0.08)] p-5 space-y-3 z-20 border border-border/30">
+          <p className="text-sm font-semibold text-foreground">AI 분석 전체 확인하기</p>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            로그인하면 모든 인사이트와 콘텐츠 생성 기능을 사용할 수 있습니다.
+          </p>
+          <button
+            onClick={performLogin}
+            className="w-full h-12 btn-steel text-sm flex items-center justify-center gap-2"
+          >
+            로그인하기 <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      ) : (
+        <div className="px-6 pb-6 pt-2 space-y-2">
+          <button
+            onClick={() => {
+              const idProps = isSessionType ? { session_id: draftId } : { draft_id: draftId };
+              track.pageView("new_record_click", idProps);
+              navigate("/input");
+            }}
+            className="w-full h-12 btn-steel text-sm"
+          >
+            새로운 기록 만들기
+          </button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              const idProps = isSessionType ? { session_id: draftId } : { draft_id: draftId };
+              track.pageView("go_home_click", idProps);
+              navigate("/");
+            }}
+            className="w-full h-11 rounded-full text-sm border-border/40"
+          >
+            홈으로 돌아가기
+          </Button>
+        </div>
+      )}
 
       {/* ── Login Alert ── */}
       <AlertDialog open={showLoginAlert} onOpenChange={setShowLoginAlert}>
