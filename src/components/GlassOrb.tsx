@@ -1,5 +1,5 @@
 /**
- * GlassOrb — organic liquid "knot" shape with soft pastel blend.
+ * GlassOrb — monochrome glass sphere with stronger contrast and visible motion.
  * NOT clickable. Purely visual state indicator.
  */
 
@@ -16,86 +16,109 @@ const GlassOrb = ({ state = "idle", size = "w-40 h-40" }: GlassOrbProps) => {
         ? "animate-orb-text"
         : "animate-orb-breathe";
 
+  // Stronger glow contrast in monochrome (gray) tones
   const glowOpacity =
-    state === "recording" ? 0.5 : state === "text" ? 0.25 : 0.2;
+    state === "recording" ? 0.95 : state === "text" ? 0.55 : 0.45;
 
   return (
     <div className={`relative ${size} flex-shrink-0 select-none pointer-events-none`}>
-      {/* Outer subtle glow */}
+      {/* Outer pulse ring — clearly visible */}
       <div
-        className="absolute inset-[-12%] rounded-full animate-orb-glow-pulse"
+        className="absolute inset-[-18%] rounded-full animate-orb-glow-pulse"
         style={{
           opacity: glowOpacity,
-          background: `radial-gradient(circle, hsla(260,30%,80%,0.25) 0%, hsla(300,20%,85%,0.1) 50%, transparent 70%)`,
-          filter: "blur(16px)",
+          background: `radial-gradient(circle, hsla(0,0%,30%,0.28) 0%, hsla(0,0%,40%,0.12) 45%, transparent 72%)`,
+          filter: "blur(18px)",
         }}
       />
 
-      {/* Main sphere — organic glass knot */}
+      {/* Secondary breathing ring (only when recording) for clear motion */}
+      {state === "recording" && (
+        <div
+          className="absolute inset-[-10%] rounded-full animate-orb-glow-pulse"
+          style={{
+            background: `radial-gradient(circle, hsla(0,0%,15%,0.25) 0%, transparent 65%)`,
+            filter: "blur(10px)",
+            animationDuration: "1.6s",
+          }}
+        />
+      )}
+
+      {/* Main sphere */}
       <div
         className={`relative w-full h-full rounded-full ${animClass} overflow-hidden`}
         style={{
           background: `radial-gradient(
             ellipse at 38% 32%,
-            hsla(0, 0%, 100%, 0.9) 0%,
-            hsla(0, 0%, 100%, 0.6) 15%,
-            hsla(260, 15%, 92%, 0.35) 35%,
-            hsla(300, 10%, 90%, 0.2) 55%,
-            hsla(260, 10%, 88%, 0.1) 75%,
-            transparent 100%
+            hsla(0, 0%, 100%, 0.95) 0%,
+            hsla(0, 0%, 96%, 0.75) 18%,
+            hsla(0, 0%, 78%, 0.55) 40%,
+            hsla(0, 0%, 55%, 0.42) 65%,
+            hsla(0, 0%, 30%, 0.35) 88%,
+            hsla(0, 0%, 18%, 0.30) 100%
           )`,
           boxShadow: `
-            inset 0 -20px 40px hsla(260,15%,88%,0.12),
-            inset 0 20px 40px hsla(0,0%,100%,0.5),
-            0 8px 32px hsla(0,0%,0%,0.03)
+            inset 0 -24px 48px hsla(0,0%,10%,0.28),
+            inset 0 22px 44px hsla(0,0%,100%,0.65),
+            0 14px 40px hsla(0,0%,0%,0.18),
+            0 4px 12px hsla(0,0%,0%,0.12)
           `,
-          border: "1px solid hsla(0,0%,100%,0.6)",
-          backdropFilter: "blur(20px)",
+          border: "1px solid hsla(0,0%,100%,0.7)",
+          backdropFilter: "blur(14px)",
         }}
       >
-        {/* Inner pastel blend — subtle purple/pink */}
+        {/* Inner moving swirl — clearly visible monochrome */}
         <div
           className="absolute inset-0 rounded-full animate-orb-inner-flow"
           style={{
             background: `radial-gradient(
-              circle at 48% 52%,
-              hsla(260, 40%, 75%, 0.2) 0%,
-              hsla(300, 30%, 80%, 0.12) 25%,
-              hsla(260, 20%, 85%, 0.06) 45%,
-              transparent 60%
+              circle at 50% 55%,
+              hsla(0, 0%, 25%, 0.35) 0%,
+              hsla(0, 0%, 40%, 0.22) 25%,
+              hsla(0, 0%, 60%, 0.10) 50%,
+              transparent 65%
             )`,
           }}
         />
 
-        {/* Secondary swirl layer */}
+        {/* Counter-rotating layer for depth */}
         <div
           className="absolute inset-0 rounded-full"
           style={{
             background: `radial-gradient(
-              ellipse at 60% 40%,
-              hsla(280, 25%, 80%, 0.12) 0%,
-              hsla(320, 20%, 85%, 0.08) 30%,
-              transparent 55%
+              ellipse at 62% 42%,
+              hsla(0, 0%, 15%, 0.20) 0%,
+              hsla(0, 0%, 35%, 0.10) 35%,
+              transparent 60%
             )`,
-            animation: "orb-inner-flow 18s linear infinite reverse",
+            animation: "orb-inner-flow 14s linear infinite reverse",
           }}
         />
 
         {/* Specular highlight — top left */}
         <div
-          className="absolute w-[45%] h-[30%] top-[8%] left-[12%] rounded-full"
+          className="absolute w-[48%] h-[32%] top-[8%] left-[12%] rounded-full"
           style={{
-            background: `linear-gradient(180deg, hsla(0,0%,100%,0.7) 0%, transparent 100%)`,
+            background: `linear-gradient(180deg, hsla(0,0%,100%,0.92) 0%, transparent 100%)`,
+            filter: "blur(5px)",
+          }}
+        />
+
+        {/* Bottom rim shadow for depth */}
+        <div
+          className="absolute w-[60%] h-[20%] bottom-[6%] left-[20%] rounded-full"
+          style={{
+            background: `radial-gradient(ellipse, hsla(0,0%,0%,0.18) 0%, transparent 70%)`,
             filter: "blur(6px)",
           }}
         />
 
-        {/* Secondary rim light */}
+        {/* Small bottom-right rim light */}
         <div
-          className="absolute w-[18%] h-[12%] bottom-[18%] right-[18%] rounded-full"
+          className="absolute w-[18%] h-[12%] bottom-[20%] right-[16%] rounded-full"
           style={{
-            background: `radial-gradient(circle, hsla(0,0%,100%,0.2) 0%, transparent 70%)`,
-            filter: "blur(4px)",
+            background: `radial-gradient(circle, hsla(0,0%,100%,0.45) 0%, transparent 70%)`,
+            filter: "blur(3px)",
           }}
         />
       </div>
