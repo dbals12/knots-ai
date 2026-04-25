@@ -17,6 +17,7 @@ import { getAccessToken } from "@/lib/edgeFunctionAuth";
 
 const guideChips = [
   {
+    key: "rant",
     tag: "오늘의 넋두리",
     label: "감정",
     emoji: "💭",
@@ -26,7 +27,8 @@ const guideChips = [
     purpose: "emotion",
   },
   {
-    tag: "배운 점",
+    key: "learning",
+    tag: "배운 한가지",
     label: "학습",
     emoji: "💡",
     placeholder: "오늘 새롭게 깨달은 점이나\n배운 것이 있나요?",
@@ -35,7 +37,8 @@ const guideChips = [
     purpose: "idea",
   },
   {
-    tag: "성취 기록",
+    key: "small_win",
+    tag: "소소한 성취",
     label: "성과",
     emoji: "🏆",
     placeholder: "오늘 해낸 작은 일이나\n스스로 칭찬하고 싶은\n순간이 있나요?",
@@ -44,7 +47,8 @@ const guideChips = [
     purpose: "record",
   },
   {
-    tag: "문제 해결",
+    key: "struggle",
+    tag: "삽질 기록",
     label: "삽질",
     emoji: "🔧",
     placeholder: "오늘 어떤 문제로 고생했나요?\n해결 과정을 남겨보세요.",
@@ -53,7 +57,8 @@ const guideChips = [
     purpose: "review",
   },
   {
-    tag: "생각 정리",
+    key: "thought_organize",
+    tag: "머릿속 정리",
     label: "인지",
     emoji: "🧠",
     placeholder: "지금 머릿속에 맴도는\n생각이 있나요?\n정리되지 않아도 괜찮아요.",
