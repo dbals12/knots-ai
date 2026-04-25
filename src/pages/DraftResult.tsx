@@ -464,20 +464,24 @@ const DraftResult = () => {
         <div className="space-y-2">
           <h3 className="text-sm font-semibold text-foreground">추가 인사이트</h3>
           <div className="space-y-2">
-            {additionalInsights.map((insight, idx) => (
-              <div
-                key={idx}
-                className={`glass-card px-4 py-3 flex items-start gap-3 ${isGuest && idx > 0 ? "relative overflow-hidden" : ""}`}
-              >
-                <Lightbulb className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-                <p className={`text-xs text-muted-foreground leading-relaxed ${isGuest && idx > 0 ? "blur-[3px] select-none" : ""}`}>
-                  {insight}
-                </p>
-                {isGuest && idx > 0 && (
-                  <Lock className="w-3 h-3 text-muted-foreground/50 flex-shrink-0 mt-0.5" />
-                )}
-              </div>
-            ))}
+            {additionalInsights.map((insight, idx) => {
+              const isFallback = insight === SHORT_INPUT_FALLBACK;
+              const locked = isGuest && !isFallback && idx > 0;
+              return (
+                <div
+                  key={idx}
+                  className={`glass-card px-4 py-3 flex items-start gap-3 ${locked ? "relative overflow-hidden" : ""}`}
+                >
+                  <Lightbulb className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                  <p className={`text-xs text-muted-foreground leading-relaxed ${locked ? "blur-[3px] select-none" : ""}`}>
+                    {insight}
+                  </p>
+                  {locked && (
+                    <Lock className="w-3 h-3 text-muted-foreground/50 flex-shrink-0 mt-0.5" />
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 
