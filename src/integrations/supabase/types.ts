@@ -193,6 +193,7 @@ export type Database = {
           input_type: string | null
           keyword: string | null
           raw_text: string | null
+          selected_guide_chip: string | null
           selected_mood: string | null
           selected_persona: string | null
           session_purpose: string | null
@@ -208,6 +209,7 @@ export type Database = {
           input_type?: string | null
           keyword?: string | null
           raw_text?: string | null
+          selected_guide_chip?: string | null
           selected_mood?: string | null
           selected_persona?: string | null
           session_purpose?: string | null
@@ -223,6 +225,7 @@ export type Database = {
           input_type?: string | null
           keyword?: string | null
           raw_text?: string | null
+          selected_guide_chip?: string | null
           selected_mood?: string | null
           selected_persona?: string | null
           session_purpose?: string | null

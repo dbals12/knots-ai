@@ -105,23 +105,59 @@ const getInsightSummary = (rd: ContentData["result_data"]): string => {
   return sentences.join(". ").substring(0, 160) + (sentences.length > 0 ? "." : "");
 };
 
-const getAdditionalInsights = (rd: ContentData["result_data"]): string[] => {
-  const sources = [rd.linkedin_content, rd.blog_content, rd.threads_content].filter(Boolean);
+const SHORT_INPUT_FALLBACK =
+  "아직 기록이 짧아 숨은 패턴을 충분히 발견하기 어려워요. 조금 더 구체적으로 적어주면, 생각의 흐름과 성장 포인트를 더 잘 찾아드릴게요.";
+
+/**
+ * 추가 인사이트는 사용자의 원문에서만 도출합니다.
+ * - LinkedIn/블로그 등 생성된 콘텐츠를 절대 재사용하지 않습니다.
+ * - 감정/사고/행동/성장 신호를 발견했을 때만 짧게 1~2문장으로 요약합니다.
+ * - 원문이 짧거나 신호가 부족하면 fallback 문구 1개만 반환합니다.
+ */
+const getAdditionalInsights = (inputText: string | undefined | null): string[] => {
+  const text = (inputText || "").trim();
+  if (text.length < 40) return [SHORT_INPUT_FALLBACK];
+
+  const sentences = text
+    .split(/[.!?。\n]+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length >= 8);
+  if (sentences.length === 0) return [SHORT_INPUT_FALLBACK];
+
   const insights: string[] = [];
-  for (const src of sources) {
-    if (!src) continue;
-    const clean = src.replace(/```json\s*/gi, "").replace(/```\s*/gi, "").replace(/^#+\s.*/gm, "").trim();
-    const sentences = clean.split(/[.!?。]\s/).filter(s => s.length > 15);
-    for (const s of sentences) {
-      if (insights.length >= 3) break;
-      const trimmed = s.trim().substring(0, 80);
-      if (!insights.some(existing => existing.startsWith(trimmed.substring(0, 20)))) {
-        insights.push(trimmed + (s.length > 80 ? "..." : "."));
-      }
-    }
-    if (insights.length >= 3) break;
+
+  const emotionWords = ["불안", "답답", "초조", "후회", "아쉽", "뿌듯", "기쁘", "설레", "지치", "피곤", "화가", "짜증", "걱정", "두렵", "기대"];
+  const hasEmotion = emotionWords.find((w) => text.includes(w));
+  if (hasEmotion) {
+    insights.push(`'${hasEmotion}'이라는 감정이 흐름의 중심에 있어요. 그 감정이 어떤 상황에서 반복되는지 살펴볼 만해요.`);
   }
-  return insights.length > 0 ? insights : ["핵심 패턴을 분석하고 있습니다.", "감정 반응 패턴을 확인합니다.", "성장 인사이트를 도출합니다."];
+
+  const thinkingWords = ["생각", "고민", "판단", "결정", "선택", "정리", "이유"];
+  const hasThinking = thinkingWords.find((w) => text.includes(w));
+  if (hasThinking && insights.length < 3) {
+    insights.push(`상황을 바로 받아들이기보다 '${hasThinking}'을(를) 거치며 한 번 더 곱씹는 사고 방식이 보여요.`);
+  }
+
+  const actionWords = ["시도", "도전", "해봤", "만들었", "썼", "보냈", "물어", "찾아", "공부", "정리했"];
+  const hasAction = actionWords.find((w) => text.includes(w));
+  if (hasAction && insights.length < 3) {
+    insights.push(`생각에 머무르지 않고 '${hasAction}'처럼 작은 행동으로 옮기는 패턴이 있어요.`);
+  }
+
+  const growthWords = ["배웠", "깨달", "다음엔", "다음번", "개선", "성장", "달라", "바뀌"];
+  const hasGrowth = growthWords.find((w) => text.includes(w));
+  if (hasGrowth && insights.length < 3) {
+    insights.push(`경험을 흘려보내지 않고 '${hasGrowth}'처럼 다음 행동의 단서로 연결하는 모습이 인상적이에요.`);
+  }
+
+  const struggleWords = ["문제", "막혔", "안 됐", "실패", "어려웠", "헤맸", "삽질"];
+  const hasStruggle = struggleWords.find((w) => text.includes(w));
+  if (hasStruggle && insights.length < 3) {
+    insights.push(`어려움 앞에서 회피보다 그 과정을 기록으로 남기는 태도가 강점이에요.`);
+  }
+
+  if (insights.length === 0) return [SHORT_INPUT_FALLBACK];
+  return insights.slice(0, 3);
 };
 
 const DraftResult = () => {
@@ -384,7 +420,7 @@ const DraftResult = () => {
 
   const insightCount = countInsights(data.result_data);
   const insightSummary = getInsightSummary(data.result_data);
-  const additionalInsights = getAdditionalInsights(data.result_data);
+  const additionalInsights = getAdditionalInsights(data.input_text);
   const isGuest = !user;
   const platformOrder = ["blog", "linkedin", "reels", "threads"] as const;
 
@@ -428,20 +464,24 @@ const DraftResult = () => {
         <div className="space-y-2">
           <h3 className="text-sm font-semibold text-foreground">추가 인사이트</h3>
           <div className="space-y-2">
-            {additionalInsights.map((insight, idx) => (
-              <div
-                key={idx}
-                className={`glass-card px-4 py-3 flex items-start gap-3 ${isGuest && idx > 0 ? "relative overflow-hidden" : ""}`}
-              >
-                <Lightbulb className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-                <p className={`text-xs text-muted-foreground leading-relaxed ${isGuest && idx > 0 ? "blur-[3px] select-none" : ""}`}>
-                  {insight}
-                </p>
-                {isGuest && idx > 0 && (
-                  <Lock className="w-3 h-3 text-muted-foreground/50 flex-shrink-0 mt-0.5" />
-                )}
-              </div>
-            ))}
+            {additionalInsights.map((insight, idx) => {
+              const isFallback = insight === SHORT_INPUT_FALLBACK;
+              const locked = isGuest && !isFallback && idx > 0;
+              return (
+                <div
+                  key={idx}
+                  className={`glass-card px-4 py-3 flex items-start gap-3 ${locked ? "relative overflow-hidden" : ""}`}
+                >
+                  <Lightbulb className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                  <p className={`text-xs text-muted-foreground leading-relaxed ${locked ? "blur-[3px] select-none" : ""}`}>
+                    {insight}
+                  </p>
+                  {locked && (
+                    <Lock className="w-3 h-3 text-muted-foreground/50 flex-shrink-0 mt-0.5" />
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 
