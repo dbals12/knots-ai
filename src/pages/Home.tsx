@@ -81,6 +81,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
   const [showConfirmation, setShowConfirmation] = useState(false);
 
   const [selectedChipIndex, setSelectedChipIndex] = useState<number | null>(null);
+  const [selectedGuideChip, setSelectedGuideChip] = useState<string | null>(null);
   const [cardPlaceholder, setCardPlaceholder] = useState(defaultPlaceholder);
 
   const [sessionPurpose, setSessionPurpose] = useState("record");
@@ -127,6 +128,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
   const handleChipClick = (index: number) => {
     if (selectedChipIndex === index) {
       setSelectedChipIndex(null);
+      setSelectedGuideChip(null);
       setCardPlaceholder(defaultPlaceholder);
       setSelectedMood("neutral");
       setSelectedPersona("authentic");
@@ -135,6 +137,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
     }
     const chip = guideChips[index];
     setSelectedChipIndex(index);
+    setSelectedGuideChip(chip.key);
     setCardPlaceholder(chip.placeholder);
     setSelectedMood(chip.mood);
     setSelectedPersona(chip.persona);
@@ -227,6 +230,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
             session_purpose: sessionPurpose,
             selected_mood: selectedMood,
             selected_persona: selectedPersona,
+            selected_guide_chip: selectedGuideChip,
             keyword: keyword,
             raw_text: finalTextInput,
             entry_source: getEntrySource(),
@@ -265,6 +269,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
           inputMode: mode,
           selectedMood,
           selectedPersona,
+          selectedGuideChip,
           sessionPurpose,
           keyword,
           audioBase64,
@@ -373,20 +378,20 @@ const Home = ({ isGuest = false }: HomeProps) => {
             <div className="flex gap-3 w-max py-1">
               {guideChips.map((chip, i) => (
                 <button
-                  key={chip.tag}
+                  key={chip.key}
                   onClick={() => handleChipClick(i)}
                   className={`flex-shrink-0 w-[65vw] max-w-[240px] min-h-[120px] rounded-[20px] p-4 text-left transition-all duration-200 ${
                     selectedChipIndex === i
-                      ? "glass-card shadow-[0_6px_16px_hsla(0,0%,0%,0.08)] scale-[1.02]"
+                      ? "bg-foreground text-background shadow-[0_8px_20px_hsla(0,0%,0%,0.18)] scale-[1.02] border border-foreground"
                       : "glass-card hover:-translate-y-0.5"
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-sm">{chip.emoji}</span>
-                    <span className="text-sm font-medium text-foreground">{chip.tag}</span>
-                    <span className="text-[10px] text-muted-foreground">({chip.label})</span>
+                    <span className={`text-sm font-medium ${selectedChipIndex === i ? "text-background" : "text-foreground"}`}>{chip.tag}</span>
+                    <span className={`text-[10px] ${selectedChipIndex === i ? "text-background/70" : "text-muted-foreground"}`}>({chip.label})</span>
                   </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line">
+                  <p className={`text-xs leading-relaxed whitespace-pre-line ${selectedChipIndex === i ? "text-background/85" : "text-muted-foreground"}`}>
                     {chip.placeholder}
                   </p>
                 </button>
