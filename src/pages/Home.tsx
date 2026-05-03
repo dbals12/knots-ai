@@ -382,16 +382,15 @@ const Home = ({ isGuest = false }: HomeProps) => {
                   onClick={() => handleChipClick(i)}
                   className={`flex-shrink-0 w-[65vw] max-w-[240px] min-h-[120px] rounded-[20px] p-4 text-left transition-all duration-200 ${
                     selectedChipIndex === i
-                      ? "bg-foreground text-background shadow-[0_8px_20px_hsla(0,0%,0%,0.18)] scale-[1.02] border border-foreground"
+                      ? "bg-[hsla(220,15%,55%,0.22)] backdrop-blur-md text-foreground shadow-[0_6px_18px_hsla(220,20%,40%,0.12)] scale-[1.02] border border-[hsla(220,20%,60%,0.25)]"
                       : "glass-card hover:-translate-y-0.5"
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-sm">{chip.emoji}</span>
-                    <span className={`text-sm font-medium ${selectedChipIndex === i ? "text-background" : "text-foreground"}`}>{chip.tag}</span>
-                    <span className={`text-[10px] ${selectedChipIndex === i ? "text-background/70" : "text-muted-foreground"}`}>({chip.label})</span>
+                    <span className="text-sm font-medium text-foreground">{chip.tag}</span>
                   </div>
-                  <p className={`text-xs leading-relaxed whitespace-pre-line ${selectedChipIndex === i ? "text-background/85" : "text-muted-foreground"}`}>
+                  <p className={`text-xs leading-relaxed whitespace-pre-line ${selectedChipIndex === i ? "text-foreground/75" : "text-muted-foreground"}`}>
                     {chip.placeholder}
                   </p>
                 </button>
