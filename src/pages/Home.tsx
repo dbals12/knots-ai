@@ -382,7 +382,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
                   onClick={() => handleChipClick(i)}
                   className={`flex-shrink-0 w-[65vw] max-w-[240px] min-h-[120px] rounded-[20px] p-4 text-left transition-all duration-200 ${
                     selectedChipIndex === i
-                      ? "bg-[hsla(220,15%,55%,0.22)] backdrop-blur-md text-foreground shadow-[0_6px_18px_hsla(220,20%,40%,0.12)] scale-[1.02] border border-[hsla(220,20%,60%,0.25)]"
+                      ? "bg-gradient-to-b from-white to-[hsl(0,0%,97%)] text-foreground shadow-[0_12px_28px_-8px_hsla(220,25%,40%,0.25),0_2px_6px_hsla(220,20%,40%,0.08),inset_0_1px_0_hsla(0,0%,100%,0.9)] scale-[1.03] border border-[hsla(0,0%,100%,0.9)] ring-1 ring-[hsla(220,15%,70%,0.2)]"
                       : "glass-card hover:-translate-y-0.5"
                   }`}
                 >
