@@ -168,27 +168,33 @@
   opacity: 0.9;
 }
 
-/* ── Orb animations (more visible motion in monochrome) ── */
+/* ── Orb animations — 3D rotational feel ── */
 @keyframes orb-breathe {
-  0%, 100% { transform: scale(0.96); }
-  50% { transform: scale(1.05); }
+  0%   { transform: perspective(600px) scale(0.99) rotateY(0deg) rotateX(0deg); }
+  25%  { transform: perspective(600px) scale(1.02) rotateY(90deg) rotateX(8deg); }
+  50%  { transform: perspective(600px) scale(1.04) rotateY(180deg) rotateX(0deg); }
+  75%  { transform: perspective(600px) scale(1.02) rotateY(270deg) rotateX(-8deg); }
+  100% { transform: perspective(600px) scale(0.99) rotateY(360deg) rotateX(0deg); }
 }
 
 @keyframes orb-recording {
-  0%, 100% { transform: scale(0.94); }
-  25% { transform: scale(1.10) rotate(3deg); }
-  50% { transform: scale(1.02); }
-  75% { transform: scale(1.08) rotate(-3deg); }
+  0%   { transform: perspective(600px) scale(1.0) rotateY(0deg) rotateX(0deg); }
+  25%  { transform: perspective(600px) scale(1.08) rotateY(120deg) rotateX(12deg); }
+  50%  { transform: perspective(600px) scale(1.04) rotateY(220deg) rotateX(-8deg); }
+  75%  { transform: perspective(600px) scale(1.10) rotateY(300deg) rotateX(10deg); }
+  100% { transform: perspective(600px) scale(1.0) rotateY(360deg) rotateX(0deg); }
 }
 
 @keyframes orb-text {
-  0%, 100% { transform: scale(0.98); }
-  50% { transform: scale(1.03); }
+  0%   { transform: perspective(600px) scale(1.0) rotateY(0deg) rotateX(0deg); }
+  50%  { transform: perspective(600px) scale(1.03) rotateY(180deg) rotateX(4deg); }
+  100% { transform: perspective(600px) scale(1.0) rotateY(360deg) rotateX(0deg); }
 }
 
 @keyframes orb-inner-flow {
-  0% { transform: rotate(0deg) translateX(4px); }
-  100% { transform: rotate(360deg) translateX(4px); }
+  0%   { transform: rotate(0deg) translateX(8px) scale(1); }
+  50%  { transform: rotate(180deg) translateX(8px) scale(1.08); }
+  100% { transform: rotate(360deg) translateX(8px) scale(1); }
 }
 
 @keyframes orb-glow-pulse {
