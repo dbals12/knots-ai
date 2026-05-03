@@ -212,9 +212,9 @@
   100% { opacity: 1; transform: translateX(0); }
 }
 
-.animate-orb-breathe { animation: orb-breathe 6s ease-in-out infinite; }
-.animate-orb-recording { animation: orb-recording 2.5s ease-in-out infinite; }
-.animate-orb-text { animation: orb-text 6s ease-in-out infinite; }
+.animate-orb-breathe { animation: orb-breathe 14s ease-in-out infinite; transform-style: preserve-3d; }
+.animate-orb-recording { animation: orb-recording 5s ease-in-out infinite; transform-style: preserve-3d; }
+.animate-orb-text { animation: orb-text 10s ease-in-out infinite; transform-style: preserve-3d; }
 .animate-orb-inner-flow { animation: orb-inner-flow 12s linear infinite; }
 .animate-orb-glow-pulse { animation: orb-glow-pulse 4s ease-in-out infinite; }
 .animate-float-up { animation: float-up 0.6s ease-out forwards; }
