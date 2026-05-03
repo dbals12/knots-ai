@@ -176,6 +176,16 @@
   75%      { transform: rotateX(-12deg) rotateY(-20deg) rotateZ(5deg)  translateY(-3px); }
 }
 
+@keyframes orb-tilt-calm {
+  0%, 100% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg) translateY(0); }
+  50%      { transform: rotateX(4deg) rotateY(5deg) rotateZ(1deg) translateY(-3px); }
+}
+
+@keyframes orb-morph-calm {
+  0%, 100% { border-radius: 54% 46% 52% 48% / 49% 51% 47% 53%; transform: scale(1, 1); }
+  50%      { border-radius: 50% 50% 48% 52% / 52% 48% 50% 50%; transform: scale(1.015, 0.985); }
+}
+
 @keyframes orb-morph {
   0%, 100% { border-radius: 62% 38% 56% 44% / 46% 56% 44% 54%; transform: scale(1, 1) skewX(0deg); }
   14%      { border-radius: 48% 52% 38% 62% / 60% 42% 58% 40%; transform: scale(1.04, 0.94) skewX(-2deg); }
