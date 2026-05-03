@@ -168,38 +168,28 @@
   opacity: 0.9;
 }
 
-/* ── Orb animations — 3D rotational feel ── */
-@keyframes orb-breathe {
-  0%   { transform: perspective(600px) scale(0.99) rotateY(0deg) rotateX(0deg); }
-  25%  { transform: perspective(600px) scale(1.02) rotateY(90deg) rotateX(8deg); }
-  50%  { transform: perspective(600px) scale(1.04) rotateY(180deg) rotateX(0deg); }
-  75%  { transform: perspective(600px) scale(1.02) rotateY(270deg) rotateX(-8deg); }
-  100% { transform: perspective(600px) scale(0.99) rotateY(360deg) rotateX(0deg); }
+/* ── Orb animations — volumetric sphere (static shell, gentle float) ── */
+@keyframes orb-float {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50%      { transform: translateY(-6px) scale(1.015); }
 }
 
-@keyframes orb-recording {
-  0%   { transform: perspective(600px) scale(1.0) rotateY(0deg) rotateX(0deg); }
-  25%  { transform: perspective(600px) scale(1.08) rotateY(120deg) rotateX(12deg); }
-  50%  { transform: perspective(600px) scale(1.04) rotateY(220deg) rotateX(-8deg); }
-  75%  { transform: perspective(600px) scale(1.10) rotateY(300deg) rotateX(10deg); }
-  100% { transform: perspective(600px) scale(1.0) rotateY(360deg) rotateX(0deg); }
+@keyframes orb-float-strong {
+  0%, 100% { transform: translateY(0) scale(1); }
+  25%      { transform: translateY(-8px) scale(1.04); }
+  50%      { transform: translateY(2px) scale(0.98); }
+  75%      { transform: translateY(-6px) scale(1.05); }
 }
 
-@keyframes orb-text {
-  0%   { transform: perspective(600px) scale(1.0) rotateY(0deg) rotateX(0deg); }
-  50%  { transform: perspective(600px) scale(1.03) rotateY(180deg) rotateX(4deg); }
-  100% { transform: perspective(600px) scale(1.0) rotateY(360deg) rotateX(0deg); }
-}
-
-@keyframes orb-inner-flow {
-  0%   { transform: rotate(0deg) translateX(8px) scale(1); }
-  50%  { transform: rotate(180deg) translateX(8px) scale(1.08); }
-  100% { transform: rotate(360deg) translateX(8px) scale(1); }
+@keyframes orb-inner-spin {
+  0%   { transform: rotate(0deg) scale(1); }
+  50%  { transform: rotate(180deg) scale(1.06); }
+  100% { transform: rotate(360deg) scale(1); }
 }
 
 @keyframes orb-glow-pulse {
   0%, 100% { opacity: 0.55; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.14); }
+  50%      { opacity: 1;    transform: scale(1.12); }
 }
 
 @keyframes float-up {
@@ -212,10 +202,8 @@
   100% { opacity: 1; transform: translateX(0); }
 }
 
-.animate-orb-breathe { animation: orb-breathe 14s ease-in-out infinite; transform-style: preserve-3d; }
-.animate-orb-recording { animation: orb-recording 5s ease-in-out infinite; transform-style: preserve-3d; }
-.animate-orb-text { animation: orb-text 10s ease-in-out infinite; transform-style: preserve-3d; }
-.animate-orb-inner-flow { animation: orb-inner-flow 12s linear infinite; }
+.animate-orb-float { animation: orb-float 6s ease-in-out infinite; }
+.animate-orb-float-strong { animation: orb-float-strong 3.2s ease-in-out infinite; }
 .animate-orb-glow-pulse { animation: orb-glow-pulse 4s ease-in-out infinite; }
 .animate-float-up { animation: float-up 0.6s ease-out forwards; }
 .animate-slide-card { animation: slide-card-in 0.4s ease-out forwards; }
