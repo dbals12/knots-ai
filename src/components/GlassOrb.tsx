@@ -43,10 +43,12 @@ const GlassOrb = ({ state = "idle", size = "w-40 h-40" }: GlassOrbProps) => {
           animation: `orb-tilt ${tiltSpeed} ease-in-out infinite`,
         }}
       >
-        {/* Sphere shell — transparent glass with minimal tint */}
+        {/* Sphere shell — slightly squished organic blob */}
         <div
-          className="relative w-full h-full rounded-full overflow-hidden"
+          className="relative w-full h-full overflow-hidden"
           style={{
+            borderRadius: "58% 42% 54% 46% / 48% 52% 44% 56%",
+            animation: `orb-morph 9s ease-in-out infinite`,
             background: `radial-gradient(
               circle at 32% 28%,
               hsla(0, 0%, 100%, 0.85) 0%,
