@@ -170,12 +170,8 @@
 
 /* ── Orb animations — transparent sphere with 3D spatial rotation ── */
 @keyframes orb-tilt {
-  0%   { transform: rotateX(0deg)   rotateY(0deg)   rotateZ(0deg)   translateY(0); }
-  20%  { transform: rotateX(28deg)  rotateY(60deg)  rotateZ(10deg)  translateY(-5px); }
-  40%  { transform: rotateX(12deg)  rotateY(140deg) rotateZ(-8deg)  translateY(-8px); }
-  60%  { transform: rotateX(-22deg) rotateY(220deg) rotateZ(12deg)  translateY(-6px); }
-  80%  { transform: rotateX(-10deg) rotateY(300deg) rotateZ(-12deg) translateY(-3px); }
-  100% { transform: rotateX(0deg)   rotateY(360deg) rotateZ(0deg)   translateY(0); }
+  0%, 100% { transform: rotateX(-8deg)  rotateY(-22deg) rotateZ(-3deg); }
+  50%      { transform: rotateX(10deg)  rotateY(22deg)  rotateZ(4deg); }
 }
 
 @keyframes orb-morph {
@@ -184,14 +180,14 @@
   66%      { border-radius: 52% 48% 58% 42% / 44% 56% 48% 52%; }
 }
 
-@keyframes orb-spin-3d {
-  0%   { transform: rotateY(0deg)   rotateX(15deg); }
-  100% { transform: rotateY(360deg) rotateX(15deg); }
+@keyframes orb-inner-rock {
+  0%, 100% { transform: rotateY(-30deg) rotateX(10deg); }
+  50%      { transform: rotateY(30deg)  rotateX(-10deg); }
 }
 
-@keyframes orb-spin-3d-rev {
-  0%   { transform: rotateX(0deg)   rotateY(-15deg); }
-  100% { transform: rotateX(360deg) rotateY(-15deg); }
+@keyframes orb-inner-rock-rev {
+  0%, 100% { transform: rotateX(-25deg) rotateY(20deg); }
+  50%      { transform: rotateX(25deg)  rotateY(-20deg); }
 }
 
 @keyframes orb-glow-pulse {
