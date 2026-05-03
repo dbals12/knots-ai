@@ -40,7 +40,7 @@ const GlassOrb = ({ state = "idle", size = "w-40 h-40" }: GlassOrbProps) => {
         className="relative w-full h-full"
         style={{
           transformStyle: "preserve-3d",
-          animation: `orb-tilt ${tiltSpeed} ease-in-out infinite`,
+          animation: `${state === "idle" ? "orb-tilt-calm" : "orb-tilt"} ${tiltSpeed} ease-in-out infinite`,
         }}
       >
         {/* Sphere shell — slightly squished organic blob */}
