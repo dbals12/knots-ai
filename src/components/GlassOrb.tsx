@@ -40,7 +40,7 @@ const GlassOrb = ({ state = "idle", size = "w-40 h-40" }: GlassOrbProps) => {
         className="relative w-full h-full"
         style={{
           transformStyle: "preserve-3d",
-          animation: `orb-tilt ${tiltSpeed} ease-in-out infinite`,
+          animation: `${state === "idle" ? "orb-tilt-calm" : "orb-tilt"} ${tiltSpeed} ease-in-out infinite`,
         }}
       >
         {/* Sphere shell — slightly squished organic blob */}
@@ -48,7 +48,9 @@ const GlassOrb = ({ state = "idle", size = "w-40 h-40" }: GlassOrbProps) => {
           className="relative w-full h-full overflow-hidden"
           style={{
             borderRadius: "58% 42% 54% 46% / 48% 52% 44% 56%",
-            animation: `orb-morph 7s ease-in-out infinite`,
+            animation: state === "idle"
+              ? `orb-morph-calm 11s ease-in-out infinite`
+              : `orb-morph 7s ease-in-out infinite`,
             background: `radial-gradient(
               circle at 32% 28%,
               hsla(0, 0%, 100%, 0.85) 0%,
