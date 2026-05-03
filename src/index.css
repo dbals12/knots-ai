@@ -170,10 +170,16 @@
 
 /* ── Orb animations — transparent sphere with 3D spatial rotation ── */
 @keyframes orb-tilt {
-  0%, 100% { transform: rotateX(0deg) rotateY(0deg) translateY(0); }
-  25%      { transform: rotateX(6deg)  rotateY(8deg) translateY(-3px); }
-  50%      { transform: rotateX(0deg)  rotateY(0deg) translateY(-5px); }
-  75%      { transform: rotateX(-6deg) rotateY(-8deg) translateY(-3px); }
+  0%, 100% { transform: rotateX(0deg)   rotateY(0deg)   rotateZ(0deg)  translateY(0); }
+  25%      { transform: rotateX(14deg)  rotateY(18deg)  rotateZ(4deg)  translateY(-4px); }
+  50%      { transform: rotateX(2deg)   rotateY(-6deg)  rotateZ(-3deg) translateY(-7px); }
+  75%      { transform: rotateX(-12deg) rotateY(-20deg) rotateZ(5deg)  translateY(-3px); }
+}
+
+@keyframes orb-morph {
+  0%, 100% { border-radius: 58% 42% 54% 46% / 48% 52% 44% 56%; }
+  33%      { border-radius: 46% 54% 42% 58% / 56% 44% 58% 42%; }
+  66%      { border-radius: 52% 48% 58% 42% / 44% 56% 48% 52%; }
 }
 
 @keyframes orb-spin-3d {
