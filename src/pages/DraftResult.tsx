@@ -5,7 +5,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import AppShell from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, ChevronDown, ChevronUp, Lock, Pencil, ArrowRight, Lightbulb } from "lucide-react";
+import {
+  RefreshCw, ChevronDown, ChevronUp, Lock, ArrowRight, Check,
+} from "lucide-react";
 import { SiNaver, SiLinkedin, SiInstagram, SiThreads } from "react-icons/si";
 import ResultDetailModal from "@/components/ResultDetailModal";
 import GlassOrb from "@/components/GlassOrb";
@@ -16,9 +18,88 @@ import {
 import track from "@/lib/track";
 import { getSessionId } from "@/lib/session";
 
-// ─── Collapsible input card ───
+// ───────────────────────────── Types ─────────────────────────────
+interface TPSection { title: string; content: string; items?: string[] }
+interface TransformationProcess {
+  raw_materials: TPSection;
+  core_point: TPSection;
+  writing_flow: TPSection;
+  format_conversion: TPSection;
+}
+interface ResultData {
+  blog_content?: string;
+  linkedin_content?: string;
+  reels_content?: string;
+  threads_content?: string;
+  analysis_type?: "A" | "B" | "C" | string;
+  original_summary?: string;
+  input_quality?: { level?: string; reason?: string; suggestion?: string };
+  transformation_process?: TransformationProcess;
+}
+interface ContentData {
+  input_text: string;
+  input_mode?: string;
+  result_data: ResultData;
+}
+
+// ───────────────────────────── Helpers ─────────────────────────────
+const platformIcons = {
+  blog:     { icon: SiNaver,     color: "#03C75A", title: "블로그 글" },
+  linkedin: { icon: SiLinkedin,  color: "#0077B5", title: "LinkedIn 글" },
+  reels:    { icon: SiInstagram, color: "#E4405F", title: "Instagram 카드뉴스 + 캡션" },
+  threads:  { icon: SiThreads,   color: "#000000", title: "Threads 글" },
+} as const;
+
+const FALLBACK_TP_TEXT =
+  "아직 기록이 짧아 숨은 흐름을 충분히 발견하기 어려워요. 조금 더 구체적으로 적어주면, 생각의 재료와 글의 흐름을 더 잘 정리해드릴게요.";
+
+const cleanText = (s?: string) =>
+  (s || "").replace(/```json\s*/gi, "").replace(/```\s*/gi, "").trim();
+
+const trimTo = (s: string, n: number) => (s.length > n ? s.substring(0, n) + "…" : s);
+
+const getReelsPreview = (raw?: string): string => {
+  const c = cleanText(raw);
+  if (!c) return "";
+  try {
+    const j = JSON.parse(c);
+    const slide = j["Slide 1"] || j["slide 1"] || Object.values(j)[0];
+    return typeof slide === "string" ? trimTo(slide, 60) : trimTo(c, 60);
+  } catch {
+    return trimTo(c.replace(/[{}\"]/g, " ").replace(/\s+/g, " "), 60);
+  }
+};
+
+const previewFor = (key: keyof typeof platformIcons, rd: ResultData): string => {
+  if (key === "blog") return trimTo(cleanText(rd.blog_content).replace(/^#+\s.*$/gm, "").trim(), 70);
+  if (key === "linkedin") return trimTo(cleanText(rd.linkedin_content), 70);
+  if (key === "threads") return trimTo(cleanText(rd.threads_content), 70);
+  if (key === "reels") return getReelsPreview(rd.reels_content);
+  return "";
+};
+
+// Fallback transformation_process when LLM didn't provide one (legacy data)
+const buildFallbackTP = (rd: ResultData, inputText: string): TransformationProcess | null => {
+  if (!rd.blog_content && !rd.linkedin_content && !inputText) return null;
+  return {
+    raw_materials: {
+      title: "핵심 재료 추출",
+      content: "이전 기록은 변환 과정 정보가 없어 콘텐츠 결과만 확인할 수 있어요.",
+      items: [],
+    },
+    core_point: { title: "핵심 포인트 정리", content: FALLBACK_TP_TEXT },
+    writing_flow: { title: "글의 흐름 구성", content: "기록 → 정리 → 글감 → 콘텐츠" },
+    format_conversion: {
+      title: "콘텐츠 포맷 변환",
+      content: "이 흐름을 블로그, LinkedIn, Instagram, Threads에 맞게 다시 구성했어요.",
+    },
+  };
+};
+
+// ───────────────────────────── Input card ─────────────────────────────
 interface DraftInputCardProps {
-  inputText: string;
+  summaryText: string;
+  fullText: string;
   isEditing: boolean;
   editedInput: string;
   savingInput: boolean;
@@ -27,22 +108,25 @@ interface DraftInputCardProps {
   onSave: () => void;
   onEditedInputChange: (v: string) => void;
 }
-
 const DraftInputCard = ({
-  inputText, isEditing, editedInput, savingInput,
+  summaryText, fullText, isEditing, editedInput, savingInput,
   onEditClick, onCancel, onSave, onEditedInputChange,
 }: DraftInputCardProps) => {
   const [expanded, setExpanded] = useState(false);
+  const display = expanded ? fullText : summaryText;
   return (
     <div className="glass-card p-4">
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-medium text-foreground">기록한 내용</h3>
+      <div className="flex items-start justify-between mb-2 gap-2">
+        <h3 className="text-sm font-medium text-foreground">오늘 내가 기록한 내용</h3>
         {!isEditing ? (
-          <button onClick={onEditClick} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-full bg-muted/50">
+          <button
+            onClick={onEditClick}
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-full bg-muted/50 flex-shrink-0"
+          >
             수정하기
           </button>
         ) : (
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-shrink-0">
             <Button variant="outline" size="sm" onClick={onCancel} className="h-7 text-xs rounded-lg" disabled={savingInput}>취소</Button>
             <Button size="sm" onClick={onSave} className="h-7 text-xs rounded-lg bg-foreground text-background hover:bg-foreground/90" disabled={savingInput || !editedInput.trim()}>
               {savingInput ? "저장 중..." : "저장"}
@@ -52,114 +136,71 @@ const DraftInputCard = ({
       </div>
       {!isEditing ? (
         <div>
-          <div className={`text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap overflow-hidden ${expanded ? "" : "line-clamp-2"}`}>
-            {inputText}
-          </div>
-          {inputText && inputText.length > 80 && (
+          <p className={`text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap ${expanded ? "" : "line-clamp-2"}`}>
+            {display}
+          </p>
+          {fullText && fullText.length > (summaryText?.length || 0) + 5 && (
             <button onClick={() => setExpanded(!expanded)} className="mt-1 flex items-center gap-0.5 text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors">
               {expanded ? <><ChevronUp className="w-3 h-3" /> 접기</> : <><ChevronDown className="w-3 h-3" /> 더보기</>}
             </button>
           )}
         </div>
       ) : (
-        <textarea value={editedInput} onChange={(e) => onEditedInputChange(e.target.value)}
-          className="w-full min-h-[100px] max-h-[180px] p-3 rounded-xl border border-border/40 bg-muted/30 text-xs text-foreground leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-foreground/20" />
+        <textarea
+          value={editedInput}
+          onChange={(e) => onEditedInputChange(e.target.value)}
+          className="w-full min-h-[120px] max-h-[220px] p-3 rounded-xl border border-border/40 bg-muted/30 text-xs text-foreground leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-foreground/20"
+        />
       )}
     </div>
   );
 };
 
-interface ContentData {
-  input_text: string;
-  input_mode?: string;
-  result_data: {
-    blog_content?: string;
-    linkedin_content?: string;
-    reels_content?: string;
-    threads_content?: string;
-  };
+// ───────────────────────────── Transformation Step ─────────────────────────────
+interface StepProps {
+  index: number;
+  title: string;
+  content: string;
+  items?: string[];
+  locked?: boolean;
+  isLast?: boolean;
 }
+const TransformationStep = ({ index, title, content, items, locked, isLast }: StepProps) => (
+  <div className="flex gap-3">
+    {/* Indicator + connector */}
+    <div className="flex flex-col items-center flex-shrink-0">
+      <div className="w-7 h-7 rounded-full bg-foreground/90 text-background flex items-center justify-center text-xs font-medium">
+        {index}
+      </div>
+      {!isLast && <div className="w-px flex-1 bg-border/60 my-1" />}
+    </div>
+    {/* Card */}
+    <div className={`flex-1 mb-3 rounded-2xl bg-background border border-border/40 shadow-[0_2px_10px_hsla(0,0%,0%,0.04)] p-4 relative overflow-hidden`}>
+      <div className="flex items-center justify-between mb-1.5">
+        <h4 className="text-sm font-semibold text-foreground">{title}</h4>
+        {locked ? (
+          <Lock className="w-3.5 h-3.5 text-muted-foreground/50" />
+        ) : (
+          <Check className="w-3.5 h-3.5 text-foreground/40" />
+        )}
+      </div>
+      <p className={`text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap ${locked ? "blur-[3px] select-none" : ""}`}>
+        {content}
+      </p>
+      {!locked && items && items.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mt-2.5">
+          {items.map((it, i) => (
+            <span key={i} className="text-[11px] text-foreground/80 bg-muted/60 px-2 py-0.5 rounded-full">
+              {it}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+);
 
-const platformIcons = {
-  blog: { icon: SiNaver, color: "#03C75A", title: "Blog" },
-  linkedin: { icon: SiLinkedin, color: "#0077B5", title: "Linkedin" },
-  reels: { icon: SiInstagram, color: "#E4405F", title: "Instagram" },
-  threads: { icon: SiThreads, color: "#000000", title: "Threads" },
-};
-
-const getSummary = (content: string | null, maxLen = 60) => {
-  if (!content) return "콘텐츠 생성 중...";
-  const clean = content.replace(/```json\s*/gi, "").replace(/```\s*/gi, "").trim();
-  return clean.length > maxLen ? clean.substring(0, maxLen) + "..." : clean;
-};
-
-const countInsights = (rd: ContentData["result_data"]): number => {
-  return [rd.blog_content, rd.linkedin_content, rd.reels_content, rd.threads_content].filter(Boolean).length;
-};
-
-const getInsightSummary = (rd: ContentData["result_data"]): string => {
-  const source = rd.blog_content || rd.linkedin_content || "";
-  if (!source) return "";
-  const clean = source.replace(/```json\s*/gi, "").replace(/```\s*/gi, "").replace(/^#+\s.*/gm, "").trim();
-  const sentences = clean.split(/[.!?。]\s/).filter(Boolean).slice(0, 2);
-  return sentences.join(". ").substring(0, 160) + (sentences.length > 0 ? "." : "");
-};
-
-const SHORT_INPUT_FALLBACK =
-  "아직 기록이 짧아 숨은 패턴을 충분히 발견하기 어려워요. 조금 더 구체적으로 적어주면, 생각의 흐름과 성장 포인트를 더 잘 찾아드릴게요.";
-
-/**
- * 추가 인사이트는 사용자의 원문에서만 도출합니다.
- * - LinkedIn/블로그 등 생성된 콘텐츠를 절대 재사용하지 않습니다.
- * - 감정/사고/행동/성장 신호를 발견했을 때만 짧게 1~2문장으로 요약합니다.
- * - 원문이 짧거나 신호가 부족하면 fallback 문구 1개만 반환합니다.
- */
-const getAdditionalInsights = (inputText: string | undefined | null): string[] => {
-  const text = (inputText || "").trim();
-  if (text.length < 40) return [SHORT_INPUT_FALLBACK];
-
-  const sentences = text
-    .split(/[.!?。\n]+/)
-    .map((s) => s.trim())
-    .filter((s) => s.length >= 8);
-  if (sentences.length === 0) return [SHORT_INPUT_FALLBACK];
-
-  const insights: string[] = [];
-
-  const emotionWords = ["불안", "답답", "초조", "후회", "아쉽", "뿌듯", "기쁘", "설레", "지치", "피곤", "화가", "짜증", "걱정", "두렵", "기대"];
-  const hasEmotion = emotionWords.find((w) => text.includes(w));
-  if (hasEmotion) {
-    insights.push(`'${hasEmotion}'이라는 감정이 흐름의 중심에 있어요. 그 감정이 어떤 상황에서 반복되는지 살펴볼 만해요.`);
-  }
-
-  const thinkingWords = ["생각", "고민", "판단", "결정", "선택", "정리", "이유"];
-  const hasThinking = thinkingWords.find((w) => text.includes(w));
-  if (hasThinking && insights.length < 3) {
-    insights.push(`상황을 바로 받아들이기보다 '${hasThinking}'을(를) 거치며 한 번 더 곱씹는 사고 방식이 보여요.`);
-  }
-
-  const actionWords = ["시도", "도전", "해봤", "만들었", "썼", "보냈", "물어", "찾아", "공부", "정리했"];
-  const hasAction = actionWords.find((w) => text.includes(w));
-  if (hasAction && insights.length < 3) {
-    insights.push(`생각에 머무르지 않고 '${hasAction}'처럼 작은 행동으로 옮기는 패턴이 있어요.`);
-  }
-
-  const growthWords = ["배웠", "깨달", "다음엔", "다음번", "개선", "성장", "달라", "바뀌"];
-  const hasGrowth = growthWords.find((w) => text.includes(w));
-  if (hasGrowth && insights.length < 3) {
-    insights.push(`경험을 흘려보내지 않고 '${hasGrowth}'처럼 다음 행동의 단서로 연결하는 모습이 인상적이에요.`);
-  }
-
-  const struggleWords = ["문제", "막혔", "안 됐", "실패", "어려웠", "헤맸", "삽질"];
-  const hasStruggle = struggleWords.find((w) => text.includes(w));
-  if (hasStruggle && insights.length < 3) {
-    insights.push(`어려움 앞에서 회피보다 그 과정을 기록으로 남기는 태도가 강점이에요.`);
-  }
-
-  if (insights.length === 0) return [SHORT_INPUT_FALLBACK];
-  return insights.slice(0, 3);
-};
-
+// ───────────────────────────── Main Page ─────────────────────────────
 const DraftResult = () => {
   const { draftId } = useParams();
   const navigate = useNavigate();
@@ -223,7 +264,7 @@ const DraftResult = () => {
   // ── Loading messages (unchanged) ──
   useEffect(() => {
     if (!loading) return;
-    const messages = ["AI가 기록을 분석하고 있어요...", "핵심 키워드를 추출하고 있습니다...", "4가지 플랫폼 콘텐츠를 생성하고 있어요...", "거의 다 되었습니다!"];
+    const messages = ["AI가 기록을 분석하고 있어요...", "핵심 재료를 추출하고 있어요...", "글의 흐름을 정리하고 있어요...", "콘텐츠로 변환 중이에요!"];
     let i = 0;
     const interval = setInterval(() => { i = (i + 1) % messages.length; setLoadingMessage(messages[i]); }, 3000);
     return () => clearInterval(interval);
@@ -266,14 +307,24 @@ const DraftResult = () => {
     } finally { setIsRetrying(false); }
   };
 
-  // ── Data polling (unchanged) ──
+  // ── Data polling ──
   const checkData = async () => {
     try {
       if (isSessionType) {
         const { data: session } = await supabase.from("sessions").select("*").eq("id", draftId).single();
         const { data: outputs } = await supabase.from("outputs").select("*").eq("session_id", draftId);
+        // Pull latest related draft to recover analysis fields (no schema change)
+        const { data: relatedDraft } = await supabase
+          .from("drafts").select("result_data")
+          .eq("session_id", draftId).order("created_at", { ascending: false }).limit(1).maybeSingle();
+        const draftRD = (relatedDraft?.result_data as any) || {};
         if (session) {
-          const result_data: any = {};
+          const result_data: ResultData = {
+            analysis_type: draftRD.analysis_type,
+            original_summary: draftRD.original_summary,
+            input_quality: draftRD.input_quality,
+            transformation_process: draftRD.transformation_process,
+          };
           let outputCount = 0;
           if (outputs && outputs.length > 0) {
             outputs.forEach((o: any) => {
@@ -295,9 +346,13 @@ const DraftResult = () => {
         const { data: draft } = await supabase.from("drafts").select("*").eq("id", draftId).single();
         if (draft) {
           const inputData = draft.input_data as any;
-          const resultData = draft.result_data as any;
-          if (draft.status === "completed" && resultData && Object.keys(resultData).length > 0) {
-            setData({ input_text: resultData?.transcript || inputData?.textInput || "변환 중...", input_mode: inputData?.inputMode, result_data: resultData || {} });
+          const resultData = (draft.result_data as ResultData) || {};
+          if (draft.status === "completed" && Object.keys(resultData).length > 0) {
+            setData({
+              input_text: (resultData as any)?.transcript || inputData?.textInput || "변환 중...",
+              input_mode: inputData?.inputMode,
+              result_data: resultData,
+            });
             setLoading(false); return true;
           }
           if (draft.status === "failed") { setLoadingMessage("생성에 실패했습니다. 다시 시도해주세요."); setShowRetryButton(true); return true; }
@@ -365,7 +420,16 @@ const DraftResult = () => {
       if (result.outputs) {
         setData({
           input_text: nextText, input_mode: data?.input_mode,
-          result_data: { blog_content: result.outputs.blog_content, linkedin_content: result.outputs.linkedin_content, reels_content: result.outputs.reels_content, threads_content: result.outputs.threads_content },
+          result_data: {
+            blog_content: result.outputs.blog_content,
+            linkedin_content: result.outputs.linkedin_content,
+            reels_content: result.outputs.reels_content,
+            threads_content: result.outputs.threads_content,
+            analysis_type: result.analysis?.analysis_type,
+            original_summary: result.analysis?.original_summary,
+            input_quality: result.analysis?.input_quality,
+            transformation_process: result.analysis?.transformation_process,
+          },
         });
       }
       toast({ title: "재생성 완료", description: "콘텐츠가 새로 생성되었어요." });
@@ -418,25 +482,41 @@ const DraftResult = () => {
     );
   }
 
-  const insightCount = countInsights(data.result_data);
-  const insightSummary = getInsightSummary(data.result_data);
-  const additionalInsights = getAdditionalInsights(data.input_text);
+  const rd = data.result_data;
   const isGuest = !user;
   const platformOrder = ["blog", "linkedin", "reels", "threads"] as const;
 
+  // Resolve summary (prefer LLM original_summary; fall back to truncated raw)
+  const summaryText =
+    cleanText(rd.original_summary) ||
+    trimTo(cleanText(data.input_text).replace(/\n+/g, " "), 90);
+
+  const tp: TransformationProcess | null =
+    rd.transformation_process || buildFallbackTP(rd, data.input_text);
+
+  const steps = tp
+    ? [
+        { ...tp.raw_materials,     items: tp.raw_materials.items, locked: false },
+        { ...tp.core_point,        locked: false },
+        { ...tp.writing_flow,      locked: false },
+        { ...tp.format_conversion, locked: isGuest },
+      ]
+    : [];
+
   return (
     <AppShell>
-      <div className="flex-1 px-6 py-4 space-y-4 overflow-y-auto pb-40">
-        {/* ── Header text ── */}
+      <div className={`flex-1 px-5 py-4 space-y-5 overflow-y-auto ${isGuest ? "pb-44" : "pb-32"}`}>
+        {/* ── Headline ── */}
         <div className="pt-1">
-          <p className="text-sm text-foreground leading-relaxed">
-            AI가 분석해 <span className="font-semibold">{insightCount}개</span>의 인사이트를 정리했어요
-          </p>
+          <h1 className="text-[22px] leading-snug font-bold text-foreground tracking-tight">
+            기록이 4가지<br />글감으로 정리됐어요
+          </h1>
         </div>
 
-        {/* ── 기록한 내용 ── */}
+        {/* ── 오늘 내가 기록한 내용 ── */}
         <DraftInputCard
-          inputText={data.input_text}
+          summaryText={summaryText}
+          fullText={data.input_text}
           isEditing={isEditingInput}
           editedInput={editedInput}
           savingInput={savingInput}
@@ -446,60 +526,40 @@ const DraftResult = () => {
           onEditedInputChange={setEditedInput}
         />
 
-        {/* ── 핵심 포인트 (Core Insight) ── */}
-        {insightSummary && (
-          <div className="glass-card p-5 relative overflow-hidden">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-sm">✨</span>
-              <h3 className="text-sm font-semibold text-foreground">핵심 포인트</h3>
-              <ArrowRight className="w-4 h-4 text-muted-foreground ml-auto" />
+        {/* ── AI가 이렇게 정리했어요 ── */}
+        {steps.length > 0 && (
+          <section className="space-y-3">
+            <h2 className="text-sm font-semibold text-foreground">AI가 이렇게 정리했어요</h2>
+            <div>
+              {steps.map((s, i) => (
+                <TransformationStep
+                  key={i}
+                  index={i + 1}
+                  title={s.title}
+                  content={s.content}
+                  items={s.items}
+                  locked={s.locked}
+                  isLast={i === steps.length - 1}
+                />
+              ))}
             </div>
-            <p className="text-base font-medium text-foreground leading-relaxed">
-              "{insightSummary}"
-            </p>
-          </div>
+          </section>
         )}
 
-        {/* ── 추가 인사이트 ── */}
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-foreground">추가 인사이트</h3>
-          <div className="space-y-2">
-            {additionalInsights.map((insight, idx) => {
-              const isFallback = insight === SHORT_INPUT_FALLBACK;
-              const locked = isGuest && !isFallback && idx > 0;
-              return (
-                <div
-                  key={idx}
-                  className={`glass-card px-4 py-3 flex items-start gap-3 ${locked ? "relative overflow-hidden" : ""}`}
-                >
-                  <Lightbulb className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-                  <p className={`text-xs text-muted-foreground leading-relaxed ${locked ? "blur-[3px] select-none" : ""}`}>
-                    {insight}
-                  </p>
-                  {locked && (
-                    <Lock className="w-3 h-3 text-muted-foreground/50 flex-shrink-0 mt-0.5" />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
         {/* ── 콘텐츠로 변환 ── */}
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-foreground">콘텐츠로 변환</h3>
+        <section className="space-y-3">
+          <h2 className="text-sm font-semibold text-foreground">콘텐츠로 변환</h2>
           <div className="grid grid-cols-2 gap-3">
             {platformOrder.map((key, idx) => {
               const meta = platformIcons[key];
               const Icon = meta.icon;
-              const content = getContent(key) || "";
-              const isPreview = isGuest ? idx === 0 : true;
-
+              const preview = previewFor(key, rd);
+              const lockedCard = isGuest && idx > 0; // first card preview-only, others blurred
               return (
                 <button
                   key={key}
                   onClick={() => handleCardClick(key)}
-                  className="glass-card p-4 text-left space-y-2 relative overflow-hidden transition-all hover:shadow-md"
+                  className="rounded-2xl bg-background border border-border/40 shadow-[0_2px_10px_hsla(0,0%,0%,0.04)] p-3.5 text-left space-y-2 relative overflow-hidden transition-all hover:shadow-md"
                 >
                   <div className="flex items-center gap-2">
                     <div
@@ -508,62 +568,61 @@ const DraftResult = () => {
                     >
                       <Icon className="w-3 h-3 text-white" />
                     </div>
-                    <span className="text-xs font-medium text-foreground">{meta.title}</span>
-                    {!isPreview && <Lock className="w-3 h-3 text-muted-foreground/40 ml-auto" />}
+                    <span className="text-[11px] font-medium text-foreground line-clamp-1">{meta.title}</span>
+                    {lockedCard && <Lock className="w-3 h-3 text-muted-foreground/40 ml-auto flex-shrink-0" />}
                   </div>
-                  {isPreview ? (
-                    <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2">
-                      {getSummary(content, 50)}
-                    </p>
-                  ) : (
-                    <p className="text-[11px] text-muted-foreground leading-relaxed blur-[3px] select-none line-clamp-2" aria-hidden>
-                      {getSummary(content, 40)}
-                    </p>
-                  )}
+                  <p className={`text-[11px] text-muted-foreground leading-relaxed line-clamp-3 ${lockedCard ? "blur-[3px] select-none" : ""}`}>
+                    {preview || "콘텐츠 미리보기"}
+                  </p>
                 </button>
               );
             })}
           </div>
-        </div>
+        </section>
+
+        {/* ── Logged-in action buttons ── */}
+        {!isGuest && (
+          <div className="pt-2 space-y-2">
+            <button
+              onClick={() => {
+                const idProps = isSessionType ? { session_id: draftId } : { draft_id: draftId };
+                track.pageView("new_record_click", idProps);
+                navigate("/input");
+              }}
+              className="w-full h-12 btn-steel text-sm"
+            >
+              새로운 기록 만들기
+            </button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                const idProps = isSessionType ? { session_id: draftId } : { draft_id: draftId };
+                track.pageView("go_home_click", idProps);
+                navigate("/");
+              }}
+              className="w-full h-11 rounded-full text-sm border-border/40"
+            >
+              홈으로 돌아가기
+            </Button>
+          </div>
+        )}
       </div>
 
-      {/* ── Floating CTA (guest) or action buttons (logged in) ── */}
-      {isGuest ? (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-48px)] max-w-[392px] bg-background rounded-[20px] shadow-[0_8px_24px_hsla(0,0%,0%,0.08)] p-5 space-y-3 z-20 border border-border/30">
-          <p className="text-sm font-semibold text-foreground">AI 분석 전체 확인하기</p>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            로그인하면 모든 인사이트와 콘텐츠 생성 기능을 사용할 수 있습니다.
-          </p>
+      {/* ── Guest Bottom Sheet CTA ── */}
+      {isGuest && (
+        <div className="absolute bottom-0 left-0 right-0 z-30 bg-background border-t border-border/30 rounded-t-[24px] shadow-[0_-8px_28px_hsla(0,0%,0%,0.08)] p-5 space-y-3">
+          <div>
+            <p className="text-sm font-semibold text-foreground">변환 과정과 전체 글 확인하기</p>
+            <p className="text-xs text-muted-foreground leading-relaxed mt-1">
+              내 기록이 어떻게 글이 됐는지 확인하고,<br />4가지 콘텐츠를 모두 저장할 수 있어요.
+            </p>
+          </div>
           <button
             onClick={performLogin}
-            className="w-full h-12 btn-steel text-sm flex items-center justify-center gap-2"
+            className="w-full h-12 rounded-xl bg-foreground text-background hover:bg-foreground/90 text-sm flex items-center justify-center gap-2 transition-colors"
           >
-            로그인하기 <ArrowRight className="w-4 h-4" />
+            Google로 로그인 <ArrowRight className="w-4 h-4" />
           </button>
-        </div>
-      ) : (
-        <div className="px-6 pb-6 pt-2 space-y-2">
-          <button
-            onClick={() => {
-              const idProps = isSessionType ? { session_id: draftId } : { draft_id: draftId };
-              track.pageView("new_record_click", idProps);
-              navigate("/input");
-            }}
-            className="w-full h-12 btn-steel text-sm"
-          >
-            새로운 기록 만들기
-          </button>
-          <Button
-            variant="outline"
-            onClick={() => {
-              const idProps = isSessionType ? { session_id: draftId } : { draft_id: draftId };
-              track.pageView("go_home_click", idProps);
-              navigate("/");
-            }}
-            className="w-full h-11 rounded-full text-sm border-border/40"
-          >
-            홈으로 돌아가기
-          </Button>
         </div>
       )}
 

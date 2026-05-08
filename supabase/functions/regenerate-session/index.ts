@@ -50,11 +50,22 @@ function buildRewriteSystemPrompt(): string {
 - Preserve casual/witty tone
 
 ## OUTPUT FORMAT:
-Return a JSON object with exactly these 4 fields:
-- blog_content: string (Korean blog post)
-- linkedin_content: string (Korean LinkedIn post)  
-- reels_content: string (JSON-formatted card news slides)
-- threads_content: string (Korean Threads post)`;
+Return a JSON object with these fields:
+- blog_content (string), linkedin_content (string), reels_content (string), threads_content (string)
+- analysis_type ("A"|"B"|"C")
+- original_summary (1~2줄 한국어 요약 of edited input)
+- input_quality { level, reason, suggestion }
+- transformation_process { raw_materials{title,content,items[]}, core_point{title,content}, writing_flow{title,content}, format_conversion{title,content} }
+
+## TRANSFORMATION_PROCESS RULES (analysis BEFORE writing — never copy generated content):
+- 100% Korean. No robotic tone ("살펴보겠습니다", "정리하면", "~하도록 하겠습니다").
+- raw_materials: 반복적으로 드러난 소재/사건/감정/키워드 (items 2~4개, 짧은 한국어).
+- core_point: 사용자가 직접 말하지 않았지만 원문에서 드러나는 핵심 인사이트 1개 (1~2문장).
+- writing_flow: 화살표 구조 (예: "문제 상황 → 막힌 이유 → 깨달은 점 → 다음 액션"). 매번 다르게.
+- format_conversion: 기본 문구 "이 흐름을 블로그, LinkedIn, Instagram, Threads에 맞게 다시 구성했어요."
+- 환각 금지: 원문에 없는 직업/회사/수치/프로젝트명 만들지 말 것.
+- 입력이 너무 짧으면 input_quality.level = "low" 로 두고 transformation_process 본문은 fallback 문구 사용:
+  "아직 기록이 짧아 숨은 흐름을 충분히 발견하기 어려워요. 조금 더 구체적으로 적어주면, 생각의 재료와 글의 흐름을 더 잘 정리해드릴게요."`;
 }
 
 function buildRewriteUserPrompt(
@@ -300,17 +311,67 @@ Generate content for Blog, LinkedIn, Instagram Card News (JSON slides), and Thre
             schema: {
               type: "object",
               properties: {
-                blog_content: { type: "string", description: "Long-form blog post in Korean with ## subtitles" },
-                linkedin_content: { type: "string", description: "Professional LinkedIn post in Korean" },
-                reels_content: { type: "string", description: "JSON-formatted Instagram card news slides" },
-                threads_content: { type: "string", description: "Casual Threads post in Korean" },
+                blog_content: { type: "string" },
+                linkedin_content: { type: "string" },
+                reels_content: { type: "string" },
+                threads_content: { type: "string" },
+                analysis_type: { type: "string", enum: ["A", "B", "C"] },
+                original_summary: { type: "string", description: "1~2줄 한국어 요약" },
+                input_quality: {
+                  type: "object",
+                  properties: {
+                    level: { type: "string", enum: ["low", "medium", "high"] },
+                    reason: { type: "string" },
+                    suggestion: { type: "string" },
+                  },
+                  required: ["level", "reason", "suggestion"],
+                  additionalProperties: false,
+                },
+                transformation_process: {
+                  type: "object",
+                  properties: {
+                    raw_materials: {
+                      type: "object",
+                      properties: {
+                        title: { type: "string" },
+                        content: { type: "string" },
+                        items: { type: "array", items: { type: "string" } },
+                      },
+                      required: ["title", "content", "items"],
+                      additionalProperties: false,
+                    },
+                    core_point: {
+                      type: "object",
+                      properties: { title: { type: "string" }, content: { type: "string" } },
+                      required: ["title", "content"],
+                      additionalProperties: false,
+                    },
+                    writing_flow: {
+                      type: "object",
+                      properties: { title: { type: "string" }, content: { type: "string" } },
+                      required: ["title", "content"],
+                      additionalProperties: false,
+                    },
+                    format_conversion: {
+                      type: "object",
+                      properties: { title: { type: "string" }, content: { type: "string" } },
+                      required: ["title", "content"],
+                      additionalProperties: false,
+                    },
+                  },
+                  required: ["raw_materials", "core_point", "writing_flow", "format_conversion"],
+                  additionalProperties: false,
+                },
               },
-              required: ["blog_content", "linkedin_content", "reels_content", "threads_content"],
+              required: [
+                "blog_content", "linkedin_content", "reels_content", "threads_content",
+                "analysis_type", "original_summary", "input_quality", "transformation_process",
+              ],
               additionalProperties: false,
             },
           },
         },
-        temperature: 0.5, // Lower temperature for more consistent rewrites
+        temperature: 0.5,
         max_tokens: 4000,
       }),
     });
@@ -365,14 +426,51 @@ Generate content for Blog, LinkedIn, Instagram Card News (JSON slides), and Thre
       });
     }
 
+    // 9b) Persist analysis fields onto the related draft (no schema change for sessions)
+    try {
+      const analysisPayload = {
+        analysis_type: generatedContent.analysis_type,
+        original_summary: generatedContent.original_summary,
+        input_quality: generatedContent.input_quality,
+        transformation_process: generatedContent.transformation_process,
+        blog_content: generatedContent.blog_content,
+        linkedin_content: generatedContent.linkedin_content,
+        reels_content: generatedContent.reels_content,
+        threads_content: generatedContent.threads_content,
+        transcript: raw_text.trim(),
+      };
+      const { data: relatedDraft } = await supabaseAdmin
+        .from("drafts")
+        .select("id, result_data")
+        .eq("session_id", session_id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (relatedDraft?.id) {
+        const merged = { ...((relatedDraft.result_data as any) || {}), ...analysisPayload };
+        await supabaseAdmin.from("drafts").update({ result_data: merged, status: "completed" }).eq("id", relatedDraft.id);
+      } else {
+        await supabaseAdmin.from("drafts").insert({
+          user_id: userId,
+          session_id,
+          status: "completed",
+          promotion_status: "promoted",
+          input_data: { textInput: raw_text.trim() },
+          result_data: analysisPayload,
+        });
+      }
+    } catch (e) {
+      console.error("[regenerate-session] failed to persist analysis on draft:", e);
+    }
+
     // 10) events 테이블 insert
     await supabaseAdmin.from("events").insert({
       event_type: "regenerate_session",
       session_id,
       user_id: userId,
-      metadata: { 
+      metadata: {
         raw_text_length: raw_text.trim().length,
-        mode: hasExistingContent ? "rewrite" : "fresh"
+        mode: hasExistingContent ? "rewrite" : "fresh",
       },
     });
 
@@ -388,6 +486,12 @@ Generate content for Blog, LinkedIn, Instagram Card News (JSON slides), and Thre
           linkedin_content: generatedContent.linkedin_content,
           reels_content: generatedContent.reels_content,
           threads_content: generatedContent.threads_content,
+        },
+        analysis: {
+          analysis_type: generatedContent.analysis_type,
+          original_summary: generatedContent.original_summary,
+          input_quality: generatedContent.input_quality,
+          transformation_process: generatedContent.transformation_process,
         },
       }),
       {
