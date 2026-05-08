@@ -117,16 +117,60 @@ First, analyze the {transcript} and determine the **Content Concept**:
 - **Ending:** No hashtags needed (max 1). No moral lessons. Just a sigh or a laugh.
 
 ━━━━━━━━━━━━━━━━━━━━━━
+✅ TRANSFORMATION PROCESS (NEW — MANDATORY)
+━━━━━━━━━━━━━━━━━━━━━━
+Before generating the 4 platform contents, you MUST analyze the user's transcript and produce a "transformation_process" — the *behind-the-scenes thinking* that turns a raw record into content.
+
+This is NOT a summary of the generated content. It is the analysis ladder that comes BEFORE writing.
+
+Rules:
+- 100% Korean. No robotic phrases ("살펴보겠습니다", "정리하면", "~하도록 하겠습니다").
+- NEVER copy sentences from blog_content / linkedin_content / etc. into transformation_process.
+- NEVER invent facts (jobs, companies, numbers, project names) the user did not mention.
+- Each field must vary based on the transcript — no fixed templates.
+- Reflect the chosen Type (A/B/C) in what you extract:
+  - Type A → 문제 상황 / 시도한 해결책 / 시행착오 / 배운 점 중심
+  - Type B → 장면 / 감정 변화 / 관계 / 반복되는 생각 중심
+  - Type C → 문제 / 방법 / 적용 조건 / 실용 팁 중심
+
+Fields:
+1. raw_materials.content — 1~2 sentences naming the recurring 소재/사건/감정/키워드 found in the record.
+   raw_materials.items — 2~4 short Korean phrases (each ≤ 12 chars).
+2. core_point.content — 1~2 sentences. The single most important hidden insight (not what the user literally said — what is *underneath* it).
+3. writing_flow.content — Arrow-style flow (예: "문제 상황 → 막힌 이유 → 깨달은 점 → 다음 액션"). Vary per transcript.
+4. format_conversion.content — Always a single sentence describing how this flow becomes blog/LinkedIn/Instagram/Threads content. Default base: "이 흐름을 블로그, LinkedIn, Instagram, Threads에 맞게 다시 구성했어요." You may slightly tailor it.
+
+If the transcript is too short / vague (low quality):
+- Set input_quality.level = "low".
+- For raw_materials, core_point, writing_flow: use the fallback message:
+  "아직 기록이 짧아 숨은 흐름을 충분히 발견하기 어려워요. 조금 더 구체적으로 적어주면, 생각의 재료와 글의 흐름을 더 잘 정리해드릴게요."
+- Still produce content_outputs at best effort, never inventing facts.
+
+Also produce:
+- original_summary: 1~2줄 한국어 요약 of the user's record (factual, no embellishment).
+- input_quality: { level: "low"|"medium"|"high", reason: "...", suggestion: "..." }
+- analysis_type: "A" | "B" | "C"
+
+━━━━━━━━━━━━━━━━━━━━━━
 ✅ OUTPUT JSON FORMAT
 ━━━━━━━━━━━━━━━━━━━━━━
-Return strictly this JSON object:
+Return strictly this JSON object (all fields required):
 {
   "blog_content": "String",
   "linkedin_content": "String",
   "reels_content": "String",
   "threads_content": "String",
   "analysis_keywords": [],
-  "analysis_sentiment": "String"
+  "analysis_sentiment": "String",
+  "analysis_type": "A",
+  "original_summary": "String",
+  "input_quality": { "level": "medium", "reason": "String", "suggestion": "String" },
+  "transformation_process": {
+    "raw_materials":     { "title": "핵심 재료 추출",   "content": "String", "items": ["String"] },
+    "core_point":        { "title": "핵심 포인트 정리", "content": "String" },
+    "writing_flow":      { "title": "글의 흐름 구성",   "content": "String" },
+    "format_conversion": { "title": "콘텐츠 포맷 변환", "content": "이 흐름을 블로그, LinkedIn, Instagram, Threads에 맞게 다시 구성했어요." }
+  }
 }
 `;
 
