@@ -426,14 +426,51 @@ Generate content for Blog, LinkedIn, Instagram Card News (JSON slides), and Thre
       });
     }
 
+    // 9b) Persist analysis fields onto the related draft (no schema change for sessions)
+    try {
+      const analysisPayload = {
+        analysis_type: generatedContent.analysis_type,
+        original_summary: generatedContent.original_summary,
+        input_quality: generatedContent.input_quality,
+        transformation_process: generatedContent.transformation_process,
+        blog_content: generatedContent.blog_content,
+        linkedin_content: generatedContent.linkedin_content,
+        reels_content: generatedContent.reels_content,
+        threads_content: generatedContent.threads_content,
+        transcript: raw_text.trim(),
+      };
+      const { data: relatedDraft } = await supabaseAdmin
+        .from("drafts")
+        .select("id, result_data")
+        .eq("session_id", session_id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (relatedDraft?.id) {
+        const merged = { ...((relatedDraft.result_data as any) || {}), ...analysisPayload };
+        await supabaseAdmin.from("drafts").update({ result_data: merged, status: "completed" }).eq("id", relatedDraft.id);
+      } else {
+        await supabaseAdmin.from("drafts").insert({
+          user_id: userId,
+          session_id,
+          status: "completed",
+          promotion_status: "promoted",
+          input_data: { textInput: raw_text.trim() },
+          result_data: analysisPayload,
+        });
+      }
+    } catch (e) {
+      console.error("[regenerate-session] failed to persist analysis on draft:", e);
+    }
+
     // 10) events 테이블 insert
     await supabaseAdmin.from("events").insert({
       event_type: "regenerate_session",
       session_id,
       user_id: userId,
-      metadata: { 
+      metadata: {
         raw_text_length: raw_text.trim().length,
-        mode: hasExistingContent ? "rewrite" : "fresh"
+        mode: hasExistingContent ? "rewrite" : "fresh",
       },
     });
 
@@ -449,6 +486,12 @@ Generate content for Blog, LinkedIn, Instagram Card News (JSON slides), and Thre
           linkedin_content: generatedContent.linkedin_content,
           reels_content: generatedContent.reels_content,
           threads_content: generatedContent.threads_content,
+        },
+        analysis: {
+          analysis_type: generatedContent.analysis_type,
+          original_summary: generatedContent.original_summary,
+          input_quality: generatedContent.input_quality,
+          transformation_process: generatedContent.transformation_process,
         },
       }),
       {
