@@ -300,17 +300,67 @@ Generate content for Blog, LinkedIn, Instagram Card News (JSON slides), and Thre
             schema: {
               type: "object",
               properties: {
-                blog_content: { type: "string", description: "Long-form blog post in Korean with ## subtitles" },
-                linkedin_content: { type: "string", description: "Professional LinkedIn post in Korean" },
-                reels_content: { type: "string", description: "JSON-formatted Instagram card news slides" },
-                threads_content: { type: "string", description: "Casual Threads post in Korean" },
+                blog_content: { type: "string" },
+                linkedin_content: { type: "string" },
+                reels_content: { type: "string" },
+                threads_content: { type: "string" },
+                analysis_type: { type: "string", enum: ["A", "B", "C"] },
+                original_summary: { type: "string", description: "1~2줄 한국어 요약" },
+                input_quality: {
+                  type: "object",
+                  properties: {
+                    level: { type: "string", enum: ["low", "medium", "high"] },
+                    reason: { type: "string" },
+                    suggestion: { type: "string" },
+                  },
+                  required: ["level", "reason", "suggestion"],
+                  additionalProperties: false,
+                },
+                transformation_process: {
+                  type: "object",
+                  properties: {
+                    raw_materials: {
+                      type: "object",
+                      properties: {
+                        title: { type: "string" },
+                        content: { type: "string" },
+                        items: { type: "array", items: { type: "string" } },
+                      },
+                      required: ["title", "content", "items"],
+                      additionalProperties: false,
+                    },
+                    core_point: {
+                      type: "object",
+                      properties: { title: { type: "string" }, content: { type: "string" } },
+                      required: ["title", "content"],
+                      additionalProperties: false,
+                    },
+                    writing_flow: {
+                      type: "object",
+                      properties: { title: { type: "string" }, content: { type: "string" } },
+                      required: ["title", "content"],
+                      additionalProperties: false,
+                    },
+                    format_conversion: {
+                      type: "object",
+                      properties: { title: { type: "string" }, content: { type: "string" } },
+                      required: ["title", "content"],
+                      additionalProperties: false,
+                    },
+                  },
+                  required: ["raw_materials", "core_point", "writing_flow", "format_conversion"],
+                  additionalProperties: false,
+                },
               },
-              required: ["blog_content", "linkedin_content", "reels_content", "threads_content"],
+              required: [
+                "blog_content", "linkedin_content", "reels_content", "threads_content",
+                "analysis_type", "original_summary", "input_quality", "transformation_process",
+              ],
               additionalProperties: false,
             },
           },
         },
-        temperature: 0.5, // Lower temperature for more consistent rewrites
+        temperature: 0.5,
         max_tokens: 4000,
       }),
     });
