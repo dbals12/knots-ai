@@ -223,6 +223,30 @@
   100% { opacity: 1; transform: translateX(0); }
 }
 
+/* ── Mic halo / wave ── */
+@keyframes mic-breath {
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  50%      { transform: scale(1.04); opacity: 1; }
+}
+@keyframes mic-breath-slow {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50%      { transform: scale(1.02); opacity: 0.9; }
+}
+@keyframes mic-wave-strong {
+  0%   { transform: scale(0.96); opacity: 0.7; }
+  50%  { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(0.96); opacity: 0.7; }
+}
+@keyframes mic-wave-mid {
+  0%   { transform: scale(1); opacity: 0.8; }
+  50%  { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(1); opacity: 0.8; }
+}
+.animate-mic-breath { animation: mic-breath 3.6s ease-in-out infinite; }
+.animate-mic-breath-slow { animation: mic-breath-slow 4.8s ease-in-out infinite; }
+.animate-mic-wave-strong { animation: mic-wave-strong 1.6s ease-in-out infinite; }
+.animate-mic-wave-mid { animation: mic-wave-mid 1.2s ease-in-out infinite; }
+
 .animate-orb-float { animation: orb-float 6s ease-in-out infinite; }
 .animate-orb-float-strong { animation: orb-float-strong 3.2s ease-in-out infinite; }
 .animate-orb-glow-pulse { animation: orb-glow-pulse 4s ease-in-out infinite; }
