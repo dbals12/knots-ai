@@ -390,7 +390,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
         >
           <HomeIcon className="w-5 h-5 text-foreground/70" />
         </button>
-        <button onClick={() => navigate("/")} className="text-base font-medium tracking-wide text-foreground">
+        <button onClick={() => navigate("/")} className="text-base font-bold tracking-wide text-foreground">
           knots
         </button>
         <button
@@ -403,39 +403,75 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
       <div className="flex-1 flex flex-col px-5 pt-6 pb-6 overflow-y-auto">
         {/* ── Mood ── */}
-        <h2 className="text-base font-semibold text-foreground mb-3">오늘 하루 어땠나요?</h2>
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 mb-6 -mx-5 px-5">
-          {moods.map((m) => (
-            <button
-              key={m.key}
-              onClick={() => setSelectedMood(selectedMood === m.key ? null : m.key)}
-              className={`flex-shrink-0 px-4 py-2.5 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
-                selectedMood === m.key
-                  ? "bg-foreground text-background shadow-sm"
-                  : "bg-background border border-border text-foreground"
-              }`}
-            >
-              {m.label}
-            </button>
-          ))}
+        <h2 className="text-base font-bold text-foreground mb-3">오늘 하루 어땠나요?</h2>
+        <div className="relative mb-6">
+          <div ref={moodScrollRef} className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 -mx-5 px-5">
+            {moods.map((m) => (
+              <button
+                key={m.key}
+                onClick={() => setSelectedMood(selectedMood === m.key ? null : m.key)}
+                className={`flex-shrink-0 px-4 py-2.5 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
+                  selectedMood === m.key
+                    ? "bg-foreground text-background shadow-sm"
+                    : "bg-background border border-border text-foreground"
+                }`}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => scrollChips(moodScrollRef, -1)}
+            aria-label="이전 칩 보기"
+            className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 w-7 h-7 rounded-full bg-background/95 border border-border shadow-sm items-center justify-center hover:bg-muted"
+          >
+            <ChevronLeft className="w-4 h-4 text-foreground/70" />
+          </button>
+          <button
+            type="button"
+            onClick={() => scrollChips(moodScrollRef, 1)}
+            aria-label="다음 칩 보기"
+            className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-1 w-7 h-7 rounded-full bg-background/95 border border-border shadow-sm items-center justify-center hover:bg-muted"
+          >
+            <ChevronRight className="w-4 h-4 text-foreground/70" />
+          </button>
         </div>
 
         {/* ── Guide chips ── */}
-        <h2 className="text-base font-semibold text-foreground mb-3">오늘은 어떤 기록으로 남길까요?</h2>
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 mb-3 -mx-5 px-5">
-          {guideChips.map((c) => (
-            <button
-              key={c.key}
-              onClick={() => handleGuideSelect(c.key)}
-              className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
-                selectedGuide === c.key
-                  ? "bg-foreground text-background shadow-sm"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
-              }`}
-            >
-              {c.label}
-            </button>
-          ))}
+        <h2 className="text-base font-bold text-foreground mb-3">오늘은 어떤 기록으로 남길까요?</h2>
+        <div className="relative mb-3">
+          <div ref={guideScrollRef} className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 -mx-5 px-5">
+            {guideChips.map((c) => (
+              <button
+                key={c.key}
+                onClick={() => handleGuideSelect(c.key)}
+                className={`flex-shrink-0 px-4 py-2.5 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
+                  selectedGuide === c.key
+                    ? "bg-foreground text-background shadow-sm"
+                    : "bg-background border border-border text-foreground"
+                }`}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => scrollChips(guideScrollRef, -1)}
+            aria-label="이전 칩 보기"
+            className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 w-7 h-7 rounded-full bg-background/95 border border-border shadow-sm items-center justify-center hover:bg-muted"
+          >
+            <ChevronLeft className="w-4 h-4 text-foreground/70" />
+          </button>
+          <button
+            type="button"
+            onClick={() => scrollChips(guideScrollRef, 1)}
+            aria-label="다음 칩 보기"
+            className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-1 w-7 h-7 rounded-full bg-background/95 border border-border shadow-sm items-center justify-center hover:bg-muted"
+          >
+            <ChevronRight className="w-4 h-4 text-foreground/70" />
+          </button>
         </div>
 
         {/* ── Example card ── */}
@@ -451,7 +487,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
                 <Sparkles className="w-3.5 h-3.5 text-muted-foreground" />
                 <span className="text-xs text-muted-foreground">예시 가이드</span>
               </div>
-              <p className="text-sm leading-relaxed text-foreground whitespace-pre-line">
+              <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
                 예: {currentExample.text}
               </p>
               <div className="flex justify-end mt-3">
