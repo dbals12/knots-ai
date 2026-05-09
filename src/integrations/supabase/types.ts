@@ -190,9 +190,14 @@ export type Database = {
           entry_source: string | null
           id: string
           input_duration: number | null
+          input_guide_type: string | null
+          input_length_chars: number | null
           input_type: string | null
           keyword: string | null
           raw_text: string | null
+          recording_duration_seconds: number | null
+          selected_example_id: string | null
+          selected_example_text: string | null
           selected_guide_chip: string | null
           selected_mood: string | null
           selected_persona: string | null
@@ -206,9 +211,14 @@ export type Database = {
           entry_source?: string | null
           id?: string
           input_duration?: number | null
+          input_guide_type?: string | null
+          input_length_chars?: number | null
           input_type?: string | null
           keyword?: string | null
           raw_text?: string | null
+          recording_duration_seconds?: number | null
+          selected_example_id?: string | null
+          selected_example_text?: string | null
           selected_guide_chip?: string | null
           selected_mood?: string | null
           selected_persona?: string | null
@@ -222,9 +232,14 @@ export type Database = {
           entry_source?: string | null
           id?: string
           input_duration?: number | null
+          input_guide_type?: string | null
+          input_length_chars?: number | null
           input_type?: string | null
           keyword?: string | null
           raw_text?: string | null
+          recording_duration_seconds?: number | null
+          selected_example_id?: string | null
+          selected_example_text?: string | null
           selected_guide_chip?: string | null
           selected_mood?: string | null
           selected_persona?: string | null
