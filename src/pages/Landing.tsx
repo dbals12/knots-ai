@@ -28,7 +28,7 @@ const Landing = () => {
       {/* Text below orb */}
       <div className="text-center mt-[60px] animate-float-up" style={{ animationDelay: "0.15s" }}>
         <h1 className="text-[28px] font-medium text-foreground tracking-tight">
-          Welcome to Knots !
+          Welcome to <span className="font-jost font-normal">Knots</span> !
         </h1>
         <p className="mt-3 text-sm text-muted-foreground font-normal leading-relaxed">
           당신의 경험을

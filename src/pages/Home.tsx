@@ -19,6 +19,8 @@ const moods = [
   { key: "burning_day", label: "🔥 불타는 하루" },
   { key: "tired_day", label: "😮‍💨 좀 힘들고 지쳤다" },
   { key: "proud_day", label: "😊 뿌듯했다" },
+  { key: "soso_day", label: "😐 그냥 그런 날" },
+  { key: "hectic_day", label: "🌀 정신 없었다" },
 ];
 
 // ── Guide chips with example arrays ──
@@ -390,7 +392,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
         >
           <HomeIcon className="w-5 h-5 text-foreground/70" />
         </button>
-        <button onClick={() => navigate("/")} className="text-base font-bold tracking-wide text-foreground">
+        <button onClick={() => navigate("/")} className="font-jost text-xl font-normal tracking-wide text-foreground">
           knots
         </button>
         <button
@@ -403,7 +405,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
       <div className="flex-1 flex flex-col px-5 pt-6 pb-6 overflow-y-auto">
         {/* ── Mood ── */}
-        <h2 className="text-base font-bold text-foreground mb-3">오늘 하루 어땠나요?</h2>
+        <h2 className="text-base font-semibold text-foreground mb-3">오늘 하루 어땠나요?</h2>
         <div className="relative mb-6">
           <div ref={moodScrollRef} className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 -mx-5 px-5">
             {moods.map((m) => (
@@ -439,7 +441,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
         </div>
 
         {/* ── Guide chips ── */}
-        <h2 className="text-base font-bold text-foreground mb-3">오늘은 어떤 기록으로 남길까요?</h2>
+        <h2 className="text-base font-semibold text-foreground mb-3">오늘은 어떤 기록으로 남길까요?</h2>
         <div className="relative mb-3">
           <div ref={guideScrollRef} className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 -mx-5 px-5">
             {guideChips.map((c) => (

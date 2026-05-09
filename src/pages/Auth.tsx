@@ -119,8 +119,8 @@ const Auth = () => {
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-8">
         <div className="w-full space-y-8">
           <div className="text-center">
-            <h1 className="text-2xl font-normal italic text-foreground tracking-tight font-bodoni">knots</h1>
-            <p className="text-muted-foreground whitespace-pre-line mt-2">
+            <h1 className="font-jost text-3xl font-normal text-foreground tracking-wide">knots</h1>
+            <p className="text-sm text-muted-foreground whitespace-pre-line mt-2 font-normal">
               {"3초 만에 시작하고\n나만의 콘텐츠를 만드세요"}
             </p>
           </div>
