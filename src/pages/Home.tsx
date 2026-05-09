@@ -392,7 +392,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
         >
           <HomeIcon className="w-5 h-5 text-foreground/70" />
         </button>
-        <button onClick={() => navigate("/")} className="text-base font-bold tracking-wide text-foreground">
+        <button onClick={() => navigate("/")} className="font-jost text-xl font-normal tracking-wide text-foreground">
           knots
         </button>
         <button
