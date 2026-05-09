@@ -397,7 +397,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
         </button>
         <button
           onClick={() => (user ? navigate("/settings") : navigate("/login"))}
-          className="absolute right-4 text-sm text-foreground/80 hover:text-foreground"
+          className="absolute right-4 text-sm font-medium text-foreground/80 hover:text-foreground"
         >
           {user ? "마이" : "로그인"}
         </button>
