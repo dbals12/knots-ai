@@ -509,13 +509,13 @@ const Home = ({ isGuest = false }: HomeProps) => {
             <div className="relative flex items-center justify-center w-[220px] h-[220px]">
               {/* Halo layers */}
               <div
-                className={`absolute inset-0 rounded-full bg-gradient-to-b from-white to-[hsl(0,0%,94%)] border border-[hsla(0,0%,100%,0.9)] shadow-[0_18px_40px_-12px_hsla(220,15%,40%,0.18),inset_0_2px_4px_hsla(0,0%,100%,0.9)] ${
+                className={`absolute inset-0 rounded-full bg-gradient-to-b from-white to-[hsl(0,0%,90%)] border border-[hsla(0,0%,100%,0.9)] shadow-[0_22px_48px_-12px_hsla(220,15%,40%,0.28),inset_0_2px_4px_hsla(0,0%,100%,0.9)] ${
                   isRecording ? "animate-mic-wave-strong" : "animate-mic-breath"
                 }`}
                 aria-hidden
               />
               <div
-                className={`absolute inset-6 rounded-full bg-gradient-to-b from-white to-[hsl(0,0%,96%)] border border-[hsla(0,0%,100%,0.7)] shadow-[inset_0_1px_2px_hsla(0,0%,100%,0.9)] ${
+                className={`absolute inset-6 rounded-full bg-gradient-to-b from-white to-[hsl(0,0%,93%)] border border-[hsla(0,0%,100%,0.7)] shadow-[inset_0_1px_2px_hsla(0,0%,100%,0.9)] ${
                   isRecording ? "animate-mic-wave-mid" : "animate-mic-breath-slow"
                 }`}
                 aria-hidden
