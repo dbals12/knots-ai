@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import AppShell from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import {
-  RefreshCw, ChevronDown, ChevronUp, Lock, ArrowRight, Check,
+  RefreshCw, ChevronDown, ChevronUp, Lock, ArrowRight, Check, Sparkles, Loader2,
 } from "lucide-react";
 import { SiNaver, SiLinkedin, SiInstagram, SiThreads } from "react-icons/si";
 import ResultDetailModal from "@/components/ResultDetailModal";
@@ -465,10 +465,14 @@ const DraftResult = () => {
   if (loading || !data || isRegenerating) {
     return (
       <AppShell showHeader={false}>
-        <div className="flex-1 flex flex-col items-center justify-center gap-8 h-[100dvh] px-6">
-          <GlassOrb state="recording" size="w-28 h-28" />
-          <div className="text-center space-y-3">
-            <p className="text-base font-medium text-foreground animate-pulse">{loadingMessage}</p>
+        <div className="flex-1 flex flex-col items-center justify-center gap-6 h-[100dvh] px-6">
+          <div className="relative w-24 h-24 flex items-center justify-center">
+            <div className="absolute inset-0 rounded-full bg-white border border-border/60 shadow-[0_8px_24px_-8px_hsla(40,80%,50%,0.25)]" />
+            <Sparkles className="relative w-9 h-9 text-amber-400 fill-amber-400 drop-shadow-[0_2px_6px_hsla(40,90%,55%,0.5)] animate-pulse" strokeWidth={1.5} />
+            <Loader2 className="absolute -bottom-1 w-5 h-5 text-foreground/70 animate-spin" />
+          </div>
+          <div className="text-center space-y-2">
+            <p className="text-base font-bold text-foreground">{loadingMessage}</p>
             <p className="text-xs text-muted-foreground">잠시만 기다려주세요 (약 10초 소요)</p>
           </div>
           {showRetryButton && !isRegenerating && (
