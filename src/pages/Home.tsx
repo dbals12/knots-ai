@@ -537,7 +537,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
         {/* ── Status copy ── */}
         {inputMode === "voice" && (
-          <p className="text-center text-xs text-muted-foreground mt-4">{getStatusCopy()}</p>
+          <p className="text-center text-sm text-muted-foreground mt-4">{getStatusCopy()}</p>
         )}
       </div>
 
