@@ -466,10 +466,13 @@ const DraftResult = () => {
     return (
       <AppShell showHeader={false}>
         <div className="flex-1 flex flex-col items-center justify-center gap-6 h-[100dvh] px-6">
-          <div className="relative w-24 h-24 flex items-center justify-center">
-            <div className="absolute inset-0 rounded-full bg-white border border-border/60 shadow-[0_8px_24px_-8px_hsla(40,80%,50%,0.25)]" />
-            <Sparkles className="relative w-9 h-9 text-amber-400 fill-amber-400 drop-shadow-[0_2px_6px_hsla(40,90%,55%,0.5)] animate-pulse" strokeWidth={1.5} />
-            <Loader2 className="absolute -bottom-1 w-5 h-5 text-foreground/70 animate-spin" />
+          <div className="flex flex-col items-center gap-3">
+            <div className="relative w-24 h-24 rounded-full bg-white border border-border/60 shadow-[0_8px_24px_-8px_hsla(40,80%,50%,0.25)] flex items-center justify-center">
+              <Sparkles className="w-9 h-9 text-amber-400 fill-amber-400 drop-shadow-[0_2px_6px_hsla(40,90%,55%,0.5)] animate-pulse" strokeWidth={1.5} />
+            </div>
+            <svg width="56" height="18" viewBox="0 0 56 18" fill="none" className="animate-pulse">
+              <path d="M3 3 Q 28 22 53 3" stroke="hsl(var(--foreground))" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+            </svg>
           </div>
           <div className="text-center space-y-2">
             <p className="text-base font-bold text-foreground">{loadingMessage}</p>
