@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Textarea } from "@/components/ui/textarea";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Mic, Type, Home as HomeIcon, RotateCw, Sparkles } from "lucide-react";
+import { Mic, Type, Home as HomeIcon, RotateCw, Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import AppShell from "@/components/AppShell";
@@ -83,8 +83,14 @@ const Home = ({ isGuest = false }: HomeProps) => {
   const audioStreamRef = useRef<MediaStream | null>(null);
   const recordTimerRef = useRef<number | null>(null);
   const recordStartRef = useRef<number>(0);
+  const moodScrollRef = useRef<HTMLDivElement | null>(null);
+  const guideScrollRef = useRef<HTMLDivElement | null>(null);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [recordedDuration, setRecordedDuration] = useState<number>(0);
+
+  const scrollChips = (ref: React.RefObject<HTMLDivElement>, dir: 1 | -1) => {
+    if (ref.current) ref.current.scrollBy({ left: dir * 160, behavior: "smooth" });
+  };
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -384,7 +390,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
         >
           <HomeIcon className="w-5 h-5 text-foreground/70" />
         </button>
-        <button onClick={() => navigate("/")} className="text-base font-medium tracking-wide text-foreground">
+        <button onClick={() => navigate("/")} className="text-base font-bold tracking-wide text-foreground">
           knots
         </button>
         <button
@@ -397,39 +403,75 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
       <div className="flex-1 flex flex-col px-5 pt-6 pb-6 overflow-y-auto">
         {/* ── Mood ── */}
-        <h2 className="text-base font-semibold text-foreground mb-3">오늘 하루 어땠나요?</h2>
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 mb-6 -mx-5 px-5">
-          {moods.map((m) => (
-            <button
-              key={m.key}
-              onClick={() => setSelectedMood(selectedMood === m.key ? null : m.key)}
-              className={`flex-shrink-0 px-4 py-2.5 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
-                selectedMood === m.key
-                  ? "bg-foreground text-background shadow-sm"
-                  : "bg-background border border-border text-foreground"
-              }`}
-            >
-              {m.label}
-            </button>
-          ))}
+        <h2 className="text-base font-bold text-foreground mb-3">오늘 하루 어땠나요?</h2>
+        <div className="relative mb-6">
+          <div ref={moodScrollRef} className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 -mx-5 px-5">
+            {moods.map((m) => (
+              <button
+                key={m.key}
+                onClick={() => setSelectedMood(selectedMood === m.key ? null : m.key)}
+                className={`flex-shrink-0 px-4 py-2.5 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
+                  selectedMood === m.key
+                    ? "bg-foreground text-background shadow-sm"
+                    : "bg-background border border-border text-foreground"
+                }`}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => scrollChips(moodScrollRef, -1)}
+            aria-label="이전 칩 보기"
+            className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 w-7 h-7 rounded-full bg-background/95 border border-border shadow-sm items-center justify-center hover:bg-muted"
+          >
+            <ChevronLeft className="w-4 h-4 text-foreground/70" />
+          </button>
+          <button
+            type="button"
+            onClick={() => scrollChips(moodScrollRef, 1)}
+            aria-label="다음 칩 보기"
+            className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-1 w-7 h-7 rounded-full bg-background/95 border border-border shadow-sm items-center justify-center hover:bg-muted"
+          >
+            <ChevronRight className="w-4 h-4 text-foreground/70" />
+          </button>
         </div>
 
         {/* ── Guide chips ── */}
-        <h2 className="text-base font-semibold text-foreground mb-3">오늘은 어떤 기록으로 남길까요?</h2>
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 mb-3 -mx-5 px-5">
-          {guideChips.map((c) => (
-            <button
-              key={c.key}
-              onClick={() => handleGuideSelect(c.key)}
-              className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
-                selectedGuide === c.key
-                  ? "bg-foreground text-background shadow-sm"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
-              }`}
-            >
-              {c.label}
-            </button>
-          ))}
+        <h2 className="text-base font-bold text-foreground mb-3">오늘은 어떤 기록으로 남길까요?</h2>
+        <div className="relative mb-3">
+          <div ref={guideScrollRef} className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 -mx-5 px-5">
+            {guideChips.map((c) => (
+              <button
+                key={c.key}
+                onClick={() => handleGuideSelect(c.key)}
+                className={`flex-shrink-0 px-4 py-2.5 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
+                  selectedGuide === c.key
+                    ? "bg-foreground text-background shadow-sm"
+                    : "bg-background border border-border text-foreground"
+                }`}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => scrollChips(guideScrollRef, -1)}
+            aria-label="이전 칩 보기"
+            className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 w-7 h-7 rounded-full bg-background/95 border border-border shadow-sm items-center justify-center hover:bg-muted"
+          >
+            <ChevronLeft className="w-4 h-4 text-foreground/70" />
+          </button>
+          <button
+            type="button"
+            onClick={() => scrollChips(guideScrollRef, 1)}
+            aria-label="다음 칩 보기"
+            className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-1 w-7 h-7 rounded-full bg-background/95 border border-border shadow-sm items-center justify-center hover:bg-muted"
+          >
+            <ChevronRight className="w-4 h-4 text-foreground/70" />
+          </button>
         </div>
 
         {/* ── Example card ── */}
@@ -445,7 +487,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
                 <Sparkles className="w-3.5 h-3.5 text-muted-foreground" />
                 <span className="text-xs text-muted-foreground">예시 가이드</span>
               </div>
-              <p className="text-sm leading-relaxed text-foreground whitespace-pre-line">
+              <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
                 예: {currentExample.text}
               </p>
               <div className="flex justify-end mt-3">
@@ -467,13 +509,13 @@ const Home = ({ isGuest = false }: HomeProps) => {
             <div className="relative flex items-center justify-center w-[220px] h-[220px]">
               {/* Halo layers */}
               <div
-                className={`absolute inset-0 rounded-full bg-gradient-to-b from-white to-[hsl(0,0%,94%)] border border-[hsla(0,0%,100%,0.9)] shadow-[0_18px_40px_-12px_hsla(220,15%,40%,0.18),inset_0_2px_4px_hsla(0,0%,100%,0.9)] ${
+                className={`absolute inset-0 rounded-full bg-gradient-to-b from-white to-[hsl(0,0%,90%)] border border-[hsla(0,0%,100%,0.9)] shadow-[0_22px_48px_-12px_hsla(220,15%,40%,0.28),inset_0_2px_4px_hsla(0,0%,100%,0.9)] ${
                   isRecording ? "animate-mic-wave-strong" : "animate-mic-breath"
                 }`}
                 aria-hidden
               />
               <div
-                className={`absolute inset-6 rounded-full bg-gradient-to-b from-white to-[hsl(0,0%,96%)] border border-[hsla(0,0%,100%,0.7)] shadow-[inset_0_1px_2px_hsla(0,0%,100%,0.9)] ${
+                className={`absolute inset-6 rounded-full bg-gradient-to-b from-white to-[hsl(0,0%,93%)] border border-[hsla(0,0%,100%,0.7)] shadow-[inset_0_1px_2px_hsla(0,0%,100%,0.9)] ${
                   isRecording ? "animate-mic-wave-mid" : "animate-mic-breath-slow"
                 }`}
                 aria-hidden
