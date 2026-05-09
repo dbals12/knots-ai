@@ -83,8 +83,14 @@ const Home = ({ isGuest = false }: HomeProps) => {
   const audioStreamRef = useRef<MediaStream | null>(null);
   const recordTimerRef = useRef<number | null>(null);
   const recordStartRef = useRef<number>(0);
+  const moodScrollRef = useRef<HTMLDivElement | null>(null);
+  const guideScrollRef = useRef<HTMLDivElement | null>(null);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [recordedDuration, setRecordedDuration] = useState<number>(0);
+
+  const scrollChips = (ref: React.RefObject<HTMLDivElement>, dir: 1 | -1) => {
+    if (ref.current) ref.current.scrollBy({ left: dir * 160, behavior: "smooth" });
+  };
 
   const navigate = useNavigate();
   const location = useLocation();
