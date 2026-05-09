@@ -405,7 +405,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
 
       <div className="flex-1 flex flex-col px-5 pt-6 pb-6 overflow-y-auto">
         {/* ── Mood ── */}
-        <h2 className="text-base font-semibold text-foreground mb-3">오늘 하루 어땠나요?</h2>
+        <h2 className="text-base font-bold text-foreground mb-3">오늘 하루 어땠나요?</h2>
         <div className="relative mb-6">
           <div ref={moodScrollRef} className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 -mx-5 px-5">
             {moods.map((m) => (
