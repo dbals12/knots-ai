@@ -441,7 +441,7 @@ const Home = ({ isGuest = false }: HomeProps) => {
         </div>
 
         {/* ── Guide chips ── */}
-        <h2 className="text-base font-bold text-foreground mb-3">오늘은 어떤 기록으로 남길까요?</h2>
+        <h2 className="text-base font-semibold text-foreground mb-3">오늘은 어떤 기록으로 남길까요?</h2>
         <div className="relative mb-3">
           <div ref={guideScrollRef} className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 -mx-5 px-5">
             {guideChips.map((c) => (
