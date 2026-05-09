@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import AppShell from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import {
-  RefreshCw, ChevronDown, ChevronUp, Lock, ArrowRight, Check,
+  RefreshCw, ChevronDown, ChevronUp, Lock, ArrowRight, Check, Sparkles, Loader2,
 } from "lucide-react";
 import { SiNaver, SiLinkedin, SiInstagram, SiThreads } from "react-icons/si";
 import ResultDetailModal from "@/components/ResultDetailModal";
