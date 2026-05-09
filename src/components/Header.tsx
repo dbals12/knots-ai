@@ -38,7 +38,7 @@ const Header = ({ isGuest = false }: HeaderProps) => {
       {/* Center: Logo */}
       <button
         onClick={() => navigate("/")}
-        className="text-base font-medium tracking-wide text-foreground"
+        className="font-jost text-xl font-normal tracking-wide text-foreground"
       >
         knots
       </button>
