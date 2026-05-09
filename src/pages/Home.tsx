@@ -19,6 +19,8 @@ const moods = [
   { key: "burning_day", label: "🔥 불타는 하루" },
   { key: "tired_day", label: "😮‍💨 좀 힘들고 지쳤다" },
   { key: "proud_day", label: "😊 뿌듯했다" },
+  { key: "soso_day", label: "😐 그냥 그런 날" },
+  { key: "hectic_day", label: "🌀 정신 없었다" },
 ];
 
 // ── Guide chips with example arrays ──
