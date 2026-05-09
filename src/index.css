@@ -85,7 +85,7 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: system-ui, -apple-system, 'Pretendard', 'Noto Sans KR', sans-serif;
+    font-family: 'Noto Sans KR', system-ui, -apple-system, sans-serif;
     font-weight: 400;
   }
 
