@@ -233,19 +233,19 @@
   50%      { transform: scale(1.01); opacity: 0.92; }
 }
 @keyframes mic-wave-strong {
-  0%   { transform: scale(0.94); opacity: 0.6; }
+  0%   { transform: scale(0.94); opacity: 0.78; }
   50%  { transform: scale(1.12); opacity: 1; }
-  100% { transform: scale(0.94); opacity: 0.6; }
+  100% { transform: scale(0.94); opacity: 0.78; }
 }
 @keyframes mic-wave-mid {
-  0%   { transform: scale(0.98); opacity: 0.75; }
+  0%   { transform: scale(0.98); opacity: 0.88; }
   50%  { transform: scale(1.08); opacity: 1; }
-  100% { transform: scale(0.98); opacity: 0.75; }
+  100% { transform: scale(0.98); opacity: 0.88; }
 }
 .animate-mic-breath { animation: mic-breath 4.5s ease-in-out infinite; }
 .animate-mic-breath-slow { animation: mic-breath-slow 5.5s ease-in-out infinite; }
-.animate-mic-wave-strong { animation: mic-wave-strong 1.2s ease-in-out infinite; }
-.animate-mic-wave-mid { animation: mic-wave-mid 0.9s ease-in-out infinite; }
+.animate-mic-wave-strong { animation: mic-wave-strong 2.2s ease-in-out infinite; }
+.animate-mic-wave-mid { animation: mic-wave-mid 1.8s ease-in-out infinite; }
 
 .animate-orb-float { animation: orb-float 6s ease-in-out infinite; }
 .animate-orb-float-strong { animation: orb-float-strong 3.2s ease-in-out infinite; }
