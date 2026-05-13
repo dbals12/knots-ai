@@ -407,13 +407,6 @@ const InputPage = () => {
               placeholder="자유롭게 적어주세요..."
               className="min-h-[200px] resize-none rounded-xl text-base"
             />
-            <Button
-              onClick={handleSubmit}
-              disabled={isSubmitting || !textInput.trim()}
-              className="w-full h-14 rounded-xl text-lg font-bold"
-            >
-              {isSubmitting ? <Loader2 className="animate-spin" /> : "콘텐츠 생성하기"}
-            </Button>
           </div>
         )}
 
@@ -429,6 +422,17 @@ const InputPage = () => {
             <p className="text-xs md:text-sm text-muted-foreground">{isRecording ? "녹음 중... (터치해서 중지)" : "터치해서 녹음 시작"}</p>
           </div>
         )}
+      </div>
+
+      {/* 맨 하단 고정 버튼 */}
+      <div className="shrink-0 px-4 pb-4 pt-2 bg-background border-t border-border/30">
+        <Button
+          onClick={handleSubmit}
+          disabled={isSubmitting || (inputMode === "text" ? !textInput.trim() : !recordedBlob)}
+          className="w-full h-14 rounded-xl text-lg font-bold"
+        >
+          {isSubmitting ? <Loader2 className="animate-spin" /> : "기록 시작하기"}
+        </Button>
       </div>
 
       <Sheet open={showConfirmation} onOpenChange={setShowConfirmation}>
