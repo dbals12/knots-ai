@@ -407,13 +407,6 @@ const InputPage = () => {
               placeholder="자유롭게 적어주세요..."
               className="min-h-[200px] resize-none rounded-xl text-base"
             />
-            <Button
-              onClick={handleSubmit}
-              disabled={isSubmitting || !textInput.trim()}
-              className="w-full h-14 rounded-xl text-lg font-bold"
-            >
-              {isSubmitting ? <Loader2 className="animate-spin" /> : "콘텐츠 생성하기"}
-            </Button>
           </div>
         )}
 
