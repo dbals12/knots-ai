@@ -431,6 +431,17 @@ const InputPage = () => {
         )}
       </div>
 
+      {/* 맨 하단 고정 버튼 */}
+      <div className="shrink-0 px-4 pb-4 pt-2 bg-background border-t border-border/30">
+        <Button
+          onClick={handleSubmit}
+          disabled={isSubmitting || (inputMode === "text" ? !textInput.trim() : !recordedBlob)}
+          className="w-full h-14 rounded-xl text-lg font-bold"
+        >
+          {isSubmitting ? <Loader2 className="animate-spin" /> : "기록 시작하기"}
+        </Button>
+      </div>
+
       <Sheet open={showConfirmation} onOpenChange={setShowConfirmation}>
         <SheetContent side="bottom" className="rounded-t-3xl">
           <SheetHeader>
