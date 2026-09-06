@@ -1,73 +1,93 @@
-# Welcome to your Lovable project
+# Remix of Switch Studio
 
-## Project info
+Project: Switch Manager (MVP)
 
-**URL**: https://lovable.dev/projects/7d86ff3d-a257-4b4d-abe3-7c8842c32f41
+I want to build a "Career Branding AI Agent" web application called Switch Manager.
+This app converts a user's 3-minute voice memo into 4 different content formats (Blog, LinkedIn, Reels Script, Threads) using AI.
 
-## How can I edit this code?
+1. Tech Stack Requirements
 
-There are several ways of editing your application.
+Frontend: React, Vite, TypeScript, Tailwind CSS, Shadcn UI
 
-**Use Lovable**
+Backend/DB: Supabase (Auth, Database, Edge Functions for AI)
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/7d86ff3d-a257-4b4d-abe3-7c8842c32f41) and start prompting.
+Icons: Lucide React
 
-Changes made via Lovable will be committed automatically to this repo.
+Styling: Mobile-first, clean, professional but trendy aesthetic (Target: 20-30s women).
 
-**Use your preferred IDE**
+2. Core User Flow
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+Onboarding: User selects Job Role (Marketing, PM, Data, etc.) and Preferred Tone (Professional, Witty, Calm).
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+Main Input (Home): A very large, centered Recording Button (Red/Gradient). User clicks to record voice (simulate functionality if needed). Below it, 3 input chips for "Keywords".
 
-Follow these steps:
+Processing: A loading animation showing "Refracting your story..." (Prism effect).
+
+Result View (Card Layout): Display 4 distinct cards for the generated content.
+
+Blog: Long text, structured (Green accent)
+
+LinkedIn: Professional insight style (Blue accent)
+
+Reels: Split view (Visual description | Audio script) (Pink/Purple accent)
+
+Threads: Short, witty text (Black/White accent)
+
+Action: Each card has Copy, Save, and Regenerate buttons.
+
+3. Database Schema (Supabase)
+
+Please structure the app to connect with these Supabase tables:
+
+users: id (uuid), email, job_role, tone_preference
+
+sessions: id, user_id, raw_text (from STT), created_at
+
+outputs: id, session_id, platform (blog/linkedin/reels/threads), content (text or json), is_saved (boolean)
+
+edits: id, output_id, edit_type, feedback_score
+
+4. UI/UX Details
+
+Mobile First: The layout must look perfect on mobile.
+
+The Switch Concept: Use a "Toggle Switch" or "Prism" motif in the logo or loading state.
+
+Micro-interactions: Smooth transitions when switching between result cards.
+
+5. Implementation Steps
+
+Set up the Supabase client and Auth context.
+
+Create the Onboarding flow to save user preferences.
+
+Build the Main Recorder Interface (Mock the STT API call for now with a setTimeout and dummy text).
+
+Create the Result Component that parses the dummy response and renders the 4-card view.
+
+Implement the "Copy to Clipboard" function for each card.
+
+Please start by scaffolding the project structure and setting up the routing.
+
+This project was built with [Lovable](https://lovable.dev).
+
+**Live app**: https://knots-ai.lovable.app
+
+## Build with Lovable
+
+Continue developing this project in the [Lovable editor](https://lovable.dev/projects/5dfb626d-9d5a-4e3e-b8dd-ce8424cdfc7e).
+
+- **Ship faster**: describe what you want to build and Lovable handles the code.
+- **Stay in sync**: every change made in Lovable is committed straight to this repository.
+- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+
+## Development
+
+Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
+git clone <this-repository-url>
+cd <repository-name>
 npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
 npm run dev
 ```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/7d86ff3d-a257-4b4d-abe3-7c8842c32f41) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
