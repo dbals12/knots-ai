@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# 환경변수 (로컬 전용, 커밋 금지)
+.env
+.env.local
+.env.*.local
