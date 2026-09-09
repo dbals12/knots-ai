@@ -1,12 +1,14 @@
 # 기여와 AI 도구 사용 범위
 
-이 저장소는 이유민(`dbals12`)의 개인 프로젝트입니다. 제품 문제와 사용자 흐름을 정의하고, Lovable을 구현 도구로 사용해 반복적으로 프로토타입을 만든 뒤 Supabase와 분석 구조를 확장했습니다.
+이 저장소는 이유민(`dbals12`)의 개인 프로젝트입니다. 제품 문제와 사용자 흐름을 정의하고, 실제 사용자 이벤트를 분석해 퍼널의 병목을 찾은 뒤 UX를 반복해서 개선했습니다. Lovable은 UI 구현 도구로 사용했고 Supabase 데이터 모델·권한·이벤트 수집 구조를 직접 설계했습니다.
 
 Lovable과 GitHub가 양방향으로 동기화되기 때문에 과거 구현 커밋 대부분의 작성자는 `lovable-dev[bot]`으로 표시됩니다. 따라서 커밋 작성자 수를 직접 작성한 코드 줄 수로 해석하지 않습니다. 아래에는 제가 책임진 판단과 검증 범위를 구체적으로 적었습니다.
 
 ## 담당한 범위
 
 - **제품 정의**: 3분 음성 기록을 블로그·LinkedIn·Instagram·Threads 네 포맷으로 바꾸는 흐름과 온보딩 정보(직군·톤·사용 목적) 정의
+- **데이터 기반 UX 개선**: 첫 방문부터 입력·결과·저장·복사까지의 퍼널을 정의하고, 로그인 선행 구조를 결과 선행 구조로 개편해 입력 완료율을 2.8%에서 11.5%로 개선
+- **입력 경험 개선**: 사용자 행동을 바탕으로 기록 목적 칩, 예시 가이드, 음성·텍스트 전환, 녹음 웨이브와 상태 문구 설계
 - **데이터 모델**: 사용자, 세션, 출력물, 편집 피드백을 분리하고 가입 전 작성 내용을 가입 후 계정으로 이어받는 구조 설계
 - **접근 제어**: Supabase Auth와 Postgres RLS를 이용한 사용자별 데이터 격리, 관리자 권한은 Edge Function 환경변수에서만 사용
 - **AI 처리 흐름**: 음성 인식 → 원문 재정제 → 포맷별 생성 → 부분/전체 재생성을 여섯 Edge Function으로 분리
@@ -17,7 +19,7 @@ Lovable과 GitHub가 양방향으로 동기화되기 때문에 과거 구현 커
 
 | 판단 | 구현 위치 |
 |---|---|
-| 로그인 전 입력 복원과 가입 후 이어받기 | `src/lib/pendingSubmission.ts`, `src/lib/guestPendingSubmission.ts`, `src/pages/AuthCallback.tsx` |
+| 로그인 전 결과 확인과 가입 후 이어받기 | `src/lib/pendingSubmission.ts`, `src/lib/guestPendingSubmission.ts`, `src/pages/AuthCallback.tsx` |
 | 세션별 입력 순서 추적 | `src/lib/session.ts` |
 | 유입 정보 보존 | `src/lib/acquisition.ts` |
 | GA4·Meta Pixel·Supabase 동시 이벤트 기록 | `src/lib/track.ts` |
